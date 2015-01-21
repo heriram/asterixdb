@@ -323,6 +323,7 @@ public class MetadataBootstrap {
                 "edu.uci.ics.asterix.external.adapter.factory.RSSFeedAdapterFactory",
                 "edu.uci.ics.asterix.external.adapter.factory.CNNFeedAdapterFactory",
                 "edu.uci.ics.asterix.tools.external.data.RateControlledFileSystemBasedAdapterFactory",
+                "edu.uci.ics.asterix.tools.external.data.DirectoryBasedFileSystemBasedAdapterFactory",
                 "edu.uci.ics.asterix.tools.external.data.TwitterFirehoseFeedAdapterFactory",
                 "edu.uci.ics.asterix.tools.external.data.GenericSocketFeedAdapterFactory",
                 "edu.uci.ics.asterix.tools.external.data.SocketClientAdapterFactory" };
@@ -330,6 +331,8 @@ public class MetadataBootstrap {
         for (String adapterClassName : builtInAdapterClassNames) {
             adapter = getAdapter(adapterClassName);
             MetadataManager.INSTANCE.addAdapter(mdTxnCtx, adapter);
+            if (adapterClassName.equals("edu.uci.ics.asterix.tools.external.data.DirectoryBasedFileSystemBasedAdapterFactory"))
+                System.out.println("Added DirectoryBasedFileSystemBasedAdapterFactory");
         }
         if (LOGGER.isLoggable(Level.INFO)) {
             LOGGER.info("Finished inserting built-in adapters.");
