@@ -91,6 +91,10 @@ public class DirectoryBasedFileSystemBasedAdapter extends NCFileSystemAdapter {
 
         /**
          * Perform a sequential read of the current file list
+         * 
+         * @param partition partition number of the directory
+         * @return {@link InputStream} for the file contents
+         * @throws IOException
          */
         public InputStream getInputStream(int partition) throws IOException {
 
