@@ -22,13 +22,9 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.SequenceInputStream;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Enumeration;
-import java.util.List;
 import java.util.Map;
 
-import edu.uci.ics.asterix.external.adapter.factory.NCFileSystemAdapterFactory;
 import edu.uci.ics.asterix.external.dataset.adapter.NCFileSystemAdapter;
 import edu.uci.ics.asterix.om.types.ARecordType;
 import edu.uci.ics.asterix.runtime.operators.file.AsterixTupleParserFactory;
@@ -38,11 +34,9 @@ import edu.uci.ics.hyracks.dataflow.std.file.ITupleParserFactory;
 
 /**
  * Adapter class extending {@link NCFileSystemAdapter}.
- * 
  * As with the NCFileSystemAdapter, a DirectoryBasedFileSystemBasedAdapter reads external data residing on the local file system of
  * an NC. The difference is that this adapter takes on the directory name as input and reads the data from all files - specified by
  * its format. E.g., if format=adm then it will load all files in the directory with extension ".adm".<br />
- * 
  * Usage:
  * 
  * <pre>
@@ -54,67 +48,86 @@ import edu.uci.ics.hyracks.dataflow.std.file.ITupleParserFactory;
 public class DirectoryBasedFileSystemBasedAdapter extends NCFileSystemAdapter {
 
     private static final long serialVersionUID = 1L;
-    
-    private FileSplit[] directorySplits;
-    private String format;
-    private List<File> fileList;
 
+    private FileContentProvider contentProvider;
 
     public DirectoryBasedFileSystemBasedAdapter(ARecordType atype, Map<String, String> configuration,
-            FileSplit[] dir_splits, ITupleParserFactory parser_factory,
-            IHyracksTaskContext ctx) throws Exception {
+            FileSplit[] dir_splits, ITupleParserFactory parser_factory, IHyracksTaskContext ctx) throws Exception {
         super(dir_splits, parser_factory, atype, ctx);
-        directorySplits = dir_splits;
-        this.format = configuration.get(AsterixTupleParserFactory.KEY_FORMAT);
+        String format = configuration.get(AsterixTupleParserFactory.KEY_FORMAT);
+        contentProvider = new FileContentProvider(dir_splits, format);
     }
 
     @Override
     public InputStream getInputStream(int partition) throws IOException {
-        return getFileContents(partition);
+        return contentProvider.getInputStream(partition);
     }
-    
-    private void getFileList(int partition) throws IOException {
-        File directory = directorySplits[partition].getLocalFile().getFile();
-        if (directory == null) 
-            throw new IllegalArgumentException("no path name provided");
-        
-        fileList = new ArrayList<File>();
-        if (!directory.exists())
-            throw new IOException("Invalid path or file");
 
-        if (directory.isDirectory())
-            fileList = Arrays.asList(directory.listFiles(new SupportedFileFilter(this.format)));
-        else if (directory.isFile())
-            fileList.add(directory);
-    }
-    
-    /*
-     * Perform a sequential read of the current file list
-     */
-    private InputStream getFileContents(int partition) throws IOException {
-        getFileList(partition);
-        Enumeration<InputStream> e = new Enumeration<InputStream>() {
-            int index;
+    private static class FileContentProvider {
+        private FileSplit[] directorySplits;
+        private String format;
 
-            @Override
-            public boolean hasMoreElements() {
-                return index < fileList.size();
-            }
+        public FileContentProvider(FileSplit[] dir_split, String format) {
+            this.format = format;
+            this.directorySplits = dir_split;
+        }
 
-            @Override
-            public InputStream nextElement() {
-                index++;
-                try {
-                    return new FileInputStream(fileList.get(index - 1));
-                } catch (FileNotFoundException ex) {
-                    throw new RuntimeException("File not available!", ex);
+        private File[] getFileList(FileSplit dir_split) throws IOException {
+            File directory = dir_split.getLocalFile().getFile();
+            File[] files = null;
+            if (directory == null)
+                throw new IllegalArgumentException("no path name provided");
+
+            if (!directory.exists())
+                throw new IOException("Invalid path or file");
+
+            if (directory.isDirectory())
+                files = directory.listFiles(new SupportedFileFilter(this.format));
+            else if (directory.isFile())
+                files = new File[] { directory };
+
+            return files;
+        }
+
+        /**
+         * Perform a sequential read of the current file list
+         */
+        public InputStream getInputStream(int partition) throws IOException {
+
+            final File[] files = getFileList(directorySplits[partition]);
+
+            if (files == null)
+                throw new IOException("cannot get contents from an empty file list.");
+
+            Enumeration<InputStream> inputstream_enumeration = new Enumeration<InputStream>() {
+                int index;
+
+                @Override
+                public boolean hasMoreElements() {
+                    return index < files.length;
                 }
-            }
-        };
-        return new SequenceInputStream(e);
-        
+
+                @Override
+                public InputStream nextElement() {
+                    index++;
+                    try {
+                        return new FileInputStream(files[index - 1]);
+                    } catch (FileNotFoundException ex) {
+                        throw new RuntimeException("File not available!", ex);
+                    }
+                }
+            };
+            return new SequenceInputStream(inputstream_enumeration);
+
+        }
+
     }
 
+    /**
+     * Perform the filtering of files in the directory:
+     * format=adm will only list files with extension ".adm"
+     * format=delimited-text will list files with extensions: ".csv", ".txt", and ".tbl"
+     */
     public static class SupportedFileFilter implements FileFilter {
         private final String FORMAT_DELIMITTED_TEXT = AsterixTupleParserFactory.FORMAT_DELIMITED_TEXT;
         private final String FORMAT_ADM = AsterixTupleParserFactory.FORMAT_ADM;

@@ -72,13 +72,13 @@ public class DirectoryBasedFileSystemBasedAdapterFactory extends NCFileSystemAda
     
     @Override
     public AlgebricksPartitionConstraint getPartitionConstraint() throws Exception {
-        String[] locs = new String[directorySplits.length];
+        String[] locations = new String[directorySplits.length];
         String location;
         for (int i = 0; i < directorySplits.length; i++) {
             location = getNodeResolver().resolveNode(directorySplits[i].getNodeName());
-            locs[i] = location;
+            locations[i] = location;
         }
-        return new AlgebricksAbsolutePartitionConstraint(locs);
+        return new AlgebricksAbsolutePartitionConstraint(locations);
 
     }
         
