@@ -38,6 +38,7 @@ import edu.uci.ics.asterix.om.base.AMutableUnorderedList;
 import edu.uci.ics.asterix.om.base.AString;
 import edu.uci.ics.asterix.om.base.IACursor;
 import edu.uci.ics.asterix.om.base.IAObject;
+import edu.uci.ics.asterix.om.types.AOrderedListType;
 import edu.uci.ics.asterix.om.types.ARecordType;
 import edu.uci.ics.asterix.om.types.AUnorderedListType;
 import edu.uci.ics.asterix.om.types.BuiltinType;
@@ -84,7 +85,7 @@ public abstract class FeedClient implements IFeedClient {
                         recordBuilder.reset(mutableRecord.getType());
                         recordBuilder.init();
                         writeRecord(mutableRecord, dataOutput, recordBuilder);
-                        break;
+                        break; 
                     case DATA_NOT_AVAILABLE:
                         if (waitCount > timeout) {
                             continueWait = false;
@@ -132,7 +133,7 @@ public abstract class FeedClient implements IFeedClient {
 
             case ORDEREDLIST: {
                 OrderedListBuilder listBuilder = new OrderedListBuilder();
-                listBuilder.reset((AUnorderedListType) ((AMutableOrderedList) obj).getType());
+                listBuilder.reset((AOrderedListType) ((AMutableOrderedList) obj).getType());
                 IACursor cursor = ((AMutableOrderedList) obj).getCursor();
                 ArrayBackedValueStorage listItemValue = new ArrayBackedValueStorage();
                 while (cursor.next()) {
