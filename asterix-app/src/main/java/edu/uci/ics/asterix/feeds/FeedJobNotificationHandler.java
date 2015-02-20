@@ -424,22 +424,22 @@ public class FeedJobNotificationHandler implements Runnable {
     private void registerFeedActivity(FeedConnectJobInfo cInfo) {
         Map<String, String> feedActivityDetails = new HashMap<String, String>();
 
-        cInfo.setCollectLocations(new ArrayList<String>());
-        cInfo.getCollectLocations().add("a1_node1");
+        //cInfo.setCollectLocations(new ArrayList<String>());
+        //cInfo.getCollectLocations().add("a1_node1");
         if (cInfo.getCollectLocations() != null) {
             feedActivityDetails.put(FeedActivity.FeedActivityDetails.INTAKE_LOCATIONS,
                     StringUtils.join(cInfo.getCollectLocations().iterator(), ','));
         }
 
-        cInfo.setComputeLocations(new ArrayList<String>());
-        cInfo.getComputeLocations().add("a1_node1");
+        //cInfo.setComputeLocations(new ArrayList<String>());
+        //cInfo.getComputeLocations().add("a1_node1");
         if (cInfo.getComputeLocations() != null) {
             feedActivityDetails.put(FeedActivity.FeedActivityDetails.COMPUTE_LOCATIONS,
                     StringUtils.join(cInfo.getComputeLocations().iterator(), ','));
         }
 
-        cInfo.setStorageLocations(new ArrayList<String>());
-        cInfo.getStorageLocations().add("a1_node1");
+        //cInfo.setStorageLocations(new ArrayList<String>());
+        //cInfo.getStorageLocations().add("a1_node1");
         if (cInfo.getStorageLocations() != null) {
             feedActivityDetails.put(FeedActivity.FeedActivityDetails.STORAGE_LOCATIONS,
                     StringUtils.join(cInfo.getStorageLocations().iterator(), ','));
