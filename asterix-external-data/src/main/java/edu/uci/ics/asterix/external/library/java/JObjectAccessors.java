@@ -521,7 +521,7 @@ public class JObjectAccessors {
                         default:
                             listItem = pointableVisitor.visit((AFlatValuePointable) itemPointable, new Triple(
                                     objectPool, ((AbstractCollectionType) listType).getItemType(),
-                                    ((AbstractCollectionType) listType).getTypeTag()));
+                                    ((AbstractCollectionType) listType).getItemType().getTypeTag()));
 
                     }
                     ATypeTag typeTag = EnumDeserializer.ATYPETAGDESERIALIZER
