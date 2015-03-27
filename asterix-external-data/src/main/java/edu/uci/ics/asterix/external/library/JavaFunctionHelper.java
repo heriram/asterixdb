@@ -52,7 +52,7 @@ public class JavaFunctionHelper implements IFunctionHelper {
             throws AlgebricksException {
         this.finfo = finfo;
         this.outputProvider = outputProvider;
-        this.pointableVisitor = new JObjectPointableVisitor();
+        this.pointableVisitor = JObjectPointableVisitor.INSTANCE;
         this.pointableAllocator = new PointableAllocator();
         this.arguments = new IJObject[finfo.getParamList().size()];
         int index = 0;
@@ -60,6 +60,7 @@ public class JavaFunctionHelper implements IFunctionHelper {
             this.arguments[index++] = objectPool.allocate(param);
         }
         this.resultHolder = objectPool.allocate(finfo.getReturnType());
+
     }
 
     @Override
@@ -67,11 +68,33 @@ public class JavaFunctionHelper implements IFunctionHelper {
         return arguments[index];
     }
 
+    public void reset() {
+        for (IJObject arg : arguments) {
+            switch (arg.getTypeTag()) {
+                case RECORD:
+                case ORDEREDLIST:
+                case UNORDEREDLIST:
+                    if (arg != null)                       
+                        arg.reset();
+                    break;
+                case ANY:
+                    throw new IllegalStateException("Cannot handle a function argument of type " + arg.getTypeTag());
+                default:
+                    break;
+            }
+        }
+
+        pointableAllocator.reset();
+        objectPool.reset();
+        pointableVisitor.reset();
+    }
+
     @Override
     public void setResult(IJObject result) throws IOException, AsterixException {
         try {
             result.serialize(outputProvider.getDataOutput(), true);
-            result.reset();
+            reset();
+            //result.reset();
         } catch (IOException e) {
             throw new HyracksDataException(e);
         }
@@ -79,24 +102,22 @@ public class JavaFunctionHelper implements IFunctionHelper {
 
     public void setArgument(int index, IValueReference valueReference) throws IOException, AsterixException {
         IVisitablePointable pointable = null;
-        IJObject jObject = null;
         IAType type = finfo.getParamList().get(index);
+
+        Triple<IObjectPool<IJObject, IAType>, IAType, ATypeTag> triple = new Triple<>(objectPool, type,
+                type.getTypeTag());
+
         switch (type.getTypeTag()) {
             case RECORD:
                 pointable = pointableAllocator.allocateRecordValue(type);
                 pointable.set(valueReference);
-                jObject = pointableVisitor
-                        .visit((ARecordPointable) pointable,
-                                new Triple<IObjectPool<IJObject, IAType>, IAType, ATypeTag>(objectPool, type, type
-                                        .getTypeTag()));
+                arguments[index] = pointableVisitor.visit((ARecordPointable) pointable, triple);
                 break;
             case ORDEREDLIST:
             case UNORDEREDLIST:
                 pointable = pointableAllocator.allocateListValue(type);
                 pointable.set(valueReference);
-                jObject = pointableVisitor
-                        .visit((AListPointable) pointable, new Triple<IObjectPool<IJObject, IAType>, IAType, ATypeTag>(
-                                objectPool, type, type.getTypeTag()));
+                arguments[index] = pointableVisitor.visit((AListPointable) pointable, triple);
                 break;
             case ANY:
                 throw new IllegalStateException("Cannot handle a function argument of type " + type.getTypeTag());
@@ -104,13 +125,9 @@ public class JavaFunctionHelper implements IFunctionHelper {
             default:
                 pointable = pointableAllocator.allocateFieldValue(type.getTypeTag());
                 pointable.set(valueReference);
-                jObject = pointableVisitor
-                        .visit((AFlatValuePointable) pointable,
-                                new Triple<IObjectPool<IJObject, IAType>, IAType, ATypeTag>(objectPool, type, type
-                                        .getTypeTag()));
+                arguments[index] = pointableVisitor.visit((AFlatValuePointable) pointable, triple);
                 break;
         }
-        arguments[index] = jObject;
     }
 
     @Override
@@ -130,6 +147,16 @@ public class JavaFunctionHelper implements IFunctionHelper {
                 break;
             case STRING:
                 retValue = objectPool.allocate(BuiltinType.ASTRING);
+                break;
+            case DOUBLE:
+                retValue = objectPool.allocate(BuiltinType.ADOUBLE);
+                break;
+            default:
+                try {
+                    throw new IllegalStateException("Cannot handle a function argument of type " + jtypeTag.name());
+                } catch (IllegalStateException e) {
+                    e.printStackTrace();
+                }
                 break;
         }
         return retValue;
