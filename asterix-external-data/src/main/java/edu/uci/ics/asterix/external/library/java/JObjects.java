@@ -860,8 +860,7 @@ public class JObjects {
 
         @Override
         public void reset() {
-            // TODO Auto-generated method stub
-
+            jObjects.clear();
         }
 
     }

@@ -213,6 +213,7 @@ public class JObjectAccessors {
         @Override
         public IJObject access(IVisitablePointable pointable, IObjectPool<IJObject, IAType> objectPool)
                 throws HyracksDataException {
+          
             byte[] b = pointable.getByteArray();
             int s = pointable.getStartOffset();
             int l = pointable.getLength();
@@ -224,11 +225,7 @@ public class JObjectAccessors {
                 e.printStackTrace();
                 throw new HyracksDataException(e);
             }
-            TweetProcessor.getNormalizedString(v);
-            /*
-            String v = AStringSerializerDeserializer.INSTANCE.deserialize(
-                    new DataInputStream(new ByteArrayInputStream(b, s+1, l-1))).getStringValue();
-            */
+
             IJObject jObject = objectPool.allocate(BuiltinType.ASTRING);
             ((JString) jObject).setValue(TweetProcessor.getNormalizedString(v));
             return jObject;

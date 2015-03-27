@@ -24,6 +24,16 @@ public class JObjectPointableVisitor implements
     private final Map<ATypeTag, IJObjectAccessor> flatJObjectAccessors = new HashMap<ATypeTag, IJObjectAccessor>();
     private final Map<IVisitablePointable, IJRecordAccessor> raccessorToJObject = new HashMap<IVisitablePointable, IJRecordAccessor>();
     private final Map<IVisitablePointable, IJListAccessor> laccessorToPrinter = new HashMap<IVisitablePointable, IJListAccessor>();
+    
+    public final static JObjectPointableVisitor INSTANCE = new JObjectPointableVisitor();
+    
+    /* 
+     * Make this object a singleton to avoid
+     * excessive instantiations
+     */  
+    private JObjectPointableVisitor() {
+        
+    }
 
     @Override
     public IJObject visit(AListPointable accessor, Triple<IObjectPool<IJObject, IAType>, IAType, ATypeTag> arg)
@@ -76,6 +86,12 @@ public class JObjectPointableVisitor implements
             throw new AsterixException(e);
         }
         return result;
+    }
+    
+    public void reset() {
+        flatJObjectAccessors.clear();
+        raccessorToJObject.clear();
+        laccessorToPrinter.clear();
     }
 
 }
