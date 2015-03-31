@@ -94,7 +94,6 @@ public class JavaFunctionHelper implements IFunctionHelper {
         try {
             result.serialize(outputProvider.getDataOutput(), true);
             reset();
-            //result.reset();
         } catch (IOException e) {
             throw new HyracksDataException(e);
         }
@@ -106,18 +105,20 @@ public class JavaFunctionHelper implements IFunctionHelper {
 
         Triple<IObjectPool<IJObject, IAType>, IAType, ATypeTag> triple = new Triple<>(objectPool, type,
                 type.getTypeTag());
+        
+        IJObject jObject = null;
 
         switch (type.getTypeTag()) {
             case RECORD:
                 pointable = pointableAllocator.allocateRecordValue(type);
                 pointable.set(valueReference);
-                arguments[index] = pointableVisitor.visit((ARecordPointable) pointable, triple);
+                jObject = pointableVisitor.visit((ARecordPointable) pointable, triple);
                 break;
             case ORDEREDLIST:
             case UNORDEREDLIST:
                 pointable = pointableAllocator.allocateListValue(type);
                 pointable.set(valueReference);
-                arguments[index] = pointableVisitor.visit((AListPointable) pointable, triple);
+                jObject = pointableVisitor.visit((AListPointable) pointable, triple);
                 break;
             case ANY:
                 throw new IllegalStateException("Cannot handle a function argument of type " + type.getTypeTag());
@@ -125,9 +126,11 @@ public class JavaFunctionHelper implements IFunctionHelper {
             default:
                 pointable = pointableAllocator.allocateFieldValue(type.getTypeTag());
                 pointable.set(valueReference);
-                arguments[index] = pointableVisitor.visit((AFlatValuePointable) pointable, triple);
+                jObject = pointableVisitor.visit((AFlatValuePointable) pointable, triple);
                 break;
         }
+        
+        arguments[index] = jObject;
     }
 
     @Override
