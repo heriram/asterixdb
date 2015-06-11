@@ -60,9 +60,22 @@ public class TweetProcessor {
     }
 
     public static String getNormalizedString(String originalString) {
-        String asciiText = originalString.replaceAll("[^\\x00-\\x7F]", "").replaceAll("\n", " ");
-        return asciiText.trim();
+        //String asciiText = originalString.replaceAll("[^\\x00-\\x7F]", "").replaceAll("\n", " ");
+        int len = originalString.length();
+        char asciiBuff[] = new char[len];
+        int j = 0;
+        for (int i = 0; i < len; i++) {
+            char c = originalString.charAt(i);
+            if (c == '\n' || c == '\t' || c == '\r') {
+                asciiBuff[j] = ' ';
+                j++;
+            } else if (c > 0 && c <= 0x7f) {
+                asciiBuff[j] = c;
+                j++;
+            }
+        }
 
+        return new String(asciiBuff).trim();
     }
 
     public AMutableRecord getMutableRecord() {
