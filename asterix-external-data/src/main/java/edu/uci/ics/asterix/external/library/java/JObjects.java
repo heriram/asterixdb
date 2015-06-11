@@ -77,6 +77,7 @@ import edu.uci.ics.asterix.om.base.AMutableRectangle;
 import edu.uci.ics.asterix.om.base.AMutableString;
 import edu.uci.ics.asterix.om.base.AMutableTime;
 import edu.uci.ics.asterix.om.base.AMutableUnorderedList;
+import edu.uci.ics.asterix.om.base.ANull;
 import edu.uci.ics.asterix.om.base.APoint;
 import edu.uci.ics.asterix.om.base.ARectangle;
 import edu.uci.ics.asterix.om.base.AString;
@@ -775,6 +776,43 @@ public class JObjects {
 
         }
     }
+    
+    public static class JNull implements IJObject {
+        private IAObject value;
+        public final static byte SER_NULL_TYPE_TAG = ATypeTag.NULL.serialize();
+       
+        public final static JNull INSTANCE = new JNull();
+
+        private JNull() {
+            value = ANull.NULL;
+        }
+        
+        @Override
+        public ATypeTag getTypeTag() {
+            return ATypeTag.NULL;
+        }
+
+        @Override
+        public IAObject getIAObject() {
+            return value;
+        }
+
+        @Override
+        public void serialize(DataOutput dataOutput, boolean writeTypeTag) throws HyracksDataException {
+            if (writeTypeTag) {
+                try {
+                    dataOutput.writeByte(SER_NULL_TYPE_TAG);
+                } catch (IOException e) {
+                    throw new HyracksDataException(e);
+                }
+            }
+        }
+
+        @Override
+        public void reset() { 
+        }
+        
+    }
 
     public static abstract class JList implements IJObject {
         protected List<IJObject> jObjects;
@@ -1007,6 +1045,10 @@ public class JObjects {
 
         public IJObject[] getFields() {
             return fields;
+        }
+        
+        public Map<String, IJObject> getOpenFields() {
+            return this.openFields;
         }
 
         public RecordBuilder getRecordBuilder() {

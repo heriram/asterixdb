@@ -166,6 +166,7 @@ public class ARecordPointable extends AbstractVisitablePointable {
                     openPartOffset = s + AInt32SerializerDeserializer.getInt(b, s + 6);
                     s += 10;
                 } else {
+                    // TODO Check consequences of this change to normal queries
                     s += 6;
                 }
             } else {

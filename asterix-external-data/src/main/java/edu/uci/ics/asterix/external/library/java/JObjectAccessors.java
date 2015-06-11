@@ -227,8 +227,26 @@ public class JObjectAccessors {
             }
 
             IJObject jObject = objectPool.allocate(BuiltinType.ASTRING);
-            ((JString) jObject).setValue(TweetProcessor.getNormalizedString(v));
+            ((JString) jObject).setValue(getNormalizedString(v));
             return jObject;
+        }
+        
+        public static String getNormalizedString(String originalString) {
+            int len = originalString.length();
+            char asciiBuff[] = new char[len];
+            int j = 0;
+            for (int i = 0; i < len; i++) {
+                char c = originalString.charAt(i);
+                if (c == '\n' || c == '\t' || c == '\r') {
+                    asciiBuff[j] = ' ';
+                    j++;
+                } else if (c > 0 && c <= 0x7f) {
+                    asciiBuff[j] = c;
+                    j++;
+                }
+            }
+
+            return new String(asciiBuff).trim();
         }
     }
 

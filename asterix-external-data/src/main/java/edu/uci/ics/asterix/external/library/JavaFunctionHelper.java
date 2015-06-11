@@ -20,6 +20,7 @@ import edu.uci.ics.asterix.common.exceptions.AsterixException;
 import edu.uci.ics.asterix.external.library.java.IJObject;
 import edu.uci.ics.asterix.external.library.java.JObjectPointableVisitor;
 import edu.uci.ics.asterix.external.library.java.JTypeTag;
+import edu.uci.ics.asterix.external.library.java.JObjects.JNull;
 import edu.uci.ics.asterix.om.functions.IExternalFunctionInfo;
 import edu.uci.ics.asterix.om.pointables.AFlatValuePointable;
 import edu.uci.ics.asterix.om.pointables.AListPointable;
@@ -67,6 +68,10 @@ public class JavaFunctionHelper implements IFunctionHelper {
     public IJObject getArgument(int index) {
         return arguments[index];
     }
+    
+    public IDataOutputProvider getOutputProvider() {
+        return this.outputProvider;
+    }
 
     public void reset() {
         for (IJObject arg : arguments) {
@@ -90,13 +95,19 @@ public class JavaFunctionHelper implements IFunctionHelper {
     }
 
     @Override
-    public void setResult(IJObject result) throws IOException, AsterixException {
-        try {
-            result.serialize(outputProvider.getDataOutput(), true);
-            reset();
-        } catch (IOException e) {
-            throw new HyracksDataException(e);
+    public void setResult(IJObject result) throws IOException, AsterixException {     
+        if (result == null) {
+            JNull.INSTANCE.serialize(outputProvider.getDataOutput(), true);
+        } else {
+
+            try {
+                result.serialize(outputProvider.getDataOutput(), true);
+            } catch (IOException e) {
+                e.printStackTrace();
+                throw new HyracksDataException(e);
+            }
         }
+        reset();
     }
 
     public void setArgument(int index, IValueReference valueReference) throws IOException, AsterixException {
@@ -153,6 +164,9 @@ public class JavaFunctionHelper implements IFunctionHelper {
                 break;
             case DOUBLE:
                 retValue = objectPool.allocate(BuiltinType.ADOUBLE);
+                break;
+            case NULL:
+                retValue = JNull.INSTANCE;
                 break;
             default:
                 try {

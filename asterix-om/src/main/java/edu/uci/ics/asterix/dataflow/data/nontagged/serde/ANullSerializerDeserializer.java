@@ -16,8 +16,10 @@ package edu.uci.ics.asterix.dataflow.data.nontagged.serde;
 
 import java.io.DataInput;
 import java.io.DataOutput;
+import java.io.IOException;
 
 import edu.uci.ics.asterix.om.base.ANull;
+import edu.uci.ics.asterix.om.types.ATypeTag;
 import edu.uci.ics.hyracks.api.dataflow.value.ISerializerDeserializer;
 import edu.uci.ics.hyracks.api.exceptions.HyracksDataException;
 

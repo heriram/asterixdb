@@ -44,10 +44,12 @@ public abstract class ExternalFunction implements IExternalFunction {
         this.finfo = finfo;
         this.evaluatorFactories = args;
         this.out = outputProvider;
+        
         argumentEvaluators = new ICopyEvaluator[args.length];
         for (int i = 0; i < args.length; i++) {
             argumentEvaluators[i] = args[i].createEvaluator(inputVal);
         }
+        
         functionHelper = new JavaFunctionHelper(finfo, outputProvider);
 
         String[] fnameComponents = finfo.getFunctionIdentifier().getName().split("#");
@@ -63,6 +65,7 @@ public abstract class ExternalFunction implements IExternalFunction {
         } catch (Exception e) {
             throw new AlgebricksException(" Unable to load/instantiate class " + classname, e);
         }
+        
     }
 
     public static ISerializerDeserializer getSerDe(Object typeInfo) {

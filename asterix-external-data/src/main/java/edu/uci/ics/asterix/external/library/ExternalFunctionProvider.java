@@ -3,9 +3,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * you may obtain a copy of the License from
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -15,10 +15,12 @@
 package edu.uci.ics.asterix.external.library;
 
 import edu.uci.ics.asterix.om.functions.IExternalFunctionInfo;
+import edu.uci.ics.asterix.om.types.ATypeTag;
 import edu.uci.ics.hyracks.algebricks.common.exceptions.AlgebricksException;
 import edu.uci.ics.hyracks.algebricks.runtime.base.ICopyEvaluator;
 import edu.uci.ics.hyracks.algebricks.runtime.base.ICopyEvaluatorFactory;
 import edu.uci.ics.hyracks.data.std.api.IDataOutputProvider;
+import edu.uci.ics.hyracks.data.std.util.ArrayBackedValueStorage;
 import edu.uci.ics.hyracks.dataflow.common.data.accessors.IFrameTupleReference;
 
 public class ExternalFunctionProvider {
@@ -38,6 +40,9 @@ public class ExternalFunctionProvider {
 }
 
 class ExternalScalarFunction extends ExternalFunction implements IExternalScalarFunction, ICopyEvaluator {
+    private final static byte SER_RECORD_TYPE_TAG = ATypeTag.RECORD.serialize();
+    private final static byte SER_NULL_TYPE_TAG = ATypeTag.NULL.serialize();
+    
 
     public ExternalScalarFunction(IExternalFunctionInfo finfo, ICopyEvaluatorFactory args[],
             IDataOutputProvider outputProvider) throws AlgebricksException {
@@ -55,13 +60,26 @@ class ExternalScalarFunction extends ExternalFunction implements IExternalScalar
             setArguments(tuple);
             evaluate(functionHelper);
         } catch (Exception e) {
-            e.printStackTrace();
-            //throw new AlgebricksException(e);
+            throw new AlgebricksException(e);
         }
     }
 
+    @Override
     public void evaluate(IFunctionHelper argumentProvider) throws Exception {
         ((IExternalScalarFunction) externalFunction).evaluate(argumentProvider);
+
+        /*
+         * Make sure that if "setResult" is not called,
+         * or the result object is null we let Hyracks storage manager know
+         * we want to discard a null object
+         */
+        byte byteOutput = ((ArrayBackedValueStorage) out).getByteArray()[0];
+        if (byteOutput != SER_RECORD_TYPE_TAG) {
+            out.getDataOutput().writeByte(SER_NULL_TYPE_TAG);
+        }
+        // Make sure we clear the memory
+        functionHelper.reset();
+
     }
 
 }
