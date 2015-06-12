@@ -222,7 +222,9 @@ import edu.uci.ics.asterix.runtime.evaluators.functions.OrDescriptor;
 import edu.uci.ics.asterix.runtime.evaluators.functions.OrderedListConstructorDescriptor;
 import edu.uci.ics.asterix.runtime.evaluators.functions.PrefixLenJaccardDescriptor;
 import edu.uci.ics.asterix.runtime.evaluators.functions.RecordMergeDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.RecordAppendDescriptor;
 import edu.uci.ics.asterix.runtime.evaluators.functions.RegExpDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.RemoveFieldsDescriptor;
 import edu.uci.ics.asterix.runtime.evaluators.functions.SimilarityJaccardCheckDescriptor;
 import edu.uci.ics.asterix.runtime.evaluators.functions.SimilarityJaccardDescriptor;
 import edu.uci.ics.asterix.runtime.evaluators.functions.SimilarityJaccardPrefixCheckDescriptor;
@@ -594,6 +596,8 @@ public class NonTaggedDataFormat implements IDataFormat {
         temp.add(SimilarityJaccardPrefixCheckDescriptor.FACTORY);
 
         temp.add(RecordMergeDescriptor.FACTORY);
+        temp.add(RecordAppendDescriptor.FACTORY);
+        temp.add(RemoveFieldsDescriptor.FACTORY);
         temp.add(SwitchCaseDescriptor.FACTORY);
         temp.add(RegExpDescriptor.FACTORY);
         temp.add(InjectFailureDescriptor.FACTORY);
@@ -920,6 +924,22 @@ public class NonTaggedDataFormat implements IDataFormat {
             ((RecordMergeDescriptor) fd).reset(outType, type0, type1);
         }
 
+        if (fd.getIdentifier().equals(AsterixBuiltinFunctions.RECORD_APPEND)) {
+            AbstractFunctionCallExpression f = (AbstractFunctionCallExpression) expr;
+            IAType outType = (IAType) context.getType(expr);
+            IAType type0 = (IAType) context.getType(f.getArguments().get(0).getValue());
+            IAType type1 = (IAType) context.getType(f.getArguments().get(1).getValue());
+            ((RecordAppendDescriptor) fd).reset(outType, type0, type1);
+        }
+        
+        if (fd.getIdentifier().equals(AsterixBuiltinFunctions.REMOVE_FIELDS)) {
+            AbstractFunctionCallExpression f = (AbstractFunctionCallExpression) expr;
+            IAType outType = (IAType) context.getType(expr);
+            IAType inType = (IAType) context.getType(f.getArguments().get(0).getValue());
+            IAType inListType = (IAType) context.getType(f.getArguments().get(1).getValue());
+            ((RemoveFieldsDescriptor) fd).reset(outType, inType, inListType);
+        }
+        
         if (fd.getIdentifier().equals(AsterixBuiltinFunctions.CAST_RECORD)) {
             AbstractFunctionCallExpression funcExpr = (AbstractFunctionCallExpression) expr;
             ARecordType rt = (ARecordType) TypeComputerUtilities.getRequiredType(funcExpr);

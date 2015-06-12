@@ -94,7 +94,10 @@ import edu.uci.ics.asterix.om.typecomputer.impl.OrderedListOfAPointTypeComputer;
 import edu.uci.ics.asterix.om.typecomputer.impl.OrderedListOfAStringTypeComputer;
 import edu.uci.ics.asterix.om.typecomputer.impl.OrderedListOfAnyTypeComputer;
 import edu.uci.ics.asterix.om.typecomputer.impl.QuadStringStringOrNullTypeComputer;
+import edu.uci.ics.asterix.om.typecomputer.impl.RecordAppendTypeComputer;
+import edu.uci.ics.asterix.om.typecomputer.impl.RecordConstructorResultType;
 import edu.uci.ics.asterix.om.typecomputer.impl.RecordMergeTypeComputer;
+import edu.uci.ics.asterix.om.typecomputer.impl.RemoveFieldsTypeComputer;
 import edu.uci.ics.asterix.om.typecomputer.impl.ScalarVersionOfAggregateResultType;
 import edu.uci.ics.asterix.om.typecomputer.impl.Substring2TypeComputer;
 import edu.uci.ics.asterix.om.typecomputer.impl.SubstringTypeComputer;
@@ -181,6 +184,10 @@ public class AsterixBuiltinFunctions {
     // records
     public final static FunctionIdentifier RECORD_MERGE = new FunctionIdentifier(FunctionConstants.ASTERIX_NS,
             "record-merge", 3);
+    public final static FunctionIdentifier RECORD_APPEND = new FunctionIdentifier(FunctionConstants.ASTERIX_NS,
+            "record-append", 2);
+    public final static FunctionIdentifier REMOVE_FIELDS = new FunctionIdentifier(FunctionConstants.ASTERIX_NS,
+            "remove-fields", 2); 
     public final static FunctionIdentifier CLOSED_RECORD_CONSTRUCTOR = new FunctionIdentifier(
             FunctionConstants.ASTERIX_NS, "closed-record-constructor", FunctionIdentifier.VARARGS);
     public final static FunctionIdentifier OPEN_RECORD_CONSTRUCTOR = new FunctionIdentifier(
@@ -754,7 +761,9 @@ public class AsterixBuiltinFunctions {
         addFunction(BOOLEAN_CONSTRUCTOR, UnaryBooleanOrNullFunctionTypeComputer.INSTANCE, true);
         addPrivateFunction(CARET, NonTaggedNumericAddSubMulDivTypeComputer.INSTANCE, true);
         addFunction(CIRCLE_CONSTRUCTOR, OptionalACircleTypeComputer.INSTANCE, true);
-        addPrivateFunction(RECORD_MERGE, RecordMergeTypeComputer.INSTANCE, true);
+        addFunction(RECORD_MERGE, RecordMergeTypeComputer.INSTANCE, true);
+        addFunction(RECORD_APPEND, RecordAppendTypeComputer.INSTANCE, true);
+        addFunction(REMOVE_FIELDS, RemoveFieldsTypeComputer.INSTANCE, true);
         addPrivateFunction(CLOSED_RECORD_CONSTRUCTOR, ClosedRecordConstructorResultType.INSTANCE, true);
         addPrivateFunction(CONCAT_NON_NULL, ConcatNonNullTypeComputer.INSTANCE, true);
 

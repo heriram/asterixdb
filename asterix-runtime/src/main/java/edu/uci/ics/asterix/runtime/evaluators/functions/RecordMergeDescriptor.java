@@ -226,6 +226,7 @@ public class RecordMergeDescriptor extends AbstractScalarFunctionDynamicDescript
                             if (rightValue == null) {
                                 rbStack.get(nestedLevel).addField(fieldNamePointable, leftValue);
                             } else {
+                                // TODO This creates a bug when using open record types with nested fields
                                 mergeFields((ARecordType) combinedType.getFieldType(fieldName),
                                         (ARecordPointable) leftValue, (ARecordPointable) rightValue, false,
                                         nestedLevel + 1);
