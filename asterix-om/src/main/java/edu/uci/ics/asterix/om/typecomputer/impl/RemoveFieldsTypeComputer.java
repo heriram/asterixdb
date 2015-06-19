@@ -1,41 +1,118 @@
 package edu.uci.ics.asterix.om.typecomputer.impl;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.mutable.Mutable;
-
 import edu.uci.ics.asterix.common.exceptions.AsterixException;
 import edu.uci.ics.asterix.om.base.AOrderedList;
 import edu.uci.ics.asterix.om.base.AString;
+import edu.uci.ics.asterix.om.base.IAObject;
 import edu.uci.ics.asterix.om.constants.AsterixConstantValue;
-import edu.uci.ics.asterix.om.types.AOrderedListType;
-import edu.uci.ics.asterix.om.types.ARecordType;
-import edu.uci.ics.asterix.om.types.ATypeTag;
-import edu.uci.ics.asterix.om.types.IAType;
+import edu.uci.ics.asterix.om.types.*;
 import edu.uci.ics.hyracks.algebricks.common.exceptions.AlgebricksException;
 import edu.uci.ics.hyracks.algebricks.core.algebra.base.ILogicalExpression;
 import edu.uci.ics.hyracks.algebricks.core.algebra.base.LogicalExpressionTag;
 import edu.uci.ics.hyracks.algebricks.core.algebra.expressions.AbstractFunctionCallExpression;
+import edu.uci.ics.hyracks.algebricks.core.algebra.expressions.AbstractLogicalExpression;
 import edu.uci.ics.hyracks.algebricks.core.algebra.expressions.ConstantExpression;
 import edu.uci.ics.hyracks.algebricks.core.algebra.expressions.IVariableTypeEnvironment;
 import edu.uci.ics.hyracks.algebricks.core.algebra.metadata.IMetadataProvider;
 import edu.uci.ics.hyracks.api.exceptions.HyracksDataException;
+import org.apache.commons.lang3.mutable.Mutable;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+/**
+ * Cases to support:
+ * remove-fields($record, ["foo", ["bar", "access"]]),
+ * where ["bar", "access"] is equivalent to the path bar->access
+ *
+ */
 public class RemoveFieldsTypeComputer extends AbstractRecordManipulationTypeComputer {
 
     private static final long serialVersionUID = 1L;
 
     public static final RemoveFieldsTypeComputer INSTANCE = new RemoveFieldsTypeComputer();
 
+    private final List<List<String>> pathList = new ArrayList<List<String>>();
+
+    private final PathComparator pathComparator = PathComparator.INSTANCE;
+
     private RemoveFieldsTypeComputer() {
+    }
+
+    private ARecordType inputRecordType;
+
+
+    private void getPathFromConstantExpression(ILogicalExpression expression, List<String> path) throws AlgebricksException {
+        ConstantExpression ce = (ConstantExpression) expression;
+        if (!(ce.getValue() instanceof AsterixConstantValue)) {
+            throw new AlgebricksException("Expecting a list of strings and found " + ce.getValue() + " instead.");
+        }
+        IAObject item = ((AsterixConstantValue) ce.getValue()).getObject();
+        ATypeTag type = item.getType().getTypeTag();
+
+        switch (type) {
+            case STRING:
+                path.add(((AString) item).getStringValue());
+                break;
+            case ORDEREDLIST:
+                AOrderedList pathOrdereList = (AOrderedList) item;
+                for (int i = 0; i < pathOrdereList.size(); i++) {
+                    path.add(((AString) pathOrdereList.getItem(i)).getStringValue());
+                }
+                break;
+            default:
+                throw new AlgebricksException("Unsupport type: " + type);
+        }
+    }
+
+    private void handleConstantExpression(ILogicalExpression expression)
+            throws AlgebricksException {
+        List<String> path = getStringListFromPool();
+        getPathFromConstantExpression(expression, path);
+        pathList.add(path);
+    }
+
+    private void getPathFromFunction(ILogicalExpression expression, List<String> path)
+            throws AlgebricksException {
+        AbstractFunctionCallExpression funcExp = (AbstractFunctionCallExpression) expression;
+        List<Mutable<ILogicalExpression>> args = funcExp.getArguments();
+
+        for (int i=0; i<args.size(); i++) { // Mutable<ILogicalExpression> arg : argList) {
+            // At this point all elements has to be a constant
+            ConstantExpression  ce = (ConstantExpression) args.get(i).getValue();
+            if (!(ce.getValue() instanceof AsterixConstantValue)) {
+                throw new AlgebricksException("Expecting a list of strings and found " + ce.getValue() + " instead.");
+            }
+            getPathFromConstantExpression(ce, path);
+        }
+    }
+
+
+    private void handleNonConstantExpression(ILogicalExpression expression)
+            throws AlgebricksException {
+        AbstractFunctionCallExpression funcExp = (AbstractFunctionCallExpression) expression;
+        List<Mutable<ILogicalExpression>> argList = funcExp.getArguments();
+
+        for (Mutable<ILogicalExpression> arg : argList) {
+            ILogicalExpression argExp = arg.getValue();
+            List<String> path = getStringListFromPool();
+            switch (argExp.getExpressionTag()) {
+                case CONSTANT:
+                    getPathFromConstantExpression(argExp, path);
+                    break;
+                case FUNCTION_CALL:
+                    getPathFromFunction(argExp, path);
+                    break;
+                default:
+                    throw new AlgebricksException("Unsupported expression: " + argExp);
+
+            }
+            pathList.add(path);
+        }
+
+
     }
 
     @SuppressWarnings("unchecked")
@@ -44,76 +121,50 @@ public class RemoveFieldsTypeComputer extends AbstractRecordManipulationTypeComp
             IMetadataProvider<?, ?> metadataProvider) throws AlgebricksException {
 
         AbstractFunctionCallExpression f = (AbstractFunctionCallExpression) expression;
-        IAType inputRecType = (IAType) env.getType(f.getArguments().get(0).getValue());
-        ILogicalExpression secondArgExpression = f.getArguments().get(1).getValue();
-        IAType inputListType = (IAType) env.getType(secondArgExpression);
-        ARecordType inputRecordType = extractRecordType(inputRecType);
-        AOrderedListType inputOrderedListType = extractOrderedListType(inputListType);
+        IAType type0 = (IAType) env.getType(f.getArguments().get(0).getValue());
 
+        inputRecordType = NonTaggedFieldAccessByNameResultType.getRecordTypeFromType(type0, expression);
         if (inputRecordType == null) {
-            throw new AlgebricksException(
-                    "The function 'remove-fields' expects a record as the first argument, but got " + inputRecType);
+            return BuiltinType.ANY;
         }
 
+        AbstractLogicalExpression arg1 = (AbstractLogicalExpression) f.getArguments().get(1).getValue();
+        IAType inputListType = (IAType) env.getType(arg1);
+        AOrderedListType inputOrderedListType = extractOrderedListType(inputListType);
         if (inputOrderedListType == null) {
             throw new AlgebricksException(
                     "The function 'remove-fields' expects an ordered list as the second argument, but got "
                             + inputListType);
         }
 
-        List<String> removePaths[] = null;
+        pathList.clear();
 
-        // If list constructor function get the list from that function first
-        if (secondArgExpression.getExpressionTag() == LogicalExpressionTag.FUNCTION_CALL) {
-            AbstractFunctionCallExpression funcExp = (AbstractFunctionCallExpression) secondArgExpression;
-            List<Mutable<ILogicalExpression>> argList = funcExp.getArguments();
-            removePaths = new List[argList.size()];
-            for (int i = 0; i < argList.size(); i++) {
-                ConstantExpression listElementExpr = (ConstantExpression) argList.get(i).getValue();
-                if (!(listElementExpr.getValue() instanceof AsterixConstantValue)) {
-                    throw new AlgebricksException("Expecting a list of strings and found " + listElementExpr.getValue()
-                            + " instead.");
-                }
-                AString s = (AString) ((AsterixConstantValue) listElementExpr.getValue()).getObject();
-                removePaths[i] = Arrays.asList(StringUtils.split(s.getStringValue(), '.'));
-            }
-
-        } else if (secondArgExpression.getExpressionTag() == LogicalExpressionTag.CONSTANT) {
-            ConstantExpression listExpr = (ConstantExpression) secondArgExpression;
-            if (!(listExpr.getValue() instanceof AsterixConstantValue)) {
-                throw new AlgebricksException("Expecting a list of strings and found " + listExpr.getValue()
-                        + " instead.");
-            }
-            AOrderedList removeList = (AOrderedList) ((AsterixConstantValue) listExpr.getValue()).getObject();
-            removePaths = new List[removeList.size()];
-            for (int i = 0; i < removeList.size(); i++) {
-                AString s = (AString) removeList.getItem(i);
-                removePaths[i] = Arrays.asList(StringUtils.split(s.getStringValue(), '.'));
-            }
-
-        } else {
-            throw new AlgebricksException("Unsupported expression form: " + secondArgExpression.getExpressionTag());
+        IAType outputRecordType = null;
+        if (arg1.getExpressionTag() == LogicalExpressionTag.CONSTANT) { // Constant list
+            handleConstantExpression(arg1);
+        } else if (arg1.getExpressionTag() == LogicalExpressionTag.FUNCTION_CALL) { // Nested (path) type
+            AbstractFunctionCallExpression funcExp = (AbstractFunctionCallExpression) arg1;
+            handleNonConstantExpression(funcExp);
         }
-        
-        IAType outputRecordType = buildOutputType(inputRecordType, removePaths);
 
+        outputRecordType = buildOutputType(inputRecordType);
         return outputRecordType;
     }
 
-    private IAType buildOutputType(ARecordType inputRecordType, List<String> removePaths[]) throws AlgebricksException {
+    private IAType buildOutputType(ARecordType inputRecordType)
+            throws AlgebricksException {
         IAType resultType = null;
-        List<String> resultFieldNames = new ArrayList<>();
-        List<IAType> resultFieldTypes = new ArrayList<>();
+        List<String> resultFieldNames = getStringListFromPool();
+        List<IAType> resultFieldTypes = getATypeListFromPool();
 
         for (String fieldName : inputRecordType.getFieldNames()) {
             try {
-                if (!contains(removePaths, fieldName)) {
+                if (!contains(fieldName)) {
                     resultFieldNames.add(fieldName);
                     if (inputRecordType.getFieldType(fieldName).getTypeTag() == ATypeTag.RECORD) {
                         ARecordType nestedType = (ARecordType) inputRecordType.getFieldType(fieldName);
                         //Deep Copy prevents altering of input types
-                        resultFieldTypes.add(deepCopy(Arrays.asList(new String[] { fieldName }), nestedType,
-                                removePaths));
+                        resultFieldTypes.add(deepCopy(Arrays.asList(new String[] { fieldName }), nestedType));
                     } else {
                         resultFieldTypes.add(inputRecordType.getFieldType(fieldName));
                     }
@@ -132,32 +183,31 @@ public class RemoveFieldsTypeComputer extends AbstractRecordManipulationTypeComp
             throw new AlgebricksException(e);
         }
 
+        returnStringListToPool(resultFieldNames);
+        returnATypeListToPool(resultFieldTypes);
+
         return resultType;
     }
-    private boolean contains(List<String> removePaths[], String fieldName) {
-        return contains(removePaths, Arrays.asList(new String[] { fieldName }));
+
+    private boolean contains(String fieldName) {
+        List<String> path = getStringListFromPool();
+        path.add(fieldName);
+        boolean found =  contains(path);
+        returnStringListToPool(path);
+        return found;
     }
 
-    private boolean contains(List<String> removePaths[], List<String> path) {
-        if (path == null)
-            return false;
-
-        for (int i = 0; i < removePaths.length; i++) {
-            List<String> p = removePaths[i];
-            if (p.size() == path.size()) {
-                boolean found = true;
-                for (int j = 0; j < p.size(); j++) {
-                    found &= p.get(j).equals(path.get(j));
-                }
-                if (found)
-                    return true;
+    private boolean contains(List<String> path) {
+        for (int i = 0; i < pathList.size(); i++) {
+            if (pathComparator.compare(path, pathList.get(i))) {
+                return true;
             }
         }
-
         return false;
     }
 
-    public ARecordType deepCopy(List<String> parentPath, ARecordType sourceRecordType, List<String> removePaths[]) {
+
+    public ARecordType deepCopy(List<String> parentPath, ARecordType sourceRecordType) {
         String srcFieldNames[] = sourceRecordType.getFieldNames();
         IAType srcFieldTypes[] = sourceRecordType.getFieldTypes();
 
@@ -165,15 +215,15 @@ public class RemoveFieldsTypeComputer extends AbstractRecordManipulationTypeComp
         String[] tempNames = new String[srcFieldTypes.length];
         int fieldCount = 0;
 
-        List<String> path = new ArrayList<String>();
+        List<String> path = getStringListFromPool();
         path.addAll(parentPath);
         int pathLength = path.size();
         for (int i = 0; i < srcFieldNames.length; i++) {
             path.add(srcFieldNames[i]);
-            if (!contains(removePaths, path)) {
+            if (!contains(path)) {
                 tempNames[fieldCount] = srcFieldNames[i];
                 if (srcFieldTypes[i].getTypeTag() == ATypeTag.RECORD) {
-                    tempTypes[fieldCount] = deepCopy(path, (ARecordType) srcFieldTypes[i], removePaths);
+                    tempTypes[fieldCount] = deepCopy(path, (ARecordType) srcFieldTypes[i]);
                 } else {
                     tempTypes[fieldCount] = srcFieldTypes[i];
 
@@ -183,6 +233,7 @@ public class RemoveFieldsTypeComputer extends AbstractRecordManipulationTypeComp
             }
             path.remove(pathLength);
         }
+        returnStringListToPool(path);
 
         IAType[] newTypes = new IAType[fieldCount];
         String[] newNames = new String[fieldCount];
