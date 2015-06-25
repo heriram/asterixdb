@@ -14,9 +14,12 @@ import edu.uci.ics.asterix.om.types.*;
 import edu.uci.ics.hyracks.algebricks.common.exceptions.AlgebricksException;
 import edu.uci.ics.hyracks.algebricks.runtime.base.ICopyEvaluator;
 import edu.uci.ics.hyracks.algebricks.runtime.base.ICopyEvaluatorFactory;
+import edu.uci.ics.hyracks.api.dataflow.value.IBinaryComparator;
 import edu.uci.ics.hyracks.api.dataflow.value.ISerializerDeserializer;
 import edu.uci.ics.hyracks.api.exceptions.HyracksDataException;
+import edu.uci.ics.hyracks.data.std.accessors.PointableBinaryComparatorFactory;
 import edu.uci.ics.hyracks.data.std.api.IDataOutputProvider;
+import edu.uci.ics.hyracks.data.std.api.IValueReference;
 import edu.uci.ics.hyracks.data.std.primitive.UTF8StringPointable;
 import edu.uci.ics.hyracks.data.std.util.ArrayBackedValueStorage;
 import edu.uci.ics.hyracks.data.std.util.ByteArrayAccessibleOutputStream;
@@ -33,23 +36,21 @@ public class RemoveFieldsEvalFactory implements ICopyEvaluatorFactory {
 
     private static final byte SER_NULL_TYPE_TAG = ATypeTag.NULL.serialize();
     private static final byte SER_ORDEREDLIST_TYPE_TAG = ATypeTag.ORDEREDLIST.serialize();
-
-    private static final int STRING_VALUE_OFFSET = 3;
-
+    
     private ICopyEvaluatorFactory inputRecordEvalFactory;
     private ICopyEvaluatorFactory removeFieldPathsFactory;
-    private ARecordType outputRecordType;
+    private ARecordType reqRecType;
     private ARecordType inputRecType;
     private AOrderedListType inputListType;
 
     private final Deque<IVisitablePointable> recordPath = new ArrayDeque<>();
 
     public RemoveFieldsEvalFactory(ICopyEvaluatorFactory inputRecordEvalFactory,
-            ICopyEvaluatorFactory removeFieldPathsFactory, ARecordType outputRecordType,
+            ICopyEvaluatorFactory removeFieldPathsFactory, ARecordType reqRecType,
             ARecordType inputRecType,  AOrderedListType inputListType) {
         this.inputRecordEvalFactory = inputRecordEvalFactory;
         this.removeFieldPathsFactory = removeFieldPathsFactory;
-        this.outputRecordType = outputRecordType;
+        this.reqRecType = reqRecType;
         this.inputRecType = inputRecType;
         this.inputListType = inputListType;
 
@@ -63,12 +64,12 @@ public class RemoveFieldsEvalFactory implements ICopyEvaluatorFactory {
 
     @Override
     public ICopyEvaluator createEvaluator(final IDataOutputProvider output) throws AlgebricksException {
-        final ARecordType resultRecordType;
+        final ARecordType cashedRecType;
 
         try {
-            resultRecordType = new ARecordType(outputRecordType.getTypeName(),
-                    outputRecordType.getFieldNames(), outputRecordType.getFieldTypes(),
-                    outputRecordType.isOpen());
+            cashedRecType = new ARecordType(reqRecType.getTypeName(),
+                    reqRecType.getFieldNames(), reqRecType.getFieldTypes(),
+                    reqRecType.isOpen());
         } catch (AsterixException | HyracksDataException e) {
             throw new IllegalStateException();
         }
@@ -92,57 +93,18 @@ public class RemoveFieldsEvalFactory implements ICopyEvaluatorFactory {
         final List<RecordBuilder> rbStack = new ArrayList<>();
         final ArrayBackedValueStorage tabvs = new ArrayBackedValueStorage();
 
-        final RecordBuilder recordBuilder = new RecordBuilder();
-        recordBuilder.reset(resultRecordType);
-
+        final IBinaryComparator fieldNameComparator = PointableBinaryComparatorFactory
+                .of(UTF8StringPointable.FACTORY).createBinaryComparator();
 
         return new ICopyEvaluator() {
-            private final UTF8StringPointable usp = (UTF8StringPointable) UTF8StringPointable.FACTORY.createPointable();
 
-
-            private boolean byteSubArraysEquals(byte[] ba1, int s1, int l1, byte[] ba2, int s2, int l2) {
-                if (ba1==ba2) return true;
-                if (l1 != l2) return false;
-                int i1=s1;
-                int i2=s2;
-                for(int i=0; i<l1; i++) {
-                    if (ba1[i1]!=ba2[i2]) return false;
-                    i1++;
-                    i2++;
-                }
-
-                return true;
+            private boolean compare(IValueReference a, IValueReference b) throws HyracksDataException {
+                // start+1 and len-1 due to the type tag
+                return (fieldNameComparator.compare(a.getByteArray(), a.getStartOffset() + 1, a.getLength() - 1,
+                        b.getByteArray(), b.getStartOffset() + 1, b.getLength() - 1)==0);
             }
 
-            private boolean isValidField(IVisitablePointable fieldNamePointable, AListPointable inputList) throws AsterixException {
-                List<IVisitablePointable> items = inputList.getItems();
-                List<IVisitablePointable> typeTags = inputList.getItemTags();
-
-                for(int i=0; i<items.size(); i++){
-                    IVisitablePointable item = items.get(i);
-                    IVisitablePointable itemTag = typeTags.get(i);
-
-                    if(isType(ATypeTag.STRING, itemTag)) {
-                        if(byteSubArraysEquals(fieldNamePointable.getByteArray(), fieldNamePointable.getStartOffset()+STRING_VALUE_OFFSET,
-                                fieldNamePointable.getLength()-STRING_VALUE_OFFSET, item.getByteArray(), item.getStartOffset()+STRING_VALUE_OFFSET,
-                                item.getLength()-STRING_VALUE_OFFSET)) {
-                            return false;
-                        }
-                    } else if (isType(ATypeTag.ORDEREDLIST, itemTag)) {
-                        List<IVisitablePointable> path = ((AListPointable)item).getItems();
-                        if(path.size()==1 && byteSubArraysEquals(fieldNamePointable.getByteArray(),
-                                fieldNamePointable.getStartOffset()+STRING_VALUE_OFFSET, fieldNamePointable.getLength()-STRING_VALUE_OFFSET,
-                                item.getByteArray(), item.getStartOffset()+STRING_VALUE_OFFSET, item.getLength()-STRING_VALUE_OFFSET)) {
-                            return false;
-                        }
-                    }
-                }
-
-                return true;
-            }
-
-
-            private boolean isValidPath(AListPointable inputList) {
+            private boolean isValidPath(AListPointable inputList) throws HyracksDataException {
                 List<IVisitablePointable> items = inputList.getItems();
                 List<IVisitablePointable> typeTags = inputList.getItemTags();
 
@@ -152,34 +114,23 @@ public class RemoveFieldsEvalFactory implements ICopyEvaluatorFactory {
                     if (isType(ATypeTag.ORDEREDLIST, typeTags.get(i))) {
                         List<IVisitablePointable> inputPathItems = ((AListPointable)item).getItems();
 
-                        // Ignore input paths longer than current level
-                        if(pathLen != inputPathItems.size()) {
-                            return true;
-                        }
-                        boolean match = true;
-                        Iterator<IVisitablePointable> fpi = recordPath.iterator();
-                        for(int j=inputPathItems.size()-1; j>=0; j--) {
-                            IVisitablePointable fnvp= fpi.next();
-                            IVisitablePointable pathElement = inputPathItems.get(j);
-                            /** TODO REMOVE ***/
-                            String s1 = new String(pathElement.getByteArray(), pathElement.getStartOffset()+STRING_VALUE_OFFSET, pathElement.getLength()-STRING_VALUE_OFFSET);
-                            String s2 = new String(fnvp.getByteArray(), fnvp.getStartOffset()+STRING_VALUE_OFFSET, fnvp.getLength()-STRING_VALUE_OFFSET);
-                            /*************/
-                            match &= byteSubArraysEquals(pathElement.getByteArray(),
-                                    pathElement.getStartOffset()+STRING_VALUE_OFFSET,
-                                    pathElement.getLength()-STRING_VALUE_OFFSET,
-                                    fnvp.getByteArray(), fnvp.getStartOffset()+STRING_VALUE_OFFSET,
-                                    fnvp.getLength()-STRING_VALUE_OFFSET);
+                        if(pathLen == inputPathItems.size()) {
+                            boolean match = true;
+                            Iterator<IVisitablePointable> fpi = recordPath.iterator();
+                            for (int j = inputPathItems.size() - 1; j >= 0; j--) {
+                                IVisitablePointable fnvp = fpi.next();
+                                IVisitablePointable pathElement = inputPathItems.get(j);
 
-                            if (!match) break;
-                        }
-                        if (match) return false; // Not a valid path for the output record
+                                match &= compare(pathElement, fnvp);
 
-                    } else { // TODO Check - assuming AString
-                        if(byteSubArraysEquals(recordPath.getFirst().getByteArray(),
-                                recordPath.getFirst().getStartOffset() + STRING_VALUE_OFFSET,
-                                recordPath.getFirst().getLength() - STRING_VALUE_OFFSET, item.getByteArray(),
-                                item.getStartOffset() + STRING_VALUE_OFFSET, item.getLength() - STRING_VALUE_OFFSET)) {
+                                if (!match)
+                                    break;
+                            }
+                            if (match)
+                                return false; // Not a valid path for the output record
+                        }
+                    } else {
+                        if (compare(recordPath.getFirst(), item)) {
                             return false;
                         }
                     }
@@ -205,7 +156,6 @@ public class RemoveFieldsEvalFactory implements ICopyEvaluatorFactory {
                     return;
                 }
 
-
                 vp0.set(outInput0);
                 vp1.set(outInput1);
 
@@ -221,10 +171,8 @@ public class RemoveFieldsEvalFactory implements ICopyEvaluatorFactory {
 
                 try {
                     recordPath.clear();
-                    removeNestedFields(outputRecordType, recordPointable, listPointable, 0);
-                    //removeFieldsFromRecords(outputRecordType, recordPointable, listPointable);
+                    processRecord(cashedRecType, recordPointable, listPointable, 0);
                     rbStack.get(0).write(output.getDataOutput(), true);
-                    //recordBuilder.write(output.getDataOutput(), true);
                 } catch (IOException | AsterixException e) {
                     throw new AlgebricksException(e);
                 }
@@ -250,8 +198,8 @@ public class RemoveFieldsEvalFactory implements ICopyEvaluatorFactory {
                 if (resType.isClosedField(fieldName)) {
                     int pos = resType.findFieldPosition(fieldName);
                     if (isType(ATypeTag.RECORD, fieldTypePointable)) {
-                        removeNestedFields((ARecordType) resType.getFieldType(fieldName),
-                                (ARecordPointable)fieldValuePointable, inputList, nestedLevel + 1);
+                        processRecord((ARecordType) resType.getFieldType(fieldName),
+                                (ARecordPointable) fieldValuePointable, inputList, nestedLevel + 1);
                         tabvs.reset();
                         rbStack.get(nestedLevel + 1).write(tabvs.getDataOutput(), true);
                         rbStack.get(nestedLevel).addField(pos, tabvs);
@@ -260,9 +208,8 @@ public class RemoveFieldsEvalFactory implements ICopyEvaluatorFactory {
                     }
                 } else {
                     if (isType(ATypeTag.RECORD, fieldTypePointable)) {
-                        removeNestedFields((ARecordType) resType.getFieldType(fieldName),
+                        processRecord((ARecordType) resType.getFieldType(fieldName),
                                 (ARecordPointable) fieldValuePointable, inputList, nestedLevel + 1);
-
                         tabvs.reset();
                         rbStack.get(nestedLevel + 1).write(tabvs.getDataOutput(), true);
                         rbStack.get(nestedLevel).addField(fieldNamePointable, tabvs);
@@ -280,34 +227,8 @@ public class RemoveFieldsEvalFactory implements ICopyEvaluatorFactory {
                 return (tt==typeTag);
             }
 
-            private void removeFieldsFromRecords(ARecordType resType, ARecordPointable inputRecord, AListPointable inputList) throws IOException,
-                    AsterixException, AlgebricksException {
-                recordPath.clear();
 
-                for (int i = 0; i < inputRecord.getFieldNames().size(); i++) {
-                    IVisitablePointable namePointable = inputRecord.getFieldNames().get(i);
-                    IVisitablePointable valuePointable = inputRecord.getFieldValues().get(i);
-                    IVisitablePointable typePointable = inputRecord.getFieldTypeTags().get(i);
-
-                    if(isValidField(namePointable, inputList)) {
-                        if(isType(ATypeTag.RECORD, typePointable)) {
-                            recordPath.push(namePointable);
-                            removeNestedFields((ARecordType)resType.getFieldType(getFieldName(namePointable)),
-                                    (ARecordPointable)valuePointable, inputList, 1);
-                            recordPath.pop();
-                        } else {
-                            rbStack.add(new RecordBuilder());
-                            RecordBuilder rb = rbStack.get(0);
-                            rb.reset(resType);
-                            rb.init();
-                            addFieldToSubRecord(resType, namePointable, valuePointable, typePointable, inputList, 0);
-                        }
-                    }
-                }
-
-            }
-
-            private void removeNestedFields(ARecordType resType, ARecordPointable srp, AListPointable inputList, int nestedLevel)
+            private void processRecord(ARecordType resType, ARecordPointable srp, AListPointable inputList, int nestedLevel)
                     throws IOException, AsterixException, AlgebricksException {
                 if (rbStack.size() < (nestedLevel + 1)) {
                     rbStack.add(new RecordBuilder());
