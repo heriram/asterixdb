@@ -31,7 +31,7 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.util.*;
 
-public class RemoveFieldsEvalFactory implements ICopyEvaluatorFactory {
+class RecordRemoveFieldsEvalFactory implements ICopyEvaluatorFactory {
     private static final long serialVersionUID = 1L;
 
     private static final byte SER_NULL_TYPE_TAG = ATypeTag.NULL.serialize();
@@ -45,7 +45,7 @@ public class RemoveFieldsEvalFactory implements ICopyEvaluatorFactory {
 
     private final Deque<IVisitablePointable> recordPath = new ArrayDeque<>();
 
-    public RemoveFieldsEvalFactory(ICopyEvaluatorFactory inputRecordEvalFactory,
+    public RecordRemoveFieldsEvalFactory(ICopyEvaluatorFactory inputRecordEvalFactory,
             ICopyEvaluatorFactory removeFieldPathsFactory, ARecordType reqRecType,
             ARecordType inputRecType,  AOrderedListType inputListType) {
         this.inputRecordEvalFactory = inputRecordEvalFactory;
@@ -171,6 +171,7 @@ public class RemoveFieldsEvalFactory implements ICopyEvaluatorFactory {
 
                 try {
                     recordPath.clear();
+                    rbStack.clear();
                     processRecord(cashedRecType, recordPointable, listPointable, 0);
                     rbStack.get(0).write(output.getDataOutput(), true);
                 } catch (IOException | AsterixException e) {

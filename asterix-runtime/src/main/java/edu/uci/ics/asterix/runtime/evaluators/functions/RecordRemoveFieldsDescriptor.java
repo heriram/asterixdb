@@ -15,7 +15,7 @@ import edu.uci.ics.hyracks.algebricks.runtime.base.ICopyEvaluatorFactory;
 
 import java.util.List;
 
-public class RemoveFieldsDescriptor extends AbstractScalarFunctionDynamicDescriptor {
+public class RecordRemoveFieldsDescriptor extends AbstractScalarFunctionDynamicDescriptor {
 
     private static final long serialVersionUID = 1L;
 
@@ -24,9 +24,12 @@ public class RemoveFieldsDescriptor extends AbstractScalarFunctionDynamicDescrip
 
     public static final IFunctionDescriptorFactory FACTORY = new IFunctionDescriptorFactory() {
         public IFunctionDescriptor createFunctionDescriptor() {
-            return new RemoveFieldsDescriptor();
+            return new RecordRemoveFieldsDescriptor();
         }
     };
+
+    private  RecordRemoveFieldsDescriptor() {
+    }
 
     private ARecordType outputRecordType;
     private ARecordType inputRecType;
@@ -47,7 +50,7 @@ public class RemoveFieldsDescriptor extends AbstractScalarFunctionDynamicDescrip
     }
 
     public ICopyEvaluatorFactory createEvaluatorFactory(final ICopyEvaluatorFactory[] args) throws AlgebricksException {
-        return new RemoveFieldsEvalFactory(args[0], args[1], outputRecordType, inputRecType, inputListType);
+        return new RecordRemoveFieldsEvalFactory(args[0], args[1], outputRecordType, inputRecType, inputListType);
     }
 
     @Override
