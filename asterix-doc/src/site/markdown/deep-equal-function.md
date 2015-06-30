@@ -16,19 +16,17 @@
 
  * Example:
 
-
 		let $r1 := {"id":1, 
 		    "project":"AsterixDB", 
 		    "address":{"city":"Irvine", "state":"CA"}, 
 		    "related":["Hivestrix", "Preglix", "Apache VXQuery"] }
-			
+	
 		let $r2 := {"id":1, 
 		            "project":"AsterixDB", 
 		            "address":{"city":"San Diego", "state":"CA"}, 
 		            "related":["Hivestrix", "Preglix", "Apache VXQuery"] }
 		return deep-equal($r1, $r2)
-
-
+		
  * The expected result is:
 
-      	false
+        false
