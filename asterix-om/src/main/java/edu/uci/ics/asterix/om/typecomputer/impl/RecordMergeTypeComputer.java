@@ -15,26 +15,21 @@
 
 package edu.uci.ics.asterix.om.typecomputer.impl;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
-import org.apache.commons.lang3.ArrayUtils;
-
 import edu.uci.ics.asterix.common.exceptions.AsterixException;
 import edu.uci.ics.asterix.om.typecomputer.base.IResultTypeComputer;
-import edu.uci.ics.asterix.om.types.ARecordType;
-import edu.uci.ics.asterix.om.types.ATypeTag;
-import edu.uci.ics.asterix.om.types.AUnionType;
-import edu.uci.ics.asterix.om.types.IAType;
-import edu.uci.ics.asterix.om.types.TypeHelper;
+import edu.uci.ics.asterix.om.types.*;
 import edu.uci.ics.hyracks.algebricks.common.exceptions.AlgebricksException;
 import edu.uci.ics.hyracks.algebricks.core.algebra.base.ILogicalExpression;
 import edu.uci.ics.hyracks.algebricks.core.algebra.expressions.AbstractFunctionCallExpression;
 import edu.uci.ics.hyracks.algebricks.core.algebra.expressions.IVariableTypeEnvironment;
 import edu.uci.ics.hyracks.algebricks.core.algebra.metadata.IMetadataProvider;
 import edu.uci.ics.hyracks.api.exceptions.HyracksDataException;
+import org.apache.commons.lang3.ArrayUtils;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 public class RecordMergeTypeComputer implements IResultTypeComputer {
     private static final long serialVersionUID = 1L;
@@ -96,20 +91,20 @@ public class RecordMergeTypeComputer implements IResultTypeComputer {
 
         List<String> additionalFieldNames = new ArrayList<>();
         List<IAType> additionalFieldTypes = new ArrayList<>();
-        for (int i = 0; i < recType1.getFieldNames().length; ++i) {
-            String fieldName = recType1.getFieldNames()[i];
-            IAType fieldType = recType1.getFieldTypes()[i];
-            int pos = Collections.binarySearch(resultFieldNames, fieldName);
+        String fieldNames[] = recType1.getFieldNames();
+        IAType fieldTypes[] = recType1.getFieldTypes();
+        for (int i = 0; i < fieldNames.length; ++i) {
+            int pos = Collections.binarySearch(resultFieldNames, fieldNames[i]);
             if (pos >= 0) {
                 try {
-                    resultFieldTypes.set(pos, mergedNestedType(fieldType, resultFieldTypes.get(pos)));
+                    resultFieldTypes.set(pos, mergedNestedType(fieldTypes[i], resultFieldTypes.get(pos)));
                 } catch (AsterixException e) {
                     throw new AlgebricksException(e);
                 }
 
             } else {
-                additionalFieldNames.add(fieldName);
-                additionalFieldTypes.add(fieldType);
+                additionalFieldNames.add(fieldNames[i]);
+                additionalFieldTypes.add(fieldTypes[i]);
             }
         }
 
