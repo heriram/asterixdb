@@ -14,103 +14,11 @@
  */
 package edu.uci.ics.asterix.om.functions;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import org.apache.commons.lang3.mutable.Mutable;
-
 import edu.uci.ics.asterix.common.functions.FunctionConstants;
 import edu.uci.ics.asterix.common.functions.FunctionSignature;
 import edu.uci.ics.asterix.om.typecomputer.base.IResultTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.ABooleanTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.ADateTimeTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.ADateTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.ADoubleTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.AFloatTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.AInt32TypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.AInt64TypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.ANullTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.APointTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.ARectangleTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.AStringTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.ATimeTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.AUUIDTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.BinaryBooleanOrNullFunctionTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.BinaryStringBoolOrNullTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.BinaryStringStringOrNullTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.CastListResultTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.CastRecordResultTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.ClosedRecordConstructorResultType;
-import edu.uci.ics.asterix.om.typecomputer.impl.CollectionToSequenceTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.ConcatNonNullTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.FieldAccessByIndexResultType;
-import edu.uci.ics.asterix.om.typecomputer.impl.FieldAccessNestedResultType;
-import edu.uci.ics.asterix.om.typecomputer.impl.GetOverlappingInvervalTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.InjectFailureTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.NonTaggedCollectionMemberResultType;
-import edu.uci.ics.asterix.om.typecomputer.impl.NonTaggedFieldAccessByNameResultType;
-import edu.uci.ics.asterix.om.typecomputer.impl.NonTaggedGetItemResultType;
-import edu.uci.ics.asterix.om.typecomputer.impl.NonTaggedLocalAvgTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.NonTaggedMinMaxAggTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.NonTaggedNumericAddSubMulDivTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.NonTaggedNumericAggTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.NonTaggedNumericRoundHalfToEven2TypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.NonTaggedNumericUnaryFunctionTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.NonTaggedSwitchCaseComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.NonTaggedUnaryMinusTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.NotNullTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.OpenRecordConstructorResultType;
-import edu.uci.ics.asterix.om.typecomputer.impl.OptionalABinaryTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.OptionalABooleanTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.OptionalACircleTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.OptionalADateTimeTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.OptionalADateTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.OptionalADayTimeDurationTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.OptionalADoubleTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.OptionalADurationTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.OptionalAFloatTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.OptionalAInt16TypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.OptionalAInt32TypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.OptionalAInt64TypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.OptionalAInt8TypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.OptionalAIntervalTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.OptionalALineTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.OptionalAPoint3DTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.OptionalAPointTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.OptionalAPolygonTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.OptionalARectangleTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.OptionalAStringTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.OptionalATemporalInstanceTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.OptionalATimeTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.OptionalAYearMonthDurationTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.OrderedListConstructorResultType;
-import edu.uci.ics.asterix.om.typecomputer.impl.OrderedListOfAInt32TypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.OrderedListOfAInt64TypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.OrderedListOfAIntervalTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.OrderedListOfAPointTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.OrderedListOfAStringTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.OrderedListOfAnyTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.QuadStringStringOrNullTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.RecordMergeTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.ScalarVersionOfAggregateResultType;
-import edu.uci.ics.asterix.om.typecomputer.impl.Substring2TypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.SubstringTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.TripleStringBoolOrNullTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.TripleStringStringOrNullTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.UnaryBinaryInt64OrNullTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.UnaryBooleanOrNullFunctionTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.UnaryStringInt64OrNullTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.UnaryStringOrNullTypeComputer;
-import edu.uci.ics.asterix.om.typecomputer.impl.UnorderedListConstructorResultType;
-import edu.uci.ics.asterix.om.types.AOrderedListType;
-import edu.uci.ics.asterix.om.types.ATypeTag;
-import edu.uci.ics.asterix.om.types.AUnionType;
-import edu.uci.ics.asterix.om.types.AbstractCollectionType;
-import edu.uci.ics.asterix.om.types.BuiltinType;
-import edu.uci.ics.asterix.om.types.IAType;
+import edu.uci.ics.asterix.om.typecomputer.impl.*;
+import edu.uci.ics.asterix.om.types.*;
 import edu.uci.ics.asterix.om.types.hierachy.ATypeHierarchy;
 import edu.uci.ics.hyracks.algebricks.common.exceptions.AlgebricksException;
 import edu.uci.ics.hyracks.algebricks.core.algebra.base.ILogicalExpression;
@@ -121,6 +29,9 @@ import edu.uci.ics.hyracks.algebricks.core.algebra.functions.AlgebricksBuiltinFu
 import edu.uci.ics.hyracks.algebricks.core.algebra.functions.FunctionIdentifier;
 import edu.uci.ics.hyracks.algebricks.core.algebra.functions.IFunctionInfo;
 import edu.uci.ics.hyracks.algebricks.core.algebra.metadata.IMetadataProvider;
+import org.apache.commons.lang3.mutable.Mutable;
+
+import java.util.*;
 
 public class AsterixBuiltinFunctions {
 
@@ -178,9 +89,17 @@ public class AsterixBuiltinFunctions {
     public final static FunctionIdentifier UNORDERED_LIST_CONSTRUCTOR = new FunctionIdentifier(
             FunctionConstants.ASTERIX_NS, "unordered-list-constructor", FunctionIdentifier.VARARGS);
 
+    public final static FunctionIdentifier DEEP_EQUAL = new FunctionIdentifier(FunctionConstants.ASTERIX_NS,
+            "deep-equal", 2);
+
     // records
     public final static FunctionIdentifier RECORD_MERGE = new FunctionIdentifier(FunctionConstants.ASTERIX_NS,
-            "record-merge", 3);
+            "record-merge", 2);
+    public final static FunctionIdentifier REMOVE_FIELDS = new FunctionIdentifier(FunctionConstants.ASTERIX_NS,
+            "record-remove-fields", 2);
+    public final static FunctionIdentifier ADD_FIELDS = new FunctionIdentifier(FunctionConstants.ASTERIX_NS,
+            "record-add-fields", 2);
+
     public final static FunctionIdentifier CLOSED_RECORD_CONSTRUCTOR = new FunctionIdentifier(
             FunctionConstants.ASTERIX_NS, "closed-record-constructor", FunctionIdentifier.VARARGS);
     public final static FunctionIdentifier OPEN_RECORD_CONSTRUCTOR = new FunctionIdentifier(
@@ -747,6 +666,9 @@ public class AsterixBuiltinFunctions {
         addPrivateFunction(OR, BinaryBooleanOrNullFunctionTypeComputer.INSTANCE, true);
         addPrivateFunction(NUMERIC_ADD, NonTaggedNumericAddSubMulDivTypeComputer.INSTANCE, true);
 
+        // Deep equality
+        addFunction(DEEP_EQUAL, BinaryBooleanOrNullFunctionTypeComputer.INSTANCE, true);
+
         // and then, Asterix builtin functions
         addPrivateFunction(NOT_NULL, NotNullTypeComputer.INSTANCE, true);
         addPrivateFunction(ANY_COLLECTION_MEMBER, NonTaggedCollectionMemberResultType.INSTANCE, true);
@@ -754,7 +676,9 @@ public class AsterixBuiltinFunctions {
         addFunction(BOOLEAN_CONSTRUCTOR, UnaryBooleanOrNullFunctionTypeComputer.INSTANCE, true);
         addPrivateFunction(CARET, NonTaggedNumericAddSubMulDivTypeComputer.INSTANCE, true);
         addFunction(CIRCLE_CONSTRUCTOR, OptionalACircleTypeComputer.INSTANCE, true);
-        addPrivateFunction(RECORD_MERGE, RecordMergeTypeComputer.INSTANCE, true);
+        addFunction(RECORD_MERGE, RecordMergeTypeComputer.INSTANCE, true);
+        addFunction(ADD_FIELDS, RecordAddFieldsTypeComputer.INSTANCE, true);
+        addFunction(REMOVE_FIELDS, RecordRemoveFieldsTypeComputer.INSTANCE, true);
         addPrivateFunction(CLOSED_RECORD_CONSTRUCTOR, ClosedRecordConstructorResultType.INSTANCE, true);
         addPrivateFunction(CONCAT_NON_NULL, ConcatNonNullTypeComputer.INSTANCE, true);
 

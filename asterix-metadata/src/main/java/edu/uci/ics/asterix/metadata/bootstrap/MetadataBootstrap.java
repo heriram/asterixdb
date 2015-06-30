@@ -320,6 +320,7 @@ public class MetadataBootstrap {
         String[] builtInAdapterClassNames = new String[] {
                 "edu.uci.ics.asterix.external.adapter.factory.PullBasedAzureTwitterAdapterFactory",
                 "edu.uci.ics.asterix.external.adapter.factory.NCFileSystemAdapterFactory",
+                "edu.uci.ics.asterix.external.adapter.factory.DirectoryBasedFileSystemBasedAdapterFactory",
                 "edu.uci.ics.asterix.external.adapter.factory.HDFSAdapterFactory",
                 "edu.uci.ics.asterix.external.adapter.factory.HiveAdapterFactory",
                 "edu.uci.ics.asterix.external.adapter.factory.PullBasedTwitterAdapterFactory",
