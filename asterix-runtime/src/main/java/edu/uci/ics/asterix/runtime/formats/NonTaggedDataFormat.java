@@ -1,48 +1,317 @@
 /*
-* Copyright 2009-2013 by The Regents of the University of California
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* you may obtain a copy of the License from
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
+ * Copyright 2009-2013 by The Regents of the University of California
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * you may obtain a copy of the License from
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package edu.uci.ics.asterix.runtime.formats;
+
+import java.io.DataOutput;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.apache.commons.lang3.mutable.Mutable;
+import org.apache.commons.lang3.mutable.MutableObject;
 
 import edu.uci.ics.asterix.common.config.GlobalConfig;
 import edu.uci.ics.asterix.common.exceptions.AsterixRuntimeException;
 import edu.uci.ics.asterix.common.parse.IParseFileSplitsDecl;
 import edu.uci.ics.asterix.dataflow.data.nontagged.AqlNullWriterFactory;
 import edu.uci.ics.asterix.formats.base.IDataFormat;
-import edu.uci.ics.asterix.formats.nontagged.*;
-import edu.uci.ics.asterix.om.base.*;
+import edu.uci.ics.asterix.formats.nontagged.AqlBinaryBooleanInspectorImpl;
+import edu.uci.ics.asterix.formats.nontagged.AqlBinaryComparatorFactoryProvider;
+import edu.uci.ics.asterix.formats.nontagged.AqlBinaryHashFunctionFactoryProvider;
+import edu.uci.ics.asterix.formats.nontagged.AqlBinaryHashFunctionFamilyProvider;
+import edu.uci.ics.asterix.formats.nontagged.AqlBinaryIntegerInspector;
+import edu.uci.ics.asterix.formats.nontagged.AqlCSVPrinterFactoryProvider;
+import edu.uci.ics.asterix.formats.nontagged.AqlJSONPrinterFactoryProvider;
+import edu.uci.ics.asterix.formats.nontagged.AqlNormalizedKeyComputerFactoryProvider;
+import edu.uci.ics.asterix.formats.nontagged.AqlPredicateEvaluatorFactoryProvider;
+import edu.uci.ics.asterix.formats.nontagged.AqlPrinterFactoryProvider;
+import edu.uci.ics.asterix.formats.nontagged.AqlSerializerDeserializerProvider;
+import edu.uci.ics.asterix.formats.nontagged.AqlTypeTraitProvider;
+import edu.uci.ics.asterix.om.base.ABoolean;
+import edu.uci.ics.asterix.om.base.AInt32;
+import edu.uci.ics.asterix.om.base.ANull;
+import edu.uci.ics.asterix.om.base.AOrderedList;
+import edu.uci.ics.asterix.om.base.AString;
+import edu.uci.ics.asterix.om.base.IAObject;
 import edu.uci.ics.asterix.om.constants.AsterixConstantValue;
-import edu.uci.ics.asterix.om.functions.*;
+import edu.uci.ics.asterix.om.functions.AsterixBuiltinFunctions;
+import edu.uci.ics.asterix.om.functions.FunctionManagerHolder;
+import edu.uci.ics.asterix.om.functions.IFunctionDescriptor;
+import edu.uci.ics.asterix.om.functions.IFunctionDescriptorFactory;
+import edu.uci.ics.asterix.om.functions.IFunctionManager;
 import edu.uci.ics.asterix.om.pointables.base.DefaultOpenFieldType;
 import edu.uci.ics.asterix.om.typecomputer.base.TypeComputerUtilities;
-import edu.uci.ics.asterix.om.types.*;
+import edu.uci.ics.asterix.om.types.AOrderedListType;
+import edu.uci.ics.asterix.om.types.ARecordType;
+import edu.uci.ics.asterix.om.types.ATypeTag;
+import edu.uci.ics.asterix.om.types.AUnionType;
+import edu.uci.ics.asterix.om.types.AUnorderedListType;
+import edu.uci.ics.asterix.om.types.AbstractCollectionType;
+import edu.uci.ics.asterix.om.types.BuiltinType;
+import edu.uci.ics.asterix.om.types.IAType;
 import edu.uci.ics.asterix.runtime.aggregates.collections.ListifyAggregateDescriptor;
-import edu.uci.ics.asterix.runtime.aggregates.scalar.*;
-import edu.uci.ics.asterix.runtime.aggregates.serializable.std.*;
-import edu.uci.ics.asterix.runtime.aggregates.std.*;
+import edu.uci.ics.asterix.runtime.aggregates.scalar.ScalarAvgAggregateDescriptor;
+import edu.uci.ics.asterix.runtime.aggregates.scalar.ScalarCountAggregateDescriptor;
+import edu.uci.ics.asterix.runtime.aggregates.scalar.ScalarMaxAggregateDescriptor;
+import edu.uci.ics.asterix.runtime.aggregates.scalar.ScalarMinAggregateDescriptor;
+import edu.uci.ics.asterix.runtime.aggregates.scalar.ScalarSqlAvgAggregateDescriptor;
+import edu.uci.ics.asterix.runtime.aggregates.scalar.ScalarSqlCountAggregateDescriptor;
+import edu.uci.ics.asterix.runtime.aggregates.scalar.ScalarSqlMaxAggregateDescriptor;
+import edu.uci.ics.asterix.runtime.aggregates.scalar.ScalarSqlMinAggregateDescriptor;
+import edu.uci.ics.asterix.runtime.aggregates.scalar.ScalarSqlSumAggregateDescriptor;
+import edu.uci.ics.asterix.runtime.aggregates.scalar.ScalarSumAggregateDescriptor;
+import edu.uci.ics.asterix.runtime.aggregates.serializable.std.SerializableAvgAggregateDescriptor;
+import edu.uci.ics.asterix.runtime.aggregates.serializable.std.SerializableCountAggregateDescriptor;
+import edu.uci.ics.asterix.runtime.aggregates.serializable.std.SerializableGlobalAvgAggregateDescriptor;
+import edu.uci.ics.asterix.runtime.aggregates.serializable.std.SerializableGlobalSqlAvgAggregateDescriptor;
+import edu.uci.ics.asterix.runtime.aggregates.serializable.std.SerializableIntermediateAvgAggregateDescriptor;
+import edu.uci.ics.asterix.runtime.aggregates.serializable.std.SerializableIntermediateSqlAvgAggregateDescriptor;
+import edu.uci.ics.asterix.runtime.aggregates.serializable.std.SerializableLocalAvgAggregateDescriptor;
+import edu.uci.ics.asterix.runtime.aggregates.serializable.std.SerializableLocalSqlAvgAggregateDescriptor;
+import edu.uci.ics.asterix.runtime.aggregates.serializable.std.SerializableLocalSqlSumAggregateDescriptor;
+import edu.uci.ics.asterix.runtime.aggregates.serializable.std.SerializableLocalSumAggregateDescriptor;
+import edu.uci.ics.asterix.runtime.aggregates.serializable.std.SerializableSqlAvgAggregateDescriptor;
+import edu.uci.ics.asterix.runtime.aggregates.serializable.std.SerializableSqlCountAggregateDescriptor;
+import edu.uci.ics.asterix.runtime.aggregates.serializable.std.SerializableSqlSumAggregateDescriptor;
+import edu.uci.ics.asterix.runtime.aggregates.serializable.std.SerializableSumAggregateDescriptor;
+import edu.uci.ics.asterix.runtime.aggregates.std.AvgAggregateDescriptor;
+import edu.uci.ics.asterix.runtime.aggregates.std.CountAggregateDescriptor;
+import edu.uci.ics.asterix.runtime.aggregates.std.GlobalAvgAggregateDescriptor;
+import edu.uci.ics.asterix.runtime.aggregates.std.GlobalSqlAvgAggregateDescriptor;
+import edu.uci.ics.asterix.runtime.aggregates.std.IntermediateAvgAggregateDescriptor;
+import edu.uci.ics.asterix.runtime.aggregates.std.IntermediateSqlAvgAggregateDescriptor;
+import edu.uci.ics.asterix.runtime.aggregates.std.LocalAvgAggregateDescriptor;
+import edu.uci.ics.asterix.runtime.aggregates.std.LocalMaxAggregateDescriptor;
+import edu.uci.ics.asterix.runtime.aggregates.std.LocalMinAggregateDescriptor;
+import edu.uci.ics.asterix.runtime.aggregates.std.LocalSqlAvgAggregateDescriptor;
+import edu.uci.ics.asterix.runtime.aggregates.std.LocalSqlMaxAggregateDescriptor;
+import edu.uci.ics.asterix.runtime.aggregates.std.LocalSqlMinAggregateDescriptor;
+import edu.uci.ics.asterix.runtime.aggregates.std.LocalSqlSumAggregateDescriptor;
+import edu.uci.ics.asterix.runtime.aggregates.std.LocalSumAggregateDescriptor;
+import edu.uci.ics.asterix.runtime.aggregates.std.MaxAggregateDescriptor;
+import edu.uci.ics.asterix.runtime.aggregates.std.MinAggregateDescriptor;
+import edu.uci.ics.asterix.runtime.aggregates.std.SqlAvgAggregateDescriptor;
+import edu.uci.ics.asterix.runtime.aggregates.std.SqlCountAggregateDescriptor;
+import edu.uci.ics.asterix.runtime.aggregates.std.SqlMaxAggregateDescriptor;
+import edu.uci.ics.asterix.runtime.aggregates.std.SqlMinAggregateDescriptor;
+import edu.uci.ics.asterix.runtime.aggregates.std.SqlSumAggregateDescriptor;
+import edu.uci.ics.asterix.runtime.aggregates.std.SumAggregateDescriptor;
 import edu.uci.ics.asterix.runtime.aggregates.stream.EmptyStreamAggregateDescriptor;
 import edu.uci.ics.asterix.runtime.aggregates.stream.NonEmptyStreamAggregateDescriptor;
-import edu.uci.ics.asterix.runtime.evaluators.accessors.*;
+import edu.uci.ics.asterix.runtime.evaluators.accessors.CircleCenterAccessor;
+import edu.uci.ics.asterix.runtime.evaluators.accessors.CircleRadiusAccessor;
+import edu.uci.ics.asterix.runtime.evaluators.accessors.LineRectanglePolygonAccessor;
+import edu.uci.ics.asterix.runtime.evaluators.accessors.PointXCoordinateAccessor;
+import edu.uci.ics.asterix.runtime.evaluators.accessors.PointYCoordinateAccessor;
+import edu.uci.ics.asterix.runtime.evaluators.accessors.TemporalDayAccessor;
+import edu.uci.ics.asterix.runtime.evaluators.accessors.TemporalHourAccessor;
+import edu.uci.ics.asterix.runtime.evaluators.accessors.TemporalIntervalEndAccessor;
+import edu.uci.ics.asterix.runtime.evaluators.accessors.TemporalIntervalEndDateAccessor;
+import edu.uci.ics.asterix.runtime.evaluators.accessors.TemporalIntervalEndDatetimeAccessor;
+import edu.uci.ics.asterix.runtime.evaluators.accessors.TemporalIntervalEndTimeAccessor;
+import edu.uci.ics.asterix.runtime.evaluators.accessors.TemporalIntervalStartAccessor;
+import edu.uci.ics.asterix.runtime.evaluators.accessors.TemporalIntervalStartDateAccessor;
+import edu.uci.ics.asterix.runtime.evaluators.accessors.TemporalIntervalStartDatetimeAccessor;
+import edu.uci.ics.asterix.runtime.evaluators.accessors.TemporalIntervalStartTimeAccessor;
+import edu.uci.ics.asterix.runtime.evaluators.accessors.TemporalMillisecondAccessor;
+import edu.uci.ics.asterix.runtime.evaluators.accessors.TemporalMinuteAccessor;
+import edu.uci.ics.asterix.runtime.evaluators.accessors.TemporalMonthAccessor;
+import edu.uci.ics.asterix.runtime.evaluators.accessors.TemporalSecondAccessor;
+import edu.uci.ics.asterix.runtime.evaluators.accessors.TemporalYearAccessor;
 import edu.uci.ics.asterix.runtime.evaluators.common.CreateMBREvalFactory;
 import edu.uci.ics.asterix.runtime.evaluators.common.FieldAccessByIndexEvalFactory;
 import edu.uci.ics.asterix.runtime.evaluators.common.FieldAccessNestedEvalFactory;
 import edu.uci.ics.asterix.runtime.evaluators.common.FunctionManagerImpl;
-import edu.uci.ics.asterix.runtime.evaluators.constructors.*;
-import edu.uci.ics.asterix.runtime.evaluators.functions.*;
-import edu.uci.ics.asterix.runtime.evaluators.functions.binary.*;
-import edu.uci.ics.asterix.runtime.evaluators.functions.temporal.*;
-import edu.uci.ics.asterix.runtime.operators.file.AdmSchemafullRecordParserFactory;
-import edu.uci.ics.asterix.runtime.operators.file.NtDelimitedDataTupleParserFactory;
+import edu.uci.ics.asterix.runtime.evaluators.constructors.ABinaryBase64StringConstructorDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.constructors.ABinaryHexStringConstructorDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.constructors.ABooleanConstructorDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.constructors.ACircleConstructorDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.constructors.ADateConstructorDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.constructors.ADateTimeConstructorDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.constructors.ADayTimeDurationConstructorDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.constructors.ADoubleConstructorDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.constructors.ADurationConstructorDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.constructors.AFloatConstructorDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.constructors.AInt16ConstructorDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.constructors.AInt32ConstructorDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.constructors.AInt64ConstructorDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.constructors.AInt8ConstructorDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.constructors.AIntervalFromDateConstructorDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.constructors.AIntervalFromDateTimeConstructorDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.constructors.AIntervalFromTimeConstructorDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.constructors.AIntervalStartFromDateConstructorDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.constructors.AIntervalStartFromDateTimeConstructorDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.constructors.AIntervalStartFromTimeConstructorDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.constructors.ALineConstructorDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.constructors.ANullConstructorDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.constructors.APoint3DConstructorDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.constructors.APointConstructorDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.constructors.APolygonConstructorDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.constructors.ARectangleConstructorDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.constructors.AStringConstructorDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.constructors.ATimeConstructorDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.constructors.AYearMonthDurationConstructorDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.AndDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.AnyCollectionMemberDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.CastListDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.CastRecordDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.ClosedRecordConstructorDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.CodePointToStringDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.ContainsDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.CountHashedGramTokensDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.CountHashedWordTokensDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.CreateCircleDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.CreateLineDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.CreateMBRDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.CreatePointDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.CreatePolygonDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.CreateRectangleDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.CreateUUIDDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.EditDistanceCheckDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.EditDistanceContainsDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.EditDistanceDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.EditDistanceListIsFilterable;
+import edu.uci.ics.asterix.runtime.evaluators.functions.EditDistanceStringIsFilterable;
+import edu.uci.ics.asterix.runtime.evaluators.functions.EmbedTypeDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.EndsWithDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.FieldAccessByIndexDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.FieldAccessByNameDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.FieldAccessNestedDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.FlowRecordDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.FuzzyEqDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.GetItemDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.GramTokensDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.HashedGramTokensDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.HashedWordTokensDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.InjectFailureDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.IsNullDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.IsSystemNullDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.LenDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.LikeDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.NotDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.NotNullDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.NumericAbsDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.NumericAddDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.NumericCaretDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.NumericCeilingDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.NumericDivideDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.NumericFloorDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.NumericModuloDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.NumericMultiplyDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.NumericRoundDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.NumericRoundHalfToEven2Descriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.NumericRoundHalfToEvenDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.NumericSubDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.NumericUnaryMinusDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.OpenRecordConstructorDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.OrDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.OrderedListConstructorDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.PrefixLenJaccardDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.RecordMergeDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.RegExpDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.SimilarityJaccardCheckDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.SimilarityJaccardDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.SimilarityJaccardPrefixCheckDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.SimilarityJaccardPrefixDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.SimilarityJaccardSortedCheckDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.SimilarityJaccardSortedDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.SpatialAreaDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.SpatialCellDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.SpatialDistanceDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.SpatialIntersectDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.StartsWithDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.StringConcatDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.StringEndWithDescrtiptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.StringEqualDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.StringJoinDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.StringLengthDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.StringLowerCaseDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.StringMatchesDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.StringMatchesWithFlagDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.StringReplaceDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.StringReplaceWithFlagsDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.StringStartWithDescrtiptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.StringToCodePointDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.StringUpperCaseDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.Substring2Descriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.SubstringAfterDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.SubstringBeforeDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.SubstringDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.SwitchCaseDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.UnorderedListConstructorDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.WordTokensDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.binary.BinaryConcatDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.binary.BinaryLengthDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.binary.FindBinaryDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.binary.FindBinaryFromDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.binary.ParseBinaryDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.binary.PrintBinaryDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.binary.SubBinaryFromDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.binary.SubBinaryFromToDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.temporal.AdjustDateTimeForTimeZoneDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.temporal.AdjustTimeForTimeZoneDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.temporal.CalendarDuartionFromDateDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.temporal.CalendarDurationFromDateTimeDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.temporal.CurrentDateDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.temporal.CurrentDateTimeDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.temporal.CurrentTimeDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.temporal.DateFromDatetimeDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.temporal.DateFromUnixTimeInDaysDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.temporal.DatetimeFromDateAndTimeDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.temporal.DatetimeFromUnixTimeInMsDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.temporal.DatetimeFromUnixTimeInSecsDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.temporal.DayOfWeekDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.temporal.DayTimeDurationComparatorDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.temporal.DurationEqualDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.temporal.DurationFromIntervalDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.temporal.DurationFromMillisecondsDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.temporal.DurationFromMonthsDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.temporal.GetDayTimeDurationDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.temporal.GetOverlappingIntervalDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.temporal.GetYearMonthDurationDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.temporal.IntervalAfterDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.temporal.IntervalBeforeDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.temporal.IntervalBinDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.temporal.IntervalCoveredByDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.temporal.IntervalCoversDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.temporal.IntervalEndedByDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.temporal.IntervalEndsDecriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.temporal.IntervalMeetsDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.temporal.IntervalMetByDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.temporal.IntervalOverlappedByDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.temporal.IntervalOverlapsDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.temporal.IntervalStartedByDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.temporal.IntervalStartsDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.temporal.MillisecondsFromDayTimeDurationDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.temporal.MonthsFromYearMonthDurationDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.temporal.OverlapBinsDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.temporal.OverlapDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.temporal.ParseDateDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.temporal.ParseDateTimeDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.temporal.ParseTimeDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.temporal.PrintDateDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.temporal.PrintDateTimeDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.temporal.PrintTimeDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.temporal.TimeFromDatetimeDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.temporal.TimeFromUnixTimeInMsDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.temporal.YearMonthDurationComparatorDecriptor;
+import edu.uci.ics.asterix.runtime.operators.file.AsterixTupleParserFactory;
+import edu.uci.ics.asterix.runtime.operators.file.AsterixTupleParserFactory.InputDataFormat;
 import edu.uci.ics.asterix.runtime.runningaggregates.std.TidRunningAggregateDescriptor;
 import edu.uci.ics.asterix.runtime.unnestingfunctions.std.RangeDescriptor;
 import edu.uci.ics.asterix.runtime.unnestingfunctions.std.ScanCollectionDescriptor;
@@ -53,10 +322,25 @@ import edu.uci.ics.hyracks.algebricks.common.utils.Triple;
 import edu.uci.ics.hyracks.algebricks.core.algebra.base.ILogicalExpression;
 import edu.uci.ics.hyracks.algebricks.core.algebra.base.LogicalExpressionTag;
 import edu.uci.ics.hyracks.algebricks.core.algebra.base.LogicalVariable;
-import edu.uci.ics.hyracks.algebricks.core.algebra.expressions.*;
+import edu.uci.ics.hyracks.algebricks.core.algebra.expressions.AbstractFunctionCallExpression;
+import edu.uci.ics.hyracks.algebricks.core.algebra.expressions.ConstantExpression;
+import edu.uci.ics.hyracks.algebricks.core.algebra.expressions.IAlgebricksConstantValue;
+import edu.uci.ics.hyracks.algebricks.core.algebra.expressions.IExpressionEvalSizeComputer;
+import edu.uci.ics.hyracks.algebricks.core.algebra.expressions.IVariableEvalSizeEnvironment;
+import edu.uci.ics.hyracks.algebricks.core.algebra.expressions.IVariableTypeEnvironment;
+import edu.uci.ics.hyracks.algebricks.core.algebra.expressions.ScalarFunctionCallExpression;
+import edu.uci.ics.hyracks.algebricks.core.algebra.expressions.VariableReferenceExpression;
 import edu.uci.ics.hyracks.algebricks.core.algebra.functions.FunctionIdentifier;
 import edu.uci.ics.hyracks.algebricks.core.algebra.functions.IFunctionInfo;
-import edu.uci.ics.hyracks.algebricks.data.*;
+import edu.uci.ics.hyracks.algebricks.data.IBinaryBooleanInspectorFactory;
+import edu.uci.ics.hyracks.algebricks.data.IBinaryComparatorFactoryProvider;
+import edu.uci.ics.hyracks.algebricks.data.IBinaryHashFunctionFactoryProvider;
+import edu.uci.ics.hyracks.algebricks.data.IBinaryHashFunctionFamilyProvider;
+import edu.uci.ics.hyracks.algebricks.data.IBinaryIntegerInspectorFactory;
+import edu.uci.ics.hyracks.algebricks.data.INormalizedKeyComputerFactoryProvider;
+import edu.uci.ics.hyracks.algebricks.data.IPrinterFactoryProvider;
+import edu.uci.ics.hyracks.algebricks.data.ISerializerDeserializerProvider;
+import edu.uci.ics.hyracks.algebricks.data.ITypeTraitProvider;
 import edu.uci.ics.hyracks.algebricks.runtime.base.ICopyEvaluatorFactory;
 import edu.uci.ics.hyracks.algebricks.runtime.evaluators.ColumnAccessEvalFactory;
 import edu.uci.ics.hyracks.algebricks.runtime.evaluators.ConstantEvalFactory;
@@ -64,17 +348,13 @@ import edu.uci.ics.hyracks.api.dataflow.value.INullWriterFactory;
 import edu.uci.ics.hyracks.api.dataflow.value.IPredicateEvaluatorFactoryProvider;
 import edu.uci.ics.hyracks.api.exceptions.HyracksDataException;
 import edu.uci.ics.hyracks.data.std.util.ArrayBackedValueStorage;
-import edu.uci.ics.hyracks.dataflow.common.data.parsers.*;
+import edu.uci.ics.hyracks.dataflow.common.data.parsers.DoubleParserFactory;
+import edu.uci.ics.hyracks.dataflow.common.data.parsers.FloatParserFactory;
+import edu.uci.ics.hyracks.dataflow.common.data.parsers.IValueParserFactory;
+import edu.uci.ics.hyracks.dataflow.common.data.parsers.IntegerParserFactory;
+import edu.uci.ics.hyracks.dataflow.common.data.parsers.LongParserFactory;
+import edu.uci.ics.hyracks.dataflow.common.data.parsers.UTF8StringParserFactory;
 import edu.uci.ics.hyracks.dataflow.std.file.ITupleParserFactory;
-import org.apache.commons.lang3.mutable.Mutable;
-import org.apache.commons.lang3.mutable.MutableObject;
-
-import java.io.DataOutput;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
 
 public class NonTaggedDataFormat implements IDataFormat {
 
@@ -99,7 +379,6 @@ public class NonTaggedDataFormat implements IDataFormat {
     public NonTaggedDataFormat() {
     }
 
-    @Override
     public void registerRuntimeFunctions() throws AlgebricksException {
 
         if (registered) {
@@ -454,8 +733,8 @@ public class NonTaggedDataFormat implements IDataFormat {
                     fieldFound = true;
                     try {
                         AInt32 ai = new AInt32(i);
-                        AqlSerializerDeserializerProvider.INSTANCE.getSerializerDeserializer(ai.getType()).serialize(ai,
-                                dos);
+                        AqlSerializerDeserializerProvider.INSTANCE.getSerializerDeserializer(ai.getType()).serialize(
+                                ai, dos);
                     } catch (HyracksDataException e) {
                         throw new AlgebricksException(e);
                     }
@@ -557,8 +836,8 @@ public class NonTaggedDataFormat implements IDataFormat {
                     DataOutput dos = abvs.getDataOutput();
                     try {
                         AInt32 ai = new AInt32(i);
-                        AqlSerializerDeserializerProvider.INSTANCE.getSerializerDeserializer(ai.getType()).serialize(ai,
-                                dos);
+                        AqlSerializerDeserializerProvider.INSTANCE.getSerializerDeserializer(ai.getType()).serialize(
+                                ai, dos);
                     } catch (HyracksDataException e) {
                         throw new AlgebricksException(e);
                     }
@@ -715,21 +994,19 @@ public class NonTaggedDataFormat implements IDataFormat {
 
         if (fd.getIdentifier().equals(AsterixBuiltinFunctions.OPEN_RECORD_CONSTRUCTOR)) {
             ARecordType rt = (ARecordType) context.getType(expr);
-            ((OpenRecordConstructorDescriptor) fd).reset(rt, computeOpenFields((AbstractFunctionCallExpression) expr, rt));
+            ((OpenRecordConstructorDescriptor) fd).reset(rt,
+                    computeOpenFields((AbstractFunctionCallExpression) expr, rt));
         }
 
         if (fd.getIdentifier().equals(AsterixBuiltinFunctions.CLOSED_RECORD_CONSTRUCTOR)) {
             ((ClosedRecordConstructorDescriptor) fd).reset((ARecordType) context.getType(expr));
         }
-
         if (fd.getIdentifier().equals(AsterixBuiltinFunctions.ORDERED_LIST_CONSTRUCTOR)) {
             ((OrderedListConstructorDescriptor) fd).reset((AOrderedListType) context.getType(expr));
         }
-
         if (fd.getIdentifier().equals(AsterixBuiltinFunctions.UNORDERED_LIST_CONSTRUCTOR)) {
             ((UnorderedListConstructorDescriptor) fd).reset((AUnorderedListType) context.getType(expr));
         }
-
         if (fd.getIdentifier().equals(AsterixBuiltinFunctions.FIELD_ACCESS_BY_INDEX)) {
             AbstractFunctionCallExpression fce = (AbstractFunctionCallExpression) expr;
             IAType t = (IAType) context.getType(fce.getArguments().get(0).getValue());
@@ -756,7 +1033,6 @@ public class NonTaggedDataFormat implements IDataFormat {
                 }
             }
         }
-
         if (fd.getIdentifier().equals(AsterixBuiltinFunctions.FIELD_ACCESS_NESTED)) {
             AbstractFunctionCallExpression fce = (AbstractFunctionCallExpression) expr;
             IAType t = (IAType) context.getType(fce.getArguments().get(0).getValue());
@@ -917,22 +1193,25 @@ public class NonTaggedDataFormat implements IDataFormat {
     @Override
     public ITupleParserFactory createTupleParser(ARecordType recType, boolean delimitedFormat, char delimiter,
             char quote, boolean hasHeader) {
+        Map<String, String> conf = new HashMap<String, String>();
+        AsterixTupleParserFactory.InputDataFormat inputFormat = null;
         if (delimitedFormat) {
-            int n = recType.getFieldTypes().length;
-            IValueParserFactory[] fieldParserFactories = new IValueParserFactory[n];
-            for (int i = 0; i < n; i++) {
-                ATypeTag tag = recType.getFieldTypes()[i].getTypeTag();
-                IValueParserFactory vpf = typeToValueParserFactMap.get(tag);
-                if (vpf == null) {
-                    throw new NotImplementedException("No value parser factory for delimited fields of type " + tag);
-                }
-                fieldParserFactories[i] = vpf;
-            }
-            return new NtDelimitedDataTupleParserFactory(recType, fieldParserFactories, delimiter, quote, hasHeader);
+            conf.put(AsterixTupleParserFactory.KEY_FORMAT, AsterixTupleParserFactory.FORMAT_DELIMITED_TEXT);
+            conf.put(AsterixTupleParserFactory.KEY_DELIMITER, "" + delimiter);
+            inputFormat = InputDataFormat.DELIMITED;
         } else {
-            return new AdmSchemafullRecordParserFactory(recType);
+            conf.put(AsterixTupleParserFactory.KEY_FORMAT, AsterixTupleParserFactory.FORMAT_ADM);
+            inputFormat = InputDataFormat.ADM;
         }
+
+        if (hasHeader) {
+            conf.put(AsterixTupleParserFactory.HAS_HEADER,
+                    hasHeader ? Boolean.TRUE.toString() : Boolean.FALSE.toString());
+        }
+        conf.put(AsterixTupleParserFactory.KEY_QUOTE, "" + quote);
+        return new AsterixTupleParserFactory(conf, recType, inputFormat);
     }
+
 
     @Override
     public INullWriterFactory getNullWriterFactory() {
