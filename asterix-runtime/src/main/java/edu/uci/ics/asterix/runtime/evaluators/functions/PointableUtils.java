@@ -16,7 +16,6 @@ import edu.uci.ics.hyracks.data.std.accessors.PointableBinaryComparatorFactory;
 import edu.uci.ics.hyracks.data.std.api.IMutableValueStorage;
 import edu.uci.ics.hyracks.data.std.api.IValueReference;
 import edu.uci.ics.hyracks.data.std.primitive.UTF8StringPointable;
-import edu.uci.ics.hyracks.data.std.util.ArrayBackedValueStorage;
 import edu.uci.ics.hyracks.data.std.util.ByteArrayAccessibleOutputStream;
 import edu.uci.ics.hyracks.dataflow.common.data.marshalling.UTF8StringSerializerDeserializer;
 
@@ -25,31 +24,29 @@ import java.io.DataInputStream;
 import java.io.DataOutput;
 import java.io.IOException;
 
-public class RecordManipulationUtils {
+public class PointableUtils {
+
     static final ByteArrayAccessibleOutputStream outputStream = new ByteArrayAccessibleOutputStream();
     static final DataInputStream dis = new DataInputStream(
             new ByteArrayInputStream(outputStream.getByteArray()));
 
-    public static final RecordManipulationUtils INSTANCE = new RecordManipulationUtils();
-
-    private static final byte SER_ORDEREDLIST_TYPE_TAG = ATypeTag.ORDEREDLIST.serialize();
     private static final byte SER_NULL_TYPE_TAG = ATypeTag.NULL.serialize();
 
     @SuppressWarnings("unchecked")
     public static final ISerializerDeserializer<ANull> NULL_SERDE = AqlSerializerDeserializerProvider.INSTANCE
             .getSerializerDeserializer(BuiltinType.ANULL);
 
-    private static final IBinaryComparator UTF8STR_COMPARATOR = PointableBinaryComparatorFactory
+    private static final IBinaryComparator STRING_BINARY_COMPARATOR = PointableBinaryComparatorFactory
             .of(UTF8StringPointable.FACTORY).createBinaryComparator();
 
-    private final ArrayBackedValueStorage stringBuffer = new ArrayBackedValueStorage();
+    public static final PointableUtils INSTANCE = new PointableUtils();
 
-    private RecordManipulationUtils(){
+    private PointableUtils(){
     }
 
     public static boolean compare(IValueReference a, IValueReference b) throws HyracksDataException {
         // start+1 and len-1 due to the type tag
-        return (UTF8STR_COMPARATOR.compare(a.getByteArray(), a.getStartOffset() + 1, a.getLength() - 1,
+        return (STRING_BINARY_COMPARATOR.compare(a.getByteArray(), a.getStartOffset() + 1, a.getLength() - 1,
                 b.getByteArray(), b.getStartOffset() + 1, b.getLength() - 1)==0);
     }
 
@@ -113,15 +110,22 @@ public class RecordManipulationUtils {
         return false;
     }
 
-    public static boolean checkConflict(IVisitablePointable fieldNamePointable, ARecordPointable recordPointerRight) {
-        for (int i = 0; i < recordPointerRight.getFieldNames().size(); ++i) {
-            IVisitablePointable fp = recordPointerRight.getFieldNames().get(i);
+    public static boolean isFieldName(ARecordPointable recordPointer, IVisitablePointable fieldNamePointable) {
+        int fieldPosition = getFieldNamePosition(recordPointer, fieldNamePointable);
+
+        return (fieldPosition>-1);
+    }
+
+    public static int getFieldNamePosition(ARecordPointable recordPointer, IVisitablePointable fieldNamePointable) {
+        for (int i = 0; i < recordPointer.getFieldNames().size(); ++i) {
+            IVisitablePointable fp = recordPointer.getFieldNames().get(i);
             if (fp.equals(fieldNamePointable)) {
-                return true;
+                return i;
             }
         }
-        return false;
+        return -1;
     }
+
 
     public static UTF8StringPointable serializeString(String str, IMutableValueStorage vs) throws AlgebricksException {
         UTF8StringPointable fnp = (UTF8StringPointable) UTF8StringPointable.FACTORY.createPointable();

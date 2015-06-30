@@ -90,8 +90,6 @@ public class RecordAddFieldsDescriptor  extends AbstractScalarFunctionDynamicDes
                 final ISerializerDeserializer<AString> stringSerde = AqlSerializerDeserializerProvider.INSTANCE
                         .getSerializerDeserializer(BuiltinType.ASTRING);
 
-                final RecordManipulationUtils recManUtils = RecordManipulationUtils.INSTANCE;
-
                 final ArrayBackedValueStorage fieldNamePointer = new ArrayBackedValueStorage();
                 final ArrayBackedValueStorage fieldValuePointer = new ArrayBackedValueStorage();
                 try {
@@ -115,7 +113,8 @@ public class RecordAddFieldsDescriptor  extends AbstractScalarFunctionDynamicDes
                         eval0.evaluate(tuple);
                         eval1.evaluate(tuple);
 
-                        if (recManUtils.isNullRecord(abvs0, out) || recManUtils.isNullRecord(abvs1, out)) {
+                        if (PointableUtils.INSTANCE.isNullRecord(abvs0, out) ||
+                                PointableUtils.INSTANCE.isNullRecord(abvs1, out)) {
                             return;
                         }
 
@@ -136,7 +135,7 @@ public class RecordAddFieldsDescriptor  extends AbstractScalarFunctionDynamicDes
 
                     private void addField(IVisitablePointable fieldNamePointable,
                             IVisitablePointable fieldValuePointable) throws IOException, AsterixException {
-                        String fieldName = recManUtils.getFieldName(fieldNamePointable);
+                        String fieldName = PointableUtils.INSTANCE.getFieldName(fieldNamePointable);
                         if (recType.isClosedField(fieldName)) {
                             int position = recType.findFieldPosition(fieldName);
                             recordBuilder.addField(position, fieldValuePointable);
@@ -160,11 +159,10 @@ public class RecordAddFieldsDescriptor  extends AbstractScalarFunctionDynamicDes
                         // Get the fields from a list of record
                         List<IVisitablePointable> inputFields = listPointable.getItems();
 
-                        for (int i = 0; i < inputFields.size(); ++i) {
-                            IVisitablePointable fieldRecPointer = inputFields.get(i);
-                            if(!recManUtils.isType(ATypeTag.RECORD, fieldRecPointer)) {
+                        for(IVisitablePointable fieldRecPointer: inputFields)  {
+                            if(!PointableUtils.isType(ATypeTag.RECORD, fieldRecPointer)) {
                                 throw new AlgebricksException("Expected list of record, got " +
-                                        recManUtils.getTypeTag(fieldRecPointer));
+                                        PointableUtils.getTypeTag(fieldRecPointer));
                             }
 
                             List<IVisitablePointable> names = ((ARecordPointable)fieldRecPointer).getFieldNames();
@@ -178,15 +176,15 @@ public class RecordAddFieldsDescriptor  extends AbstractScalarFunctionDynamicDes
                             for(int j=0; j<names.size(); j++) {
                                 IVisitablePointable fieldName = names.get(j);
                                 // if fieldName is "field-name" then read the name
-                                if (recManUtils.byteArrayEqual(fieldNamePointer, fieldName)) {
+                                if (PointableUtils.byteArrayEqual(fieldNamePointer, fieldName)) {
                                     namePointable = values.get(j);
                                 } else { // otherwise the fieldName is "field-value". Thus, read the value
                                     valuePointable = values.get(j);
                                 }
                             }
 
-                            // TODO Nested type support
-                            if (!recManUtils.checkConflict(namePointable, inputRecordPointer)) {
+                            // TODO Add Nested type support
+                            if (!PointableUtils.isFieldName(inputRecordPointer, namePointable)) {
                                 if(namePointable != null && valuePointable != null) {
                                     addField(namePointable, valuePointable);
                                 }

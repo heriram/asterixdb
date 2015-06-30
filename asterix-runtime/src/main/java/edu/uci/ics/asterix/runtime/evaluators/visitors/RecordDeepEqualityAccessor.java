@@ -6,7 +6,6 @@ import edu.uci.ics.asterix.dataflow.data.nontagged.hash.ListItemBinaryHashFuncti
 import edu.uci.ics.asterix.om.pointables.AFlatValuePointable;
 import edu.uci.ics.asterix.om.pointables.AListPointable;
 import edu.uci.ics.asterix.om.pointables.ARecordPointable;
-import edu.uci.ics.asterix.om.pointables.PointableAllocator;
 import edu.uci.ics.asterix.om.pointables.base.IVisitablePointable;
 import edu.uci.ics.asterix.om.types.ATypeTag;
 import edu.uci.ics.asterix.runtime.evaluators.functions.BinaryHashMap;
@@ -31,8 +30,6 @@ class RecordDeepEqualityAccessor {
     private BinaryHashMap hashMap = new BinaryHashMap(TABLE_SIZE, TABLE_FRAME_SIZE, putHashFunc, getHashFunc, cmp);
     private BinaryHashMap.BinaryEntry keyEntry = new BinaryHashMap.BinaryEntry();
     private BinaryHashMap.BinaryEntry valEntry = new BinaryHashMap.BinaryEntry();
-
-    private final PointableAllocator pointableAllocator = new PointableAllocator();
 
     public RecordDeepEqualityAccessor() {
         byte[] emptyValBuf = new byte[8];

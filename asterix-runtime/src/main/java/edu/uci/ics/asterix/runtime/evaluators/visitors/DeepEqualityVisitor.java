@@ -7,7 +7,7 @@ import edu.uci.ics.asterix.om.pointables.ARecordPointable;
 import edu.uci.ics.asterix.om.pointables.base.IVisitablePointable;
 import edu.uci.ics.asterix.om.pointables.visitor.IVisitablePointableVisitor;
 import edu.uci.ics.asterix.om.types.ATypeTag;
-import edu.uci.ics.asterix.om.types.EnumDeserializer;
+import edu.uci.ics.asterix.runtime.evaluators.functions.PointableUtils;
 import edu.uci.ics.hyracks.algebricks.common.utils.Pair;
 import edu.uci.ics.hyracks.api.exceptions.HyracksDataException;
 import edu.uci.ics.hyracks.data.std.api.IValueReference;
@@ -16,8 +16,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class DeepEqualityVisitor implements IVisitablePointableVisitor<Void, Pair<IVisitablePointable, Boolean>> {
-    private final Map<IVisitablePointable, ListDeepEqualityAccessor> laccessorToEqulity = new HashMap<IVisitablePointable, ListDeepEqualityAccessor>();
-    private final Map<IVisitablePointable, RecordDeepEqualityAccessor> raccessorToEquality = new HashMap<IVisitablePointable, RecordDeepEqualityAccessor>();
+    private final Map<IVisitablePointable, ListDeepEqualityAccessor> laccessorToEqulity =
+            new HashMap<IVisitablePointable, ListDeepEqualityAccessor>();
+    private final Map<IVisitablePointable, RecordDeepEqualityAccessor> raccessorToEquality =
+            new HashMap<IVisitablePointable, RecordDeepEqualityAccessor>();
 
 
     @Override public Void visit(AListPointable accessor, Pair<IVisitablePointable, Boolean> arg)
@@ -81,32 +83,11 @@ public class DeepEqualityVisitor implements IVisitablePointableVisitor<Void, Pai
 
     public boolean byteArrayEqual(IValueReference valueRef1, IValueReference valueRef2, int dataOffset) throws
             HyracksDataException {
-        if (valueRef1 == null || valueRef2 == null) return false;
-        if (valueRef1 == valueRef2) return true;
-
-        int length1 = valueRef1.getLength();
-        int length2 = valueRef2.getLength();
-
-        if (length1 != length2) return false;
-
-        byte[] bytes1 = valueRef1.getByteArray();
-        byte[] bytes2 = valueRef2.getByteArray();
-        int start1 = valueRef1.getStartOffset() + dataOffset;
-        int start2 = valueRef2.getStartOffset() + dataOffset;
-
-        int end = start1+length1-dataOffset;
-
-        for (int i=start1, j=start2; i<end; i++,j++) {
-            if (bytes1[i] != bytes2[j]) return false;
-        }
-
-        return true;
+        return PointableUtils.INSTANCE.byteArrayEqual(valueRef1, valueRef2, dataOffset);
     }
 
     public ATypeTag getTypeTag(IVisitablePointable visitablePointable) {
-        byte[] bytes = visitablePointable.getByteArray();
-        int s = visitablePointable.getStartOffset();
-        return EnumDeserializer.ATYPETAGDESERIALIZER.deserialize(bytes[s]);
+        return PointableUtils.INSTANCE.getTypeTag(visitablePointable);
     }
 
 }
