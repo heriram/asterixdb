@@ -3,7 +3,6 @@ package edu.uci.ics.asterix.runtime.evaluators.functions;
 import edu.uci.ics.asterix.dataflow.data.nontagged.serde.AStringSerializerDeserializer;
 import edu.uci.ics.asterix.formats.nontagged.AqlSerializerDeserializerProvider;
 import edu.uci.ics.asterix.om.base.ANull;
-import edu.uci.ics.asterix.om.functions.AsterixBuiltinFunctions;
 import edu.uci.ics.asterix.om.pointables.ARecordPointable;
 import edu.uci.ics.asterix.om.pointables.base.IVisitablePointable;
 import edu.uci.ics.asterix.om.types.ATypeTag;
@@ -37,10 +36,10 @@ public class RecordManipulationUtils {
     private static final byte SER_NULL_TYPE_TAG = ATypeTag.NULL.serialize();
 
     @SuppressWarnings("unchecked")
-    private final ISerializerDeserializer<ANull> nullSerDe = AqlSerializerDeserializerProvider.INSTANCE
+    public static final ISerializerDeserializer<ANull> NULL_SERDE = AqlSerializerDeserializerProvider.INSTANCE
             .getSerializerDeserializer(BuiltinType.ANULL);
 
-    private final IBinaryComparator fieldNameComparator = PointableBinaryComparatorFactory
+    private static final IBinaryComparator UTF8STR_COMPARATOR = PointableBinaryComparatorFactory
             .of(UTF8StringPointable.FACTORY).createBinaryComparator();
 
     private final ArrayBackedValueStorage stringBuffer = new ArrayBackedValueStorage();
@@ -48,16 +47,17 @@ public class RecordManipulationUtils {
     private RecordManipulationUtils(){
     }
 
-    public boolean compare(IValueReference a, IValueReference b) throws HyracksDataException {
+    public static boolean compare(IValueReference a, IValueReference b) throws HyracksDataException {
         // start+1 and len-1 due to the type tag
-        String s1 = new String(a.getByteArray(), a.getStartOffset() + 1, a.getLength() - 1);
-        String s2 = new String(b.getByteArray(), b.getStartOffset() + 1, b.getLength() - 1);
-
-        return (fieldNameComparator.compare(a.getByteArray(), a.getStartOffset() + 1, a.getLength() - 1,
+        return (UTF8STR_COMPARATOR.compare(a.getByteArray(), a.getStartOffset() + 1, a.getLength() - 1,
                 b.getByteArray(), b.getStartOffset() + 1, b.getLength() - 1)==0);
     }
 
-    public boolean byteArrayEqual(IValueReference valueRef1, IValueReference valueRef2) throws HyracksDataException {
+    public static boolean byteArrayEqual(IValueReference valueRef1, IValueReference valueRef2) throws HyracksDataException {
+        return byteArrayEqual(valueRef1, valueRef2, 3);
+    }
+
+    public static boolean byteArrayEqual(IValueReference valueRef1, IValueReference valueRef2, int dataOffset) throws HyracksDataException {
         if (valueRef1 == null || valueRef2 == null) return false;
         if (valueRef1 == valueRef2) return true;
 
@@ -68,10 +68,10 @@ public class RecordManipulationUtils {
 
         byte[] bytes1 = valueRef1.getByteArray();
         byte[] bytes2 = valueRef2.getByteArray();
-        int start1 = valueRef1.getStartOffset()+3;
-        int start2 = valueRef2.getStartOffset()+3;
+        int start1 = valueRef1.getStartOffset() + dataOffset;
+        int start2 = valueRef2.getStartOffset() + dataOffset;
 
-        int end = start1+length1-3;
+        int end = start1+length1-dataOffset;
 
         for (int i=start1, j=start2; i<end; i++,j++) {
             if (bytes1[i] != bytes2[j]) return false;
@@ -89,28 +89,21 @@ public class RecordManipulationUtils {
         return AStringSerializerDeserializer.INSTANCE.deserialize(dis).getStringValue();
     }
 
-    public boolean isType(ATypeTag typeTag, IVisitablePointable visitablePointable) {
+    public static boolean isType(ATypeTag typeTag, IVisitablePointable visitablePointable) {
         return (getTypeTag(visitablePointable)==typeTag);
     }
 
-    public ATypeTag getTypeTag(IVisitablePointable visitablePointable) {
+    public static ATypeTag getTypeTag(IVisitablePointable visitablePointable) {
         byte[] bytes = visitablePointable.getByteArray();
         int s = visitablePointable.getStartOffset();
         return EnumDeserializer.ATYPETAGDESERIALIZER.deserialize(bytes[s]);
     }
 
-    public void validateInputList(byte typeByte) throws AlgebricksException {
-        if (typeByte != SER_ORDEREDLIST_TYPE_TAG) {
-            throw new AlgebricksException(AsterixBuiltinFunctions.REMOVE_FIELDS.getName()
-                    + ": expects input type ORDEREDLIST, but got "
-                    + EnumDeserializer.ATYPETAGDESERIALIZER.deserialize(typeByte));
-        }
-    }
 
     public boolean isNullRecord(IMutableValueStorage abvs, DataOutput output) throws AlgebricksException {
         if (abvs.getByteArray()[0] == SER_NULL_TYPE_TAG) {
             try {
-                nullSerDe.serialize(ANull.NULL, output);
+                NULL_SERDE.serialize(ANull.NULL, output);
             } catch (HyracksDataException e) {
                 throw new AlgebricksException(e);
             }
@@ -120,7 +113,7 @@ public class RecordManipulationUtils {
         return false;
     }
 
-    public boolean checkConflict(IVisitablePointable fieldNamePointable, ARecordPointable recordPointerRight) {
+    public static boolean checkConflict(IVisitablePointable fieldNamePointable, ARecordPointable recordPointerRight) {
         for (int i = 0; i < recordPointerRight.getFieldNames().size(); ++i) {
             IVisitablePointable fp = recordPointerRight.getFieldNames().get(i);
             if (fp.equals(fieldNamePointable)) {
@@ -130,15 +123,15 @@ public class RecordManipulationUtils {
         return false;
     }
 
-    public UTF8StringPointable serializeString(String str) throws AlgebricksException {
+    public static UTF8StringPointable serializeString(String str, IMutableValueStorage vs) throws AlgebricksException {
         UTF8StringPointable fnp = (UTF8StringPointable) UTF8StringPointable.FACTORY.createPointable();
-        stringBuffer.reset();
+        vs.reset();
         try {
-            UTF8StringSerializerDeserializer.INSTANCE.serialize(str, stringBuffer.getDataOutput());
+            UTF8StringSerializerDeserializer.INSTANCE.serialize(str, vs.getDataOutput());
         } catch (HyracksDataException e) {
             throw new AlgebricksException("Could not serialize " + str);
         }
-        fnp.set(stringBuffer);
+        fnp.set(vs);
         return fnp;
     }
 }

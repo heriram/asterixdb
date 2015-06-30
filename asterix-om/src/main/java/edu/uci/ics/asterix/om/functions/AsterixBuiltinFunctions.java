@@ -89,13 +89,16 @@ public class AsterixBuiltinFunctions {
     public final static FunctionIdentifier UNORDERED_LIST_CONSTRUCTOR = new FunctionIdentifier(
             FunctionConstants.ASTERIX_NS, "unordered-list-constructor", FunctionIdentifier.VARARGS);
 
+    public final static FunctionIdentifier DEEP_EQUAL = new FunctionIdentifier(FunctionConstants.ASTERIX_NS,
+            "deep-equal", 2);
+
     // records
     public final static FunctionIdentifier RECORD_MERGE = new FunctionIdentifier(FunctionConstants.ASTERIX_NS,
             "record-merge", 2);
     public final static FunctionIdentifier REMOVE_FIELDS = new FunctionIdentifier(FunctionConstants.ASTERIX_NS,
-            "remove-fields", 2);
+            "record-remove-fields", 2);
     public final static FunctionIdentifier ADD_FIELDS = new FunctionIdentifier(FunctionConstants.ASTERIX_NS,
-            "add-fields", 2);
+            "record-add-fields", 2);
 
     public final static FunctionIdentifier CLOSED_RECORD_CONSTRUCTOR = new FunctionIdentifier(
             FunctionConstants.ASTERIX_NS, "closed-record-constructor", FunctionIdentifier.VARARGS);
@@ -662,6 +665,9 @@ public class AsterixBuiltinFunctions {
         addPrivateFunction(NEQ, BinaryBooleanOrNullFunctionTypeComputer.INSTANCE, true);
         addPrivateFunction(OR, BinaryBooleanOrNullFunctionTypeComputer.INSTANCE, true);
         addPrivateFunction(NUMERIC_ADD, NonTaggedNumericAddSubMulDivTypeComputer.INSTANCE, true);
+
+        // Deep equality
+        addFunction(DEEP_EQUAL, BinaryBooleanOrNullFunctionTypeComputer.INSTANCE, true);
 
         // and then, Asterix builtin functions
         addPrivateFunction(NOT_NULL, NotNullTypeComputer.INSTANCE, true);

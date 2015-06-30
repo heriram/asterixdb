@@ -271,6 +271,8 @@ public class NonTaggedDataFormat implements IDataFormat {
         temp.add(AYearMonthDurationConstructorDescriptor.FACTORY);
         temp.add(ADayTimeDurationConstructorDescriptor.FACTORY);
 
+        temp.add(DeepEqualityDescriptor.FACTORY);
+
         temp.add(CreateUUIDDescriptor.FACTORY);
         // Spatial
         temp.add(CreatePointDescriptor.FACTORY);
@@ -638,6 +640,14 @@ public class NonTaggedDataFormat implements IDataFormat {
                 }
                 ((ListifyAggregateDescriptor) fd).reset(new AOrderedListType(itemType, null));
             }
+        }
+
+        if (fd.getIdentifier().equals(AsterixBuiltinFunctions.DEEP_EQUAL)) {
+            AbstractFunctionCallExpression f = (AbstractFunctionCallExpression) expr;
+            IAType outType = (IAType) context.getType(expr);
+            IAType type0 = (IAType) context.getType(f.getArguments().get(0).getValue());
+            IAType type1 = (IAType) context.getType(f.getArguments().get(1).getValue());
+            ((DeepEqualityDescriptor) fd).reset(type0, type1);
         }
 
         if (fd.getIdentifier().equals(AsterixBuiltinFunctions.RECORD_MERGE)) {
