@@ -14,17 +14,6 @@
  */
 package edu.uci.ics.asterix.runtime.formats;
 
-import java.io.DataOutput;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import org.apache.commons.lang3.mutable.Mutable;
-import org.apache.commons.lang3.mutable.MutableObject;
-
 import edu.uci.ics.asterix.common.config.GlobalConfig;
 import edu.uci.ics.asterix.common.exceptions.AsterixRuntimeException;
 import edu.uci.ics.asterix.common.parse.IParseFileSplitsDecl;
@@ -182,6 +171,7 @@ import edu.uci.ics.asterix.runtime.evaluators.functions.CreatePointDescriptor;
 import edu.uci.ics.asterix.runtime.evaluators.functions.CreatePolygonDescriptor;
 import edu.uci.ics.asterix.runtime.evaluators.functions.CreateRectangleDescriptor;
 import edu.uci.ics.asterix.runtime.evaluators.functions.CreateUUIDDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.DeepEqualityDescriptor;
 import edu.uci.ics.asterix.runtime.evaluators.functions.EditDistanceCheckDescriptor;
 import edu.uci.ics.asterix.runtime.evaluators.functions.EditDistanceContainsDescriptor;
 import edu.uci.ics.asterix.runtime.evaluators.functions.EditDistanceDescriptor;
@@ -222,7 +212,9 @@ import edu.uci.ics.asterix.runtime.evaluators.functions.OpenRecordConstructorDes
 import edu.uci.ics.asterix.runtime.evaluators.functions.OrDescriptor;
 import edu.uci.ics.asterix.runtime.evaluators.functions.OrderedListConstructorDescriptor;
 import edu.uci.ics.asterix.runtime.evaluators.functions.PrefixLenJaccardDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.RecordAddFieldsDescriptor;
 import edu.uci.ics.asterix.runtime.evaluators.functions.RecordMergeDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.RecordRemoveFieldsDescriptor;
 import edu.uci.ics.asterix.runtime.evaluators.functions.RegExpDescriptor;
 import edu.uci.ics.asterix.runtime.evaluators.functions.SimilarityJaccardCheckDescriptor;
 import edu.uci.ics.asterix.runtime.evaluators.functions.SimilarityJaccardDescriptor;
@@ -355,6 +347,16 @@ import edu.uci.ics.hyracks.dataflow.common.data.parsers.IntegerParserFactory;
 import edu.uci.ics.hyracks.dataflow.common.data.parsers.LongParserFactory;
 import edu.uci.ics.hyracks.dataflow.common.data.parsers.UTF8StringParserFactory;
 import edu.uci.ics.hyracks.dataflow.std.file.ITupleParserFactory;
+import org.apache.commons.lang3.mutable.Mutable;
+import org.apache.commons.lang3.mutable.MutableObject;
+
+import java.io.DataOutput;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class NonTaggedDataFormat implements IDataFormat {
 
