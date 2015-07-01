@@ -1,11 +1,5 @@
 package edu.uci.ics.asterix.external.library.java;
 
-import java.io.ByteArrayInputStream;
-import java.io.DataInputStream;
-import java.io.UnsupportedEncodingException;
-import java.util.LinkedHashMap;
-import java.util.List;
-
 import edu.uci.ics.asterix.common.exceptions.AsterixException;
 import edu.uci.ics.asterix.dataflow.data.nontagged.serde.ABooleanSerializerDeserializer;
 import edu.uci.ics.asterix.dataflow.data.nontagged.serde.ACircleSerializerDeserializer;
@@ -49,7 +43,6 @@ import edu.uci.ics.asterix.external.library.java.JObjects.JRectangle;
 import edu.uci.ics.asterix.external.library.java.JObjects.JString;
 import edu.uci.ics.asterix.external.library.java.JObjects.JTime;
 import edu.uci.ics.asterix.external.library.java.JObjects.JUnorderedList;
-import edu.uci.ics.asterix.external.util.TweetProcessor;
 import edu.uci.ics.asterix.om.base.ACircle;
 import edu.uci.ics.asterix.om.base.ADuration;
 import edu.uci.ics.asterix.om.base.ALine;
@@ -70,6 +63,11 @@ import edu.uci.ics.asterix.om.types.IAType;
 import edu.uci.ics.asterix.om.util.container.IObjectPool;
 import edu.uci.ics.hyracks.algebricks.common.exceptions.AlgebricksException;
 import edu.uci.ics.hyracks.api.exceptions.HyracksDataException;
+
+import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
+import java.util.LinkedHashMap;
+import java.util.List;
 
 public class JObjectAccessors {
 
@@ -220,9 +218,10 @@ public class JObjectAccessors {
             v = AStringSerializerDeserializer.INSTANCE.deserialize(
                     new DataInputStream(new ByteArrayInputStream(b, s+1, l-1))).getStringValue();
             //v = new String(b, s+1, l, "UTF-8");
-            TweetProcessor.getNormalizedString(v);
+            JObjectUtil.getNormalizedString(v);
+
             IJObject jObject = objectPool.allocate(BuiltinType.ASTRING);
-            ((JString) jObject).setValue(TweetProcessor.getNormalizedString(v));
+            ((JString) jObject).setValue(JObjectUtil.getNormalizedString(v));
             return jObject;
         }
     }
@@ -542,8 +541,8 @@ public class JObjectAccessors {
                             throw new IllegalArgumentException("Cannot parse list item of type "
                                     + listType.getTypeTag());
                         default:
-                            typeInfo.reset(((AbstractCollectionType) listType).getItemType(),
-                                    ((AbstractCollectionType) listType).getTypeTag());
+                            IAType itemType = ((AbstractCollectionType) listType).getItemType();
+                            typeInfo.reset(itemType, itemType.getTypeTag());
                             listItem = pointableVisitor.visit((AFlatValuePointable) itemPointable, typeInfo);
 
                     }
