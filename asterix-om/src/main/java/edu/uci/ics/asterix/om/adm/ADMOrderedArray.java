@@ -45,11 +45,8 @@ import java.util.Collection;
  * if they are not the reserved words <code>true</code>, <code>false</code>, or
  * <code>null</code>.</li>
  * </ul>
- *
- * @author ADM.org
- * @version 2014-05-03
  */
-public class ADMOrderedArray extends ADMArray{
+public class ADMOrderedArray extends AbstractADMArray{
     
 	public ADMOrderedArray(Collection<Object> value) {
 		this.init(value);
@@ -60,7 +57,7 @@ public class ADMOrderedArray extends ADMArray{
 	}
 	
     /**
-     * Construct a ADMArray from an array
+     * Construct a ADMOrderedArray from an array
      *
      * @throws ADMException
      *             If not an array.
@@ -83,7 +80,7 @@ public class ADMOrderedArray extends ADMArray{
         
         if ( x.nextClean() != '[' ) {
         	x.back();
-    		throw x.syntaxError("A ADMOrderedArray text must start with '[' or '{{'");
+    		throw x.syntaxError("A ADMOrderedArray text must start with '['");
         }
         
         if (x.nextClean() != ']') {
@@ -127,20 +124,20 @@ public class ADMOrderedArray extends ADMArray{
     }
 
     /**
-     * Put a value in the ADMArray, where the value will be a ADMArray which
+     * Put a value in the AbstractADMArray, where the value will be a AbstractADMArray which
      * is produced from a Collection.
      *
      * @param value
      *            A Collection value.
      * @return this.
      */
-    public ADMArray put(Collection<Object> value) {
+    public AbstractADMArray put(Collection<Object> value) {
         this.put(new ADMOrderedArray(value));
         return this;
     }
     
     /**
-     * Put a value in the ADMArray, where the value will be a ADMArray which
+     * Put a value in the AbstractADMArray, where the value will be a AbstractADMArray which
      * is produced from a Collection.
      *
      * @param index
@@ -151,7 +148,7 @@ public class ADMOrderedArray extends ADMArray{
      * @throws ADMException
      *             If the index is negative or if the value is not finite.
      */
-    public ADMArray put(int index, Collection<Object> value) throws ADMException {
+    public AbstractADMArray put(int index, Collection<Object> value) throws ADMException {
         this.put(index, new ADMOrderedArray(value));
         return this;
     }

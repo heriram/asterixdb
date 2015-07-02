@@ -49,8 +49,6 @@ import java.util.Set;
  * <li>Strings do not need to be quoted at all if they do not begin with a quote or single quote, and if they do not contain leading or trailing spaces, and if they do not contain any of these characters: <code>{ } [ ] / \ : , #</code> and if they do not look like numbers and if they are not the reserved words <code>true</code>, <code>false</code>, or <code>null</code>.</li>
  * </ul>
  *
- * @author ADM.org
- * @version 2014-05-03
  */
 public class ADMObject {
     public static final Character[] WHITE_SPACES = new Character[] { '\b', '\f', '\t', '\n', '\r', ' ' };
@@ -511,7 +509,7 @@ public class ADMObject {
      * @throws ADMException
      *             if the key is not found or if the value is not a ADMArray.
      */
-    public ADMArray getADMArray(String key) throws ADMException {
+    public AbstractADMArray getADMArray(String key) throws ADMException {
         Object object = this.get(key);
         if (object instanceof ADMOrderedArray) {
             return (ADMOrderedArray) object;
@@ -857,7 +855,7 @@ public class ADMObject {
      *            A key string.
      * @return A ADMArray which is the value.
      */
-    public ADMArray optADMArray(String key) {
+    public AbstractADMArray optADMArray(String key) {
         Object o = this.opt(key);
 
         if (o instanceof ADMUnorderedArray)

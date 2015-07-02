@@ -1,11 +1,11 @@
 package edu.uci.ics.asterix.om.adm;
 
 /**
- * The ADMException is thrown by the ADM.org classes when things are amiss.
+ * The ADMException is thrown by the ADM classes.
  * This class is made based on the JSON Java package
  *
  * @author Heri Ramampiaro
- * @version 2014-10-16
+ * @version 1.0.0
  */
 public class ADMException extends RuntimeException {
     private static final long serialVersionUID = 0;

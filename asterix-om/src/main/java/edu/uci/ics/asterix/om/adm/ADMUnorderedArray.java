@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.io.Writer;
 import java.util.Collection;
 
-public class ADMUnorderedArray extends ADMArray {
+public class ADMUnorderedArray extends AbstractADMArray {
 	
 	public ADMUnorderedArray() {
 		this.init();
@@ -15,7 +15,7 @@ public class ADMUnorderedArray extends ADMArray {
 	}
 	    
     /**
-     * Construct a ADMArray from an array
+     * Construct an ADMUnorderedArray from an array
      *
      * @throws ADMException
      *             If not an array.
@@ -25,7 +25,7 @@ public class ADMUnorderedArray extends ADMArray {
     }
     
 	/**
-	 * Construct a ADMArray from a ADMTokener.
+	 * Construct a ADMUnorderedArray from a ADMTokener.
 	 *
 	 * @param x
 	 *            A ADMTokener
@@ -37,11 +37,11 @@ public class ADMUnorderedArray extends ADMArray {
 	        
 		 if (x.nextClean() != '{') {
 			x.back();
- 			throw x.syntaxError("An Open ADMArray text must start with '{{'");
+ 			throw x.syntaxError("An Open ADMUnorderedArray text must start with '{{'");
 		 } else if(x.nextClean() != '{') {
 			x.back(); // Because of the first check
 			x.back();
-			throw x.syntaxError("An Open ADMArray text must start with '{{'");
+			throw x.syntaxError("An Open ADMUnorderedArray text must start with '{{'");
 		 } 
         
         if (x.nextClean() != '}') {
@@ -74,7 +74,7 @@ public class ADMUnorderedArray extends ADMArray {
     }
 
 	/**
-     * Construct a ADMArray from a source ADM text.
+     * Construct a ADMUnorderedArray from a source ADM text.
      *
      * @param source
      *            A string that begins with <code>[</code>&nbsp;<small>(left
@@ -88,7 +88,7 @@ public class ADMUnorderedArray extends ADMArray {
     }
     
     /**
-     * Put a value in the ADMArray, where the value will be a ADMArray which
+     * Put a value in the ADMUnorderedArray, where the value will be a ADMUnorderedArray which
      * is produced from a Collection.
      *
      * @param value
@@ -97,13 +97,13 @@ public class ADMUnorderedArray extends ADMArray {
      * @throws ADMException
      *             If the index is negative or if the value is not finite.
      */
-    public ADMArray put(Collection<Object> value) {
+    public AbstractADMArray put(Collection<Object> value) {
         this.put(new ADMUnorderedArray(value));
         return this;
     }
     
     /**
-     * Put a value in the ADMArray, where the value will be a ADMArray which
+     * Put a value in the ADMUnorderedArray, where the value will be a ADMUnorderedArray which
      * is produced from a Collection.
      *
      * @param index
@@ -114,13 +114,13 @@ public class ADMUnorderedArray extends ADMArray {
      * @throws ADMException
      *             If the index is negative or if the value is not finite.
      */
-    public ADMArray put(int index, Collection<Object> value) throws ADMException {
+    public AbstractADMArray put(int index, Collection<Object> value) throws ADMException {
         this.put(index, new ADMUnorderedArray(value));
         return this;
     }
     
     /**
-     * Write the contents of the ADMArray as ADM text to a writer. For
+     * Write the contents of the ADMUnorderedArray as ADM text to a writer. For
      * compactness, no whitespace is added.
      * <p>
      * Warning: This method assumes that the data structure is acyclical.

@@ -29,8 +29,7 @@ import java.io.Writer;
  * you. Objects and arrays can be nested up to 20 levels deep.
  * <p>
  * This can sometimes be easier than using a ADMObject to build a string.
- * @author ADM.org
- * @version 2011-11-24
+ *
  */
 public class ADMWriter {
     private static final int maxdepth = 200;
@@ -44,6 +43,7 @@ public class ADMWriter {
     /**
      * The current mode. Values:
      * 'a' (array),
+     * 'u' (unordered array),
      * 'd' (done),
      * 'i' (initial),
      * 'k' (key),
@@ -87,9 +87,9 @@ public class ADMWriter {
         if (string == null) {
             throw new ADMException("Null pointer");
         }
-        if (this.mode == 'o' || this.mode == 'a') {
+        if (this.mode == 'o' || this.mode == 'a' || this.mode == 'u') {
             try {
-                if (this.comma && this.mode == 'a') {
+                if (this.comma && (this.mode == 'a' || this.mode == 'u')) {
                     this.writer.write(',');
                 }
                 this.writer.write(string);
@@ -115,9 +115,37 @@ public class ADMWriter {
      * outermost array or object).
      */
     public ADMWriter array() throws ADMException {
-        if (this.mode == 'i' || this.mode == 'o' || this.mode == 'a') {
+        return array(true);
+    }
+
+    /**
+     * Begin appending a new array. All values until the balancing
+     * <code>endArray</code> will be appended to this array. The
+     * <code>endArray</code> method must be called to mark the array's end.
+     * @return this
+     * @throws ADMException If the nesting is too deep, or if the object is
+     * started in the wrong place (for example as a key or after the end of the
+     * outermost array or object).
+     */
+    public ADMWriter unorderedArray() throws ADMException {
+        return array(false);
+    }
+
+    /**
+     * Begin appending a new array. All values until the balancing
+     * <code>endArray</code> will be appended to this array. The
+     * <code>endArray</code> method must be called to mark the array's end.
+     * @return this
+     * @throws ADMException If the nesting is too deep, or if the object is
+     * started in the wrong place (for example as a key or after the end of the
+     * outermost array or object).
+     */
+    public ADMWriter array(boolean isOrdered) throws ADMException {
+        if (this.mode == 'i' || this.mode == 'o' || this.mode == 'a' || this.mode == 'u') {
             this.push(null);
-            this.append("[");
+            if (isOrdered)
+                this.append("[");
+            else this.append("{{");
             this.comma = false;
             return this;
         }
@@ -132,14 +160,25 @@ public class ADMWriter {
      * @throws ADMException If unbalanced.
      */
     private ADMWriter end(char mode, char c) throws ADMException {
+        return this.end(mode, String.valueOf(c));
+    }
+
+    /**
+     * End something.
+     * @param mode Mode
+     * @param s Closing string -- e.g., '}}'
+     * @return this
+     * @throws ADMException If unbalanced.
+     */
+    private ADMWriter end(char mode, String s) throws ADMException {
         if (this.mode != mode) {
-            throw new ADMException(mode == 'a'
-                ? "Misplaced endArray."
-                : "Misplaced endObject.");
+            throw new ADMException((mode == 'a' || this.mode == 'u')
+                    ? "Misplaced endArray."
+                    : "Misplaced endObject.");
         }
         this.pop(mode);
         try {
-            this.writer.write(c);
+            this.writer.write(s);
         } catch (IOException e) {
             throw new ADMException(e);
         }
@@ -155,6 +194,16 @@ public class ADMWriter {
      */
     public ADMWriter endArray() throws ADMException {
         return this.end('a', ']');
+    }
+
+    /**
+     * End an array. This method most be called to balance calls to
+     * <code>array</code>.
+     * @return this
+     * @throws ADMException If incorrectly nested.
+     */
+    public ADMWriter endUnorderedArray() throws ADMException {
+        return this.end('a', "}}");
     }
 
     /**
@@ -211,7 +260,7 @@ public class ADMWriter {
         if (this.mode == 'i') {
             this.mode = 'o';
         }
-        if (this.mode == 'o' || this.mode == 'a') {
+        if (this.mode == 'o' || this.mode == 'a' || this.mode == 'u') {
             this.append("{");
             this.push(new ADMObject());
             this.comma = false;
@@ -245,15 +294,15 @@ public class ADMWriter {
 
     /**
      * Push an array or object scope.
-     * @param jo The scope to open.
+     * @param ao The scope to open.
      * @throws ADMException If nesting is too deep.
      */
-    private void push(ADMObject jo) throws ADMException {
+    private void push(ADMObject ao) throws ADMException {
         if (this.top >= maxdepth) {
             throw new ADMException("Nesting too deep.");
         }
-        this.stack[this.top] = jo;
-        this.mode = jo == null ? 'a' : 'k';
+        this.stack[this.top] = ao;
+        this.mode = ao == null ? 'a' : 'k';
         this.top += 1;
     }
 

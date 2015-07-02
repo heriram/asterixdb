@@ -9,10 +9,10 @@ import java.io.StringReader;
 
 /**
  * A ADMTokener takes a source string and extracts characters and tokens from
- * it. It is used by the ADMObject and ADMArray constructors to parse
+ * it. It is used by the ADMObject and AbstractADMArray constructors to parse
  * ADM source strings.
  * 
- * This class is built based on the {@link JSONTokener} 
+ * This class is built based on the JSONTokener
  * (see http://www.json.org/javadoc/org/json/JSONTokener.html)
  * 
  * 

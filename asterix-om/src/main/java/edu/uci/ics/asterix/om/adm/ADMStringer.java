@@ -30,8 +30,6 @@ import java.io.StringWriter;
  * you. Objects and arrays can be nested up to 20 levels deep.
  * <p>
  * This can sometimes be easier than using a ADMObject to build a string.
- * @author ADM.org
- * @version 2008-09-18
  */
 public class ADMStringer extends ADMWriter {
     /**
