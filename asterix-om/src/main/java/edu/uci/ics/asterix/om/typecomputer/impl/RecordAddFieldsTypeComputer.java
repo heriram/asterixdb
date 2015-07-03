@@ -93,18 +93,22 @@ public class RecordAddFieldsTypeComputer extends AbstractRecordManipulationTypeC
                 IAType[] ft = rtype.getFieldTypes();
                 for (int j=0; j<fn.length; j++) {
                     if (fn[j].equals(FIELD_NAME_NAME)) {
-                        ILogicalExpression recExpr = recConsExpr.getArguments().get(j).getValue();
-                        if (recExpr.getExpressionTag() == LogicalExpressionTag.CONSTANT) {
-                            AString as = (AString) ((AsterixConstantValue) ((ConstantExpression) recExpr)
-                                    .getValue()).getObject();
-                            if (as.getType().getTypeTag() == ATypeTag.STRING) {
-                                ILogicalExpression recFieldExpr = recConsExpr.getArguments().get(j+1).getValue();
-                                if (recFieldExpr.getExpressionTag() == LogicalExpressionTag.CONSTANT) {
-                                    as = (AString) ((AsterixConstantValue) ((ConstantExpression) recFieldExpr)
-                                            .getValue()).getObject();
-                                    additionalFieldNames.add(as.getStringValue());
+                        ILogicalExpression fieldNameExpr = recConsExpr.getArguments().get(j).getValue();
+                        switch (fieldNameExpr.getExpressionTag()) {
+                            case CONSTANT: // Top fields only
+                                AString as = (AString) ((AsterixConstantValue) ((ConstantExpression) fieldNameExpr).getValue()).getObject();
+                                if (as.getType().getTypeTag() == ATypeTag.STRING) {
+                                    // Get the actual "field-name" string
+                                    ILogicalExpression recFieldExpr = recConsExpr.getArguments().get(j + 1).getValue();
+                                    if (recFieldExpr.getExpressionTag() == LogicalExpressionTag.CONSTANT) {
+                                        as = (AString) ((AsterixConstantValue) ((ConstantExpression) recFieldExpr)
+                                                .getValue()).getObject();
+                                        additionalFieldNames.add(as.getStringValue());
+                                    }
                                 }
-                            }
+                                break;
+                            default:
+                                throw new AlgebricksException(fieldNameExpr + " is not supported.");
 
                         }
                     } else if (fn[j].equals(FIELD_VALUE_VALUE)) {

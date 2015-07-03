@@ -79,26 +79,7 @@ public class RecordRemoveFieldsTypeComputer extends AbstractRecordManipulationTy
 
     private void getPathFromFunctionExpression(ILogicalExpression expression)
             throws AlgebricksException {
-        AbstractFunctionCallExpression funcExp = (AbstractFunctionCallExpression) expression;
-        List<Mutable<ILogicalExpression>> args = funcExp.getArguments();
-
-        List<String> path = getStringListFromPool();
-        for (Mutable<ILogicalExpression> arg : args) {
-            // At this point all elements has to be a constant
-            // Input list has only one level of nesting (list of list or list of strings)
-            ConstantExpression ce = (ConstantExpression) arg.getValue();
-            if (!(ce.getValue() instanceof AsterixConstantValue)) {
-                throw new AlgebricksException("Expecting a list of strings and found " + ce.getValue() + " instead.");
-            }
-            IAObject item = ((AsterixConstantValue) ce.getValue()).getObject();
-            ATypeTag type = item.getType().getTypeTag();
-            if (type == ATypeTag.STRING) {
-                path.add(((AString)item).getStringValue());
-            } else {
-                throw new AlgebricksException(type + " is currently not supported. Please check your function call.");
-            }
-        }
-
+        List<String> path = getListFromExpression(expression);
         // Add the path head to remove set
         fieldNameSet.add(path.get(0));
         pathList.add(path);

@@ -1,16 +1,31 @@
 package edu.uci.ics.asterix.om.typecomputer.impl;
 
 import edu.uci.ics.asterix.common.exceptions.AsterixException;
+import edu.uci.ics.asterix.om.base.AString;
+import edu.uci.ics.asterix.om.base.IAObject;
+import edu.uci.ics.asterix.om.constants.AsterixConstantValue;
 import edu.uci.ics.asterix.om.typecomputer.base.IResultTypeComputer;
-import edu.uci.ics.asterix.om.types.*;
+import edu.uci.ics.asterix.om.types.AOrderedListType;
+import edu.uci.ics.asterix.om.types.ARecordType;
+import edu.uci.ics.asterix.om.types.ATypeTag;
+import edu.uci.ics.asterix.om.types.AUnionType;
+import edu.uci.ics.asterix.om.types.AUnorderedListType;
+import edu.uci.ics.asterix.om.types.IAType;
 import edu.uci.ics.hyracks.algebricks.common.exceptions.AlgebricksException;
 import edu.uci.ics.hyracks.algebricks.core.algebra.base.ILogicalExpression;
+import edu.uci.ics.hyracks.algebricks.core.algebra.expressions.AbstractFunctionCallExpression;
+import edu.uci.ics.hyracks.algebricks.core.algebra.expressions.ConstantExpression;
 import edu.uci.ics.hyracks.algebricks.core.algebra.expressions.IVariableTypeEnvironment;
 import edu.uci.ics.hyracks.algebricks.core.algebra.metadata.IMetadataProvider;
 import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.mutable.Mutable;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Deque;
+import java.util.List;
 
 abstract public class AbstractRecordManipulationTypeComputer implements IResultTypeComputer {
     
@@ -97,29 +112,6 @@ abstract public class AbstractRecordManipulationTypeComputer implements IResultT
         return null;
     }
 
-    protected static class PathComparator  {
-        public static final PathComparator INSTANCE = new PathComparator();
-
-        private PathComparator() {
-
-        }
-
-        public boolean compare(List<String> path1, List<String> path2) {
-            if (path1==null || path2==null) {
-                return false;
-            } else if(path1.size() != path2.size()) {
-                return false;
-            }
-            boolean found = true;
-            for (int j = 0; j < path1.size(); j++) {
-                found &= path1.get(j).equals(path2.get(j));
-            }
-
-            return found;
-
-        }
-    }
-
     protected void addAdditionalFields(List<String> resultFieldNames, List<IAType> resultFieldTypes,
             List<String> additionalFieldNames , List<IAType> additionalFieldTypes) throws AlgebricksException {
 
@@ -139,6 +131,31 @@ abstract public class AbstractRecordManipulationTypeComputer implements IResultT
                 resultFieldTypes.add(ft);
             }
         }
+    }
+
+    protected List<String> getListFromExpression(ILogicalExpression expression)
+            throws AlgebricksException {
+        AbstractFunctionCallExpression funcExp = (AbstractFunctionCallExpression) expression;
+        List<Mutable<ILogicalExpression>> args = funcExp.getArguments();
+
+        List<String> list = getStringListFromPool();
+        for (Mutable<ILogicalExpression> arg : args) {
+            // At this point all elements has to be a constant
+            // Input list has only one level of nesting (list of list or list of strings)
+            ConstantExpression ce = (ConstantExpression) arg.getValue();
+            if (!(ce.getValue() instanceof AsterixConstantValue)) {
+                throw new AlgebricksException("Expecting a list of strings and found " + ce.getValue() + " instead.");
+            }
+            IAObject item = ((AsterixConstantValue) ce.getValue()).getObject();
+            ATypeTag type = item.getType().getTypeTag();
+            if (type == ATypeTag.STRING) {
+                list.add(((AString) item).getStringValue());
+            } else {
+                throw new AlgebricksException(type + " is currently not supported. Please check your function call.");
+            }
+        }
+
+        return list;
     }
 
     public static IAType mergedNestedType(IAType fieldType1, IAType fieldType0) throws AlgebricksException,
