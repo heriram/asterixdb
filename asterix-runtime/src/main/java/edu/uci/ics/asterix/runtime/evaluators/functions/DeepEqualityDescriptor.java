@@ -78,9 +78,9 @@ public class DeepEqualityDescriptor  extends AbstractScalarFunctionDynamicDescri
                             accessor0.set(abvs0);
                             accessor1.set(abvs1);
 
-                            accessor0.accept(equalityVisitor, arg);
-
-                            ABoolean result = arg.second ? ABoolean.TRUE : ABoolean.FALSE;
+                            // Using deep equality assessment to assess the equality of the two values
+                            boolean isEqual = DeepEqualAssessor.INSTANCE.isEqual(accessor0, accessor1);
+                            ABoolean result = isEqual ? ABoolean.TRUE : ABoolean.FALSE;
 
                             boolSerde.serialize(result, out);
                         } catch (Exception ioe) {

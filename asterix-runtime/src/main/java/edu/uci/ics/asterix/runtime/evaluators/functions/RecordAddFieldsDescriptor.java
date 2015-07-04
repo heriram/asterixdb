@@ -184,7 +184,7 @@ public class RecordAddFieldsDescriptor  extends AbstractScalarFunctionDynamicDes
                             }
 
                             // TODO Add Nested type support
-                            if (!PointableUtils.isFieldName(inputRecordPointer, namePointable)) {
+                            if (!PointableUtils.isAFieldName(inputRecordPointer, namePointable)) {
                                 if(namePointable != null && valuePointable != null) {
                                     addField(namePointable, valuePointable);
                                 }

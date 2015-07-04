@@ -44,10 +44,14 @@ public class PointableUtils {
     private PointableUtils(){
     }
 
-    public static boolean compare(IValueReference a, IValueReference b) throws HyracksDataException {
-        // start+1 and len-1 due to the type tag
-        return (STRING_BINARY_COMPARATOR.compare(a.getByteArray(), a.getStartOffset() + 1, a.getLength() - 1,
-                b.getByteArray(), b.getStartOffset() + 1, b.getLength() - 1)==0);
+    public static int compareStringBinValues(IValueReference a, IValueReference b) throws HyracksDataException {
+        // start+1 and len-1 due to type tag ignore (only interested in String value)
+        return STRING_BINARY_COMPARATOR.compare(a.getByteArray(), a.getStartOffset() + 1, a.getLength() - 1,
+                b.getByteArray(), b.getStartOffset() + 1, b.getLength() - 1);
+    }
+
+    public static boolean isEqual(IValueReference a, IValueReference b) throws HyracksDataException {
+        return (compareStringBinValues(a, b)==0);
     }
 
     public static boolean byteArrayEqual(IValueReference valueRef1, IValueReference valueRef2) throws HyracksDataException {
@@ -110,7 +114,7 @@ public class PointableUtils {
         return false;
     }
 
-    public static boolean isFieldName(ARecordPointable recordPointer, IVisitablePointable fieldNamePointable) {
+    public static boolean isAFieldName(ARecordPointable recordPointer, IVisitablePointable fieldNamePointable) {
         int fieldPosition = getFieldNamePosition(recordPointer, fieldNamePointable);
 
         return (fieldPosition>-1);

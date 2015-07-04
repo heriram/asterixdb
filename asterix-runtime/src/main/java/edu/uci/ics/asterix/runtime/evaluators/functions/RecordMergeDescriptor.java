@@ -31,7 +31,8 @@ import edu.uci.ics.hyracks.dataflow.common.data.accessors.IFrameTupleReference;
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
-import java.util.Stack;
+import java.util.ArrayList;
+import java.util.List;
 
 //The record merge evaluator is used to combine two records with no matching fieldnames
 //If both records have the same fieldname for a non-record field anywhere in the schema, the merge will fail
@@ -93,7 +94,7 @@ public class RecordMergeDescriptor extends AbstractScalarFunctionDynamicDescript
                 final ICopyEvaluator eval0 = args[0].createEvaluator(abvs0);
                 final ICopyEvaluator eval1 = args[1].createEvaluator(abvs1);
 
-                final Stack<RecordBuilder> rbStack = new Stack<RecordBuilder>();
+                final List<RecordBuilder> rbStack = new ArrayList<>();
 
                 final ArrayBackedValueStorage tabvs = new ArrayBackedValueStorage();
 
@@ -140,27 +141,44 @@ public class RecordMergeDescriptor extends AbstractScalarFunctionDynamicDescript
                             ARecordPointable rightRecord, boolean openFromParent, int nestedLevel) throws IOException,
                             AsterixException, AlgebricksException {
                         if (rbStack.size() < (nestedLevel + 1)) {
-                            rbStack.push(new RecordBuilder());
+                            rbStack.add(new RecordBuilder());
                         }
 
                         rbStack.get(nestedLevel).reset(combinedType);
                         rbStack.get(nestedLevel).init();
                         //Add all fields from left record
+
                         for (int i = 0; i < leftRecord.getFieldNames().size(); i++) {
                             IVisitablePointable leftName = leftRecord.getFieldNames().get(i);
                             IVisitablePointable leftValue = leftRecord.getFieldValues().get(i);
-
+                            IVisitablePointable leftType = leftRecord.getFieldTypeTags().get(i);
+                            boolean foundMatch = false;
                             for (int j = 0; j < rightRecord.getFieldNames().size(); j++) {
                                 IVisitablePointable rightName = rightRecord.getFieldNames().get(j);
                                 IVisitablePointable rightValue = rightRecord.getFieldValues().get(j);
-                                if (rightName.equals(leftName)) {
-                                    //Field was found on the right. Throw exception
-                                    throw new AlgebricksException("Duplicate field found");
-                                    // TODO Can be dealt with in a better way with deep equality support
+                                IVisitablePointable rightType = rightRecord.getFieldTypeTags().get(i);
+                                // Check if same fieldname
+                                if (PointableUtils.isEqual(leftName, rightName)
+                                        && !DeepEqualAssessor.INSTANCE.isEqual(leftValue, rightValue)) {
+                                    //Field was found on the right and are subrecords, merge them
+                                    if (PointableUtils.isType(ATypeTag.RECORD, rightType) && PointableUtils
+                                            .isType(ATypeTag.RECORD, leftType)) {
+                                        //We are merging two sub records
+                                        addFieldToSubRecord(combinedType, leftName, leftValue, rightValue,
+                                                openFromParent, nestedLevel);
+                                        foundMatch = true;
+                                    } else {
+                                        throw new AlgebricksException("Duplicate field found");
+                                    }
                                 }
+
+
                             }
-                           addFieldToSubRecord(combinedType, leftName, leftValue, null, openFromParent,
+                            if (!foundMatch) {
+                                addFieldToSubRecord(combinedType, leftName, leftValue, null, openFromParent,
                                         nestedLevel);
+                            }
+
                         }
                         //Repeat for right side (ignoring duplicates this time)
                         for (int j = 0; j < rightRecord.getFieldNames().size(); j++) {
@@ -197,7 +215,7 @@ public class RecordMergeDescriptor extends AbstractScalarFunctionDynamicDescript
                         String fieldName = AStringSerializerDeserializer.INSTANCE.deserialize(namedis).getStringValue();
 
                         //Add the merged field
-                        if (combinedType.isClosedField(fieldName)) {
+                        if (combinedType != null && combinedType.isClosedField(fieldName)) {
                             int pos = combinedType.findFieldPosition(fieldName);
                             if (rightValue == null) {
                                 rbStack.get(nestedLevel).addField(pos, leftValue);
@@ -214,14 +232,15 @@ public class RecordMergeDescriptor extends AbstractScalarFunctionDynamicDescript
                             if (rightValue == null) {
                                 rbStack.get(nestedLevel).addField(fieldNamePointable, leftValue);
                             } else {
+                                ARecordType ct = null;
                                 if (combinedType != null) {
-                                    mergeFields((ARecordType) combinedType.getFieldType(fieldName),
-                                            (ARecordPointable) leftValue, (ARecordPointable) rightValue, false,
-                                            nestedLevel + 1);
-                                    tabvs.reset();
-                                    rbStack.get(nestedLevel + 1).write(tabvs.getDataOutput(), true);
-                                    rbStack.get(nestedLevel).addField(fieldNamePointable, tabvs);
+                                    ct = (ARecordType) combinedType.getFieldType(fieldName);
                                 }
+                                mergeFields(ct, (ARecordPointable) leftValue, (ARecordPointable) rightValue, false,
+                                        nestedLevel + 1);
+                                tabvs.reset();
+                                rbStack.get(nestedLevel + 1).write(tabvs.getDataOutput(), true);
+                                rbStack.get(nestedLevel).addField(fieldNamePointable, tabvs);
                             }
                         }
                     }

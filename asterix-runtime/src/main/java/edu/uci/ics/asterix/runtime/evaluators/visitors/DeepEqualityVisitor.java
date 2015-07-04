@@ -83,11 +83,11 @@ public class DeepEqualityVisitor implements IVisitablePointableVisitor<Void, Pai
 
     public boolean byteArrayEqual(IValueReference valueRef1, IValueReference valueRef2, int dataOffset) throws
             HyracksDataException {
-        return PointableUtils.INSTANCE.byteArrayEqual(valueRef1, valueRef2, dataOffset);
+        return PointableUtils.byteArrayEqual(valueRef1, valueRef2, dataOffset);
     }
 
     public ATypeTag getTypeTag(IVisitablePointable visitablePointable) {
-        return PointableUtils.INSTANCE.getTypeTag(visitablePointable);
+        return PointableUtils.getTypeTag(visitablePointable);
     }
 
 }
