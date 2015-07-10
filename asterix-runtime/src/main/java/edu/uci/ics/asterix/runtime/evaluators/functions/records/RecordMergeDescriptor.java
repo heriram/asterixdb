@@ -160,7 +160,7 @@ public class RecordMergeDescriptor extends AbstractScalarFunctionDynamicDescript
                             for (int j = 0; j < rightRecord.getFieldNames().size(); j++) {
                                 IVisitablePointable rightName = rightRecord.getFieldNames().get(j);
                                 IVisitablePointable rightValue = rightRecord.getFieldValues().get(j);
-                                IVisitablePointable rightType = rightRecord.getFieldTypeTags().get(i);
+                                IVisitablePointable rightType = rightRecord.getFieldTypeTags().get(j);
                                 // Check if same fieldname
                                 if (PointableUtils.isEqual(leftName, rightName)
                                         && !DeepEqualAssessor.INSTANCE.isEqual(leftValue, rightValue)) {
