@@ -1,4 +1,4 @@
-package edu.uci.ics.asterix.runtime.evaluators.functions;
+package edu.uci.ics.asterix.runtime.evaluators.functions.records;
 
 import edu.uci.ics.asterix.builders.RecordBuilder;
 import edu.uci.ics.asterix.common.exceptions.AsterixException;
@@ -15,6 +15,7 @@ import edu.uci.ics.asterix.om.pointables.base.IVisitablePointable;
 import edu.uci.ics.asterix.om.typecomputer.impl.AbstractRecordManipulationTypeComputer;
 import edu.uci.ics.asterix.om.types.*;
 import edu.uci.ics.asterix.runtime.evaluators.base.AbstractScalarFunctionDynamicDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.PointableUtils;
 import edu.uci.ics.hyracks.algebricks.common.exceptions.AlgebricksException;
 import edu.uci.ics.hyracks.algebricks.core.algebra.functions.FunctionIdentifier;
 import edu.uci.ics.hyracks.algebricks.runtime.base.ICopyEvaluator;

@@ -1,4 +1,4 @@
-package edu.uci.ics.asterix.runtime.evaluators.functions;
+package edu.uci.ics.asterix.runtime.evaluators.functions.records;
 
 import edu.uci.ics.asterix.builders.RecordBuilder;
 import edu.uci.ics.asterix.common.exceptions.AsterixException;
@@ -17,6 +17,8 @@ import edu.uci.ics.asterix.om.types.ATypeTag;
 import edu.uci.ics.asterix.om.types.BuiltinType;
 import edu.uci.ics.asterix.om.types.IAType;
 import edu.uci.ics.asterix.runtime.evaluators.base.AbstractScalarFunctionDynamicDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.comparisons.DeepEqualAssessor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.PointableUtils;
 import edu.uci.ics.hyracks.algebricks.common.exceptions.AlgebricksException;
 import edu.uci.ics.hyracks.algebricks.core.algebra.functions.FunctionIdentifier;
 import edu.uci.ics.hyracks.algebricks.runtime.base.ICopyEvaluator;
@@ -34,14 +36,16 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-//The record merge evaluator is used to combine two records with no matching fieldnames
-//If both records have the same fieldname for a non-record field anywhere in the schema, the merge will fail
-//This function is performed on a recursive level, meaning that nested records can be combined
-//for instance if both records have a nested field called "metadata"
-//where metadata from A is {"comments":"this rocks"}
-//and metadata from B is {"index":7, "priority":5}
-//Records A and B can be combined yielding a nested record called "metadata"
-//That will have all three fields
+/**
+ *
+ * record merge evaluator is used to combine two records with no matching fieldnames
+ * If both records have the same fieldname for a non-record field anywhere in the schema, the merge will fail
+ * This function is performed on a recursive level, meaning that nested records can be combined
+ * for instance if both records have a nested field called "metadata"
+ * where metadata from A is {"comments":"this rocks"} and metadata from B is {"index":7, "priority":5}
+ * Records A and B can be combined yielding a nested record called "metadata"
+ * That will have all three fields
+ */
 public class RecordMergeDescriptor extends AbstractScalarFunctionDynamicDescriptor {
 
     private static final long serialVersionUID = 1L;

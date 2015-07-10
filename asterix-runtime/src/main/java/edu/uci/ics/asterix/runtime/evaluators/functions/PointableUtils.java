@@ -24,6 +24,16 @@ import java.io.DataInputStream;
 import java.io.DataOutput;
 import java.io.IOException;
 
+/**
+ *
+ * An utility class for some frequently used methods like checking the equality between two pointables (binary values)
+ * (e.g., field names), string value of a fieldname pointable, getting the typetag of a pointable, etc.
+ *
+ * Note: To get the typetag of a fieldvalue (i) in a record, it is recommended to use the getFieldTypeTags().get(i)
+ * method rather than getting it from fhe field value itself.
+ *
+ */
+
 public class PointableUtils {
 
     static final ByteArrayAccessibleOutputStream outputStream = new ByteArrayAccessibleOutputStream();
@@ -54,11 +64,13 @@ public class PointableUtils {
         return (compareStringBinValues(a, b)==0);
     }
 
-    public static boolean byteArrayEqual(IValueReference valueRef1, IValueReference valueRef2) throws HyracksDataException {
+    public static boolean byteArrayEqual(IValueReference valueRef1, IValueReference valueRef2)
+            throws HyracksDataException {
         return byteArrayEqual(valueRef1, valueRef2, 3);
     }
 
-    public static boolean byteArrayEqual(IValueReference valueRef1, IValueReference valueRef2, int dataOffset) throws HyracksDataException {
+    public static boolean byteArrayEqual(IValueReference valueRef1, IValueReference valueRef2, int dataOffset)
+            throws HyracksDataException {
         if (valueRef1 == null || valueRef2 == null) return false;
         if (valueRef1 == valueRef2) return true;
 

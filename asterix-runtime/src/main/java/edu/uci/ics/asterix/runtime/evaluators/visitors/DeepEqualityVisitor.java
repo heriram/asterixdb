@@ -10,7 +10,6 @@ import edu.uci.ics.asterix.om.types.ATypeTag;
 import edu.uci.ics.asterix.runtime.evaluators.functions.PointableUtils;
 import edu.uci.ics.hyracks.algebricks.common.utils.Pair;
 import edu.uci.ics.hyracks.api.exceptions.HyracksDataException;
-import edu.uci.ics.hyracks.data.std.api.IValueReference;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -59,8 +58,8 @@ public class DeepEqualityVisitor implements IVisitablePointableVisitor<Void, Pai
     @Override public Void visit(AFlatValuePointable accessor,Pair<IVisitablePointable, Boolean> arg)
             throws AsterixException {
 
-        ATypeTag tt1 = getTypeTag(accessor);
-        ATypeTag tt2 = getTypeTag(arg.first);
+        ATypeTag tt1 = PointableUtils.getTypeTag(accessor);
+        ATypeTag tt2 = PointableUtils.getTypeTag(arg.first);
 
         if (accessor.equals(arg.second)) {
             arg.second = true;
@@ -73,21 +72,11 @@ public class DeepEqualityVisitor implements IVisitablePointableVisitor<Void, Pai
         }
 
         try {
-            arg.second = byteArrayEqual(accessor, arg.first, 1);
+            arg.second = PointableUtils.byteArrayEqual(accessor, arg.first, 1);
         } catch (HyracksDataException e) {
             throw new AsterixException(e);
         }
 
         return null;
     }
-
-    public boolean byteArrayEqual(IValueReference valueRef1, IValueReference valueRef2, int dataOffset) throws
-            HyracksDataException {
-        return PointableUtils.byteArrayEqual(valueRef1, valueRef2, dataOffset);
-    }
-
-    public ATypeTag getTypeTag(IVisitablePointable visitablePointable) {
-        return PointableUtils.getTypeTag(visitablePointable);
-    }
-
 }

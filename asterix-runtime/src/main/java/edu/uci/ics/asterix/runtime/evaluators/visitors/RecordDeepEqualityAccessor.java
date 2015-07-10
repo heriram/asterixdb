@@ -9,6 +9,7 @@ import edu.uci.ics.asterix.om.pointables.ARecordPointable;
 import edu.uci.ics.asterix.om.pointables.base.IVisitablePointable;
 import edu.uci.ics.asterix.om.types.ATypeTag;
 import edu.uci.ics.asterix.runtime.evaluators.functions.BinaryHashMap;
+import edu.uci.ics.asterix.runtime.evaluators.functions.PointableUtils;
 import edu.uci.ics.hyracks.algebricks.common.utils.Pair;
 import edu.uci.ics.hyracks.api.dataflow.value.IBinaryComparator;
 import edu.uci.ics.hyracks.api.dataflow.value.IBinaryHashFunction;
@@ -93,8 +94,8 @@ class RecordDeepEqualityAccessor {
             }
 
             int index0 = IntegerPointable.getInteger(entry.buf, entry.off);
-            ATypeTag fieldType0 = visitor.getTypeTag(fieldTypes0.get(index0));
-            if(fieldType0 != visitor.getTypeTag(fieldTypes1.get(index1))) {
+            ATypeTag fieldType0 = PointableUtils.getTypeTag(fieldTypes0.get(index0));
+            if(fieldType0 != PointableUtils.getTypeTag(fieldTypes1.get(index1))) {
                 return false;
             }
 

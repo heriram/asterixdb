@@ -212,9 +212,9 @@ import edu.uci.ics.asterix.runtime.evaluators.functions.OpenRecordConstructorDes
 import edu.uci.ics.asterix.runtime.evaluators.functions.OrDescriptor;
 import edu.uci.ics.asterix.runtime.evaluators.functions.OrderedListConstructorDescriptor;
 import edu.uci.ics.asterix.runtime.evaluators.functions.PrefixLenJaccardDescriptor;
-import edu.uci.ics.asterix.runtime.evaluators.functions.RecordAddFieldsDescriptor;
-import edu.uci.ics.asterix.runtime.evaluators.functions.RecordMergeDescriptor;
-import edu.uci.ics.asterix.runtime.evaluators.functions.RecordRemoveFieldsDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.records.RecordAddFieldsDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.records.RecordMergeDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.functions.records.RecordRemoveFieldsDescriptor;
 import edu.uci.ics.asterix.runtime.evaluators.functions.RegExpDescriptor;
 import edu.uci.ics.asterix.runtime.evaluators.functions.SimilarityJaccardCheckDescriptor;
 import edu.uci.ics.asterix.runtime.evaluators.functions.SimilarityJaccardDescriptor;

@@ -10,6 +10,7 @@ import edu.uci.ics.asterix.om.pointables.base.IVisitablePointable;
 import edu.uci.ics.asterix.om.types.ATypeTag;
 import edu.uci.ics.asterix.runtime.evaluators.functions.BinaryHashMap;
 import edu.uci.ics.asterix.runtime.evaluators.functions.BinaryHashMap.BinaryEntry;
+import edu.uci.ics.asterix.runtime.evaluators.functions.PointableUtils;
 import edu.uci.ics.hyracks.algebricks.common.utils.Pair;
 import edu.uci.ics.hyracks.api.dataflow.value.IBinaryComparator;
 import edu.uci.ics.hyracks.api.dataflow.value.IBinaryHashFunction;
@@ -94,8 +95,8 @@ class ListDeepEqualityAccessor {
             throws HyracksDataException, AsterixException {
         Pair<IVisitablePointable, Boolean> arg=null;
         for(int i=0; i<items0.size(); i++) {
-            ATypeTag fieldType0 = visitor.getTypeTag(itemTagTypes0.get(i));
-            ATypeTag fieldType1 = visitor.getTypeTag(itemTagTypes1.get(i));
+            ATypeTag fieldType0 = PointableUtils.getTypeTag(itemTagTypes0.get(i));
+            ATypeTag fieldType1 = PointableUtils.getTypeTag(itemTagTypes1.get(i));
             if(fieldType0 != fieldType1) {
                 return false;
             }
@@ -146,8 +147,8 @@ class ListDeepEqualityAccessor {
             }
 
             int index0 = IntegerPointable.getInteger(entry.buf, entry.off);
-            ATypeTag fieldType0 = visitor.getTypeTag(itemTagTypes0.get(index0));
-            if(fieldType0 != visitor.getTypeTag(itemTagTypes1.get(index1))) {
+            ATypeTag fieldType0 = PointableUtils.getTypeTag(itemTagTypes0.get(index0));
+            if(fieldType0 != PointableUtils.getTypeTag(itemTagTypes1.get(index1))) {
                 return false;
             }
 
