@@ -3,9 +3,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * you may obtain a copy of the License from
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,8 +17,8 @@ package edu.uci.ics.asterix.om.pointables.visitor;
 
 import edu.uci.ics.asterix.common.exceptions.AsterixException;
 import edu.uci.ics.asterix.om.pointables.AFlatValuePointable;
-import edu.uci.ics.asterix.om.pointables.AListPointable;
-import edu.uci.ics.asterix.om.pointables.ARecordPointable;
+import edu.uci.ics.asterix.om.pointables.AListVisitablePointable;
+import edu.uci.ics.asterix.om.pointables.ARecordVisitablePointable;
 
 /**
  * This interface is a visitor for all the three different IVisitablePointable
@@ -27,9 +27,9 @@ import edu.uci.ics.asterix.om.pointables.ARecordPointable;
  */
 public interface IVisitablePointableVisitor<R, T> {
 
-    public R visit(AListPointable accessor, T arg) throws AsterixException;
+    public R visit(AListVisitablePointable accessor, T arg) throws AsterixException;
 
-    public R visit(ARecordPointable accessor, T arg) throws AsterixException;
+    public R visit(ARecordVisitablePointable accessor, T arg) throws AsterixException;
 
     public R visit(AFlatValuePointable accessor, T arg) throws AsterixException;
 }

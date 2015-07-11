@@ -3,9 +3,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * you may obtain a copy of the License from
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -96,7 +96,11 @@ public class AObjectPrinter implements IPrinter {
                 ADayTimeDurationPrinter.INSTANCE.print(b, s, l, ps);
                 break;
             }
-            case POINT: {
+            case INTERVAL: {
+                AIntervalPrinter.INSTANCE.print(b, s, l, ps);
+                break;
+            }
+             case POINT: {
                 APointPrinter.INSTANCE.print(b, s, l, ps);
                 break;
             }
@@ -114,6 +118,10 @@ public class AObjectPrinter implements IPrinter {
             }
             case CIRCLE: {
                 ACirclePrinter.INSTANCE.print(b, s, l, ps);
+                break;
+            }
+            case RECTANGLE: {
+                ARectanglePrinter.INSTANCE.print(b, s, l, ps);
                 break;
             }
             case STRING: {
@@ -139,9 +147,21 @@ public class AObjectPrinter implements IPrinter {
                 unorderedListPrinter.print(b, s, l, ps);
                 break;
             }
-            default: {
+            case ANY:
+            case BITARRAY:
+            case ENUM:
+            case SHORTWITHOUTTYPEINFO:
+            case SPARSERECORD:
+            case SYSTEM_NULL:
+            case TYPE:
+            case UINT16:
+            case UINT32:
+            case UINT64:
+            case UINT8:
+            case UNION:
+            case UUID:
+            case UUID_STRING:
                 throw new NotImplementedException("No printer for type " + typeTag);
-            }
         }
     }
 }

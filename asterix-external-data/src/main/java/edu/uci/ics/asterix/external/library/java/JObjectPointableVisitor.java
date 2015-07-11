@@ -1,3 +1,17 @@
+/*
+ * Copyright 2009-2013 by The Regents of the University of California
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * you may obtain a copy of the License from
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package edu.uci.ics.asterix.external.library.java;
 
 import java.util.HashMap;
@@ -8,8 +22,8 @@ import edu.uci.ics.asterix.external.library.TypeInfo;
 import edu.uci.ics.asterix.external.library.java.JObjectAccessors.JListAccessor;
 import edu.uci.ics.asterix.external.library.java.JObjectAccessors.JRecordAccessor;
 import edu.uci.ics.asterix.om.pointables.AFlatValuePointable;
-import edu.uci.ics.asterix.om.pointables.AListPointable;
-import edu.uci.ics.asterix.om.pointables.ARecordPointable;
+import edu.uci.ics.asterix.om.pointables.AListVisitablePointable;
+import edu.uci.ics.asterix.om.pointables.ARecordVisitablePointable;
 import edu.uci.ics.asterix.om.pointables.base.IVisitablePointable;
 import edu.uci.ics.asterix.om.pointables.visitor.IVisitablePointableVisitor;
 import edu.uci.ics.asterix.om.types.ARecordType;
@@ -23,7 +37,7 @@ public class JObjectPointableVisitor implements IVisitablePointableVisitor<IJObj
     private final Map<IVisitablePointable, IJListAccessor> laccessorToPrinter = new HashMap<IVisitablePointable, IJListAccessor>();
 
     @Override
-    public IJObject visit(AListPointable accessor, TypeInfo arg) throws AsterixException {
+    public IJObject visit(AListVisitablePointable accessor, TypeInfo arg) throws AsterixException {
         IJObject result = null;
         IJListAccessor jListAccessor = laccessorToPrinter.get(accessor);
         if (jListAccessor == null) {
@@ -39,7 +53,7 @@ public class JObjectPointableVisitor implements IVisitablePointableVisitor<IJObj
     }
 
     @Override
-    public IJObject visit(ARecordPointable accessor, TypeInfo arg) throws AsterixException {
+    public IJObject visit(ARecordVisitablePointable accessor, TypeInfo arg) throws AsterixException {
         IJObject result = null;
         IJRecordAccessor jRecordAccessor = raccessorToJObject.get(accessor);
         if (jRecordAccessor == null) {

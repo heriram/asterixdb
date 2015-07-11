@@ -3,9 +3,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * you may obtain a copy of the License from
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -35,16 +35,8 @@ public class ADateTimePrinter implements IPrinter {
 
     @Override
     public void print(byte[] b, int s, int l, PrintStream ps) throws AlgebricksException {
-        long chrononTime = AInt64SerializerDeserializer.getLong(b, s + 1);
-
         ps.print("datetime(\"");
-
-        try {
-            gCalInstance.getExtendStringRepUntilField(chrononTime, 0, ps, Fields.YEAR, Fields.MILLISECOND, true);
-        } catch (IOException e) {
-            throw new AlgebricksException(e);
-        }
-
+        printString(b, s, l, ps);
         ps.print("\")");
     }
 

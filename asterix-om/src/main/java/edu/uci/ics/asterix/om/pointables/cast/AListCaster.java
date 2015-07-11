@@ -3,9 +3,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * you may obtain a copy of the License from
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -23,7 +23,7 @@ import java.util.List;
 import edu.uci.ics.asterix.builders.OrderedListBuilder;
 import edu.uci.ics.asterix.builders.UnorderedListBuilder;
 import edu.uci.ics.asterix.common.exceptions.AsterixException;
-import edu.uci.ics.asterix.om.pointables.AListPointable;
+import edu.uci.ics.asterix.om.pointables.AListVisitablePointable;
 import edu.uci.ics.asterix.om.pointables.PointableAllocator;
 import edu.uci.ics.asterix.om.pointables.base.DefaultOpenFieldType;
 import edu.uci.ics.asterix.om.pointables.base.IVisitablePointable;
@@ -60,7 +60,7 @@ class AListCaster {
 
     }
 
-    public void castList(AListPointable listAccessor, IVisitablePointable resultAccessor,
+    public void castList(AListVisitablePointable listAccessor, IVisitablePointable resultAccessor,
             AbstractCollectionType reqType, ACastVisitor visitor) throws IOException, AsterixException {
         if (reqType.getTypeTag().equals(ATypeTag.UNORDEREDLIST)) {
             unOrderedListBuilder.reset((AUnorderedListType) reqType);
