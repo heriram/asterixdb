@@ -1,3 +1,17 @@
+/*
+ * Copyright 2009-2013 by The Regents of the University of California
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * you may obtain a copy of the License from
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package edu.uci.ics.asterix.runtime.evaluators.functions.records;
 
 import edu.uci.ics.asterix.builders.RecordBuilder;
@@ -6,8 +20,8 @@ import edu.uci.ics.asterix.dataflow.data.nontagged.serde.AStringSerializerDeseri
 import edu.uci.ics.asterix.formats.nontagged.AqlSerializerDeserializerProvider;
 import edu.uci.ics.asterix.om.base.ANull;
 import edu.uci.ics.asterix.om.functions.AsterixBuiltinFunctions;
-import edu.uci.ics.asterix.om.pointables.AListPointable;
-import edu.uci.ics.asterix.om.pointables.ARecordPointable;
+import edu.uci.ics.asterix.om.pointables.AListVisitablePointable;
+import edu.uci.ics.asterix.om.pointables.ARecordVisitablePointable;
 import edu.uci.ics.asterix.om.pointables.PointableAllocator;
 import edu.uci.ics.asterix.om.pointables.base.IVisitablePointable;
 import edu.uci.ics.asterix.om.types.AOrderedListType;
@@ -100,7 +114,7 @@ class RecordRemoveFieldsEvalFactory implements ICopyEvaluatorFactory {
 
         return new ICopyEvaluator() {
 
-            private boolean isValidPath(AListPointable inputList) throws HyracksDataException {
+            private boolean isValidPath(AListVisitablePointable inputList) throws HyracksDataException {
                 List<IVisitablePointable> items = inputList.getItems();
                 List<IVisitablePointable> typeTags = inputList.getItemTags();
 
@@ -108,7 +122,7 @@ class RecordRemoveFieldsEvalFactory implements ICopyEvaluatorFactory {
                 for (int i=0; i<items.size(); i++) {
                     IVisitablePointable item = items.get(i);
                     if (PointableUtils.isType(ATypeTag.ORDEREDLIST, typeTags.get(i))) {
-                        List<IVisitablePointable> inputPathItems = ((AListPointable)item).getItems();
+                        List<IVisitablePointable> inputPathItems = ((AListVisitablePointable)item).getItems();
 
                         if(pathLen == inputPathItems.size()) {
                             boolean match = true;
@@ -162,8 +176,8 @@ class RecordRemoveFieldsEvalFactory implements ICopyEvaluatorFactory {
                             + EnumDeserializer.ATYPETAGDESERIALIZER.deserialize(listBytes[0]));
                 }
 
-                ARecordPointable recordPointable = (ARecordPointable) vp0;
-                AListPointable listPointable = (AListPointable) vp1;
+                ARecordVisitablePointable recordPointable = (ARecordVisitablePointable) vp0;
+                AListVisitablePointable listPointable = (AListVisitablePointable) vp1;
 
                 try {
                     recordPath.clear();
@@ -187,7 +201,7 @@ class RecordRemoveFieldsEvalFactory implements ICopyEvaluatorFactory {
 
             private void addKeptFieldToSubRecord(ARecordType resType, IVisitablePointable fieldNamePointable,
                     IVisitablePointable fieldValuePointable, IVisitablePointable fieldTypePointable,
-                    AListPointable inputList, int nestedLevel)
+                    AListVisitablePointable inputList, int nestedLevel)
                     throws IOException, AsterixException, AlgebricksException {
 
                 String fieldName = getFieldName(fieldNamePointable);
@@ -196,7 +210,7 @@ class RecordRemoveFieldsEvalFactory implements ICopyEvaluatorFactory {
                     int pos = resType.findFieldPosition(fieldName);
                     if (PointableUtils.isType(ATypeTag.RECORD, fieldTypePointable)) {
                         processRecord((ARecordType) resType.getFieldType(fieldName),
-                                (ARecordPointable) fieldValuePointable, inputList, nestedLevel + 1);
+                                (ARecordVisitablePointable) fieldValuePointable, inputList, nestedLevel + 1);
                         tabvs.reset();
                         rbStack.get(nestedLevel + 1).write(tabvs.getDataOutput(), true);
                         rbStack.get(nestedLevel).addField(pos, tabvs);
@@ -206,7 +220,7 @@ class RecordRemoveFieldsEvalFactory implements ICopyEvaluatorFactory {
                 } else {
                     if (PointableUtils.isType(ATypeTag.RECORD, fieldTypePointable)) {
                         processRecord((ARecordType) resType.getFieldType(fieldName),
-                                (ARecordPointable) fieldValuePointable, inputList, nestedLevel + 1);
+                                (ARecordVisitablePointable) fieldValuePointable, inputList, nestedLevel + 1);
                         tabvs.reset();
                         rbStack.get(nestedLevel + 1).write(tabvs.getDataOutput(), true);
                         rbStack.get(nestedLevel).addField(fieldNamePointable, tabvs);
@@ -218,7 +232,7 @@ class RecordRemoveFieldsEvalFactory implements ICopyEvaluatorFactory {
 
 
 
-            private void processRecord(ARecordType resType, ARecordPointable srp, AListPointable inputList, int nestedLevel)
+            private void processRecord(ARecordType resType, ARecordVisitablePointable srp, AListVisitablePointable inputList, int nestedLevel)
                     throws IOException, AsterixException, AlgebricksException {
                 if (rbStack.size() < (nestedLevel + 1)) {
                     rbStack.add(new RecordBuilder());

@@ -14,12 +14,6 @@
  */
 package edu.uci.ics.asterix.runtime.operators.file;
 
-import java.io.DataOutput;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.BitSet;
-import java.util.List;
-
 import edu.uci.ics.asterix.builders.AbvsBuilderFactory;
 import edu.uci.ics.asterix.builders.IARecordBuilder;
 import edu.uci.ics.asterix.builders.IAsterixListBuilder;
@@ -49,6 +43,12 @@ import edu.uci.ics.asterix.runtime.operators.file.adm.AdmLexerException;
 import edu.uci.ics.hyracks.api.exceptions.HyracksDataException;
 import edu.uci.ics.hyracks.data.std.api.IMutableValueStorage;
 import edu.uci.ics.hyracks.data.std.util.ArrayBackedValueStorage;
+
+import java.io.DataOutput;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.BitSet;
+import java.util.List;
 
 /**
  * Parser for ADM formatted data.

@@ -1,11 +1,25 @@
+/*
+ * Copyright 2009-2013 by The Regents of the University of California
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * you may obtain a copy of the License from
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package edu.uci.ics.asterix.runtime.evaluators.visitors;
 
 import edu.uci.ics.asterix.common.exceptions.AsterixException;
 import edu.uci.ics.asterix.dataflow.data.nontagged.comparators.ListItemBinaryComparatorFactory;
 import edu.uci.ics.asterix.dataflow.data.nontagged.hash.ListItemBinaryHashFunctionFactory;
 import edu.uci.ics.asterix.om.pointables.AFlatValuePointable;
-import edu.uci.ics.asterix.om.pointables.AListPointable;
-import edu.uci.ics.asterix.om.pointables.ARecordPointable;
+import edu.uci.ics.asterix.om.pointables.AListVisitablePointable;
+import edu.uci.ics.asterix.om.pointables.ARecordVisitablePointable;
 import edu.uci.ics.asterix.om.pointables.base.IVisitablePointable;
 import edu.uci.ics.asterix.om.types.ATypeTag;
 import edu.uci.ics.asterix.runtime.evaluators.functions.BinaryHashMap;
@@ -47,12 +61,12 @@ class ListDeepEqualityAccessor {
 
         this.visitor = visitor;
 
-        AListPointable list0 = (AListPointable)listAccessor0;
+        AListVisitablePointable list0 = (AListVisitablePointable)listAccessor0;
         List<IVisitablePointable> items0 = list0.getItems();
         List<IVisitablePointable> itemTagTypes0 = list0.getItemTags();
 
 
-        AListPointable list1 = (AListPointable)listAccessor1;
+        AListVisitablePointable list1 = (AListVisitablePointable)listAccessor1;
         List<IVisitablePointable> items1 = list1.getItems();
         List<IVisitablePointable> itemTagTypes1 = list1.getItemTags();
 
@@ -75,10 +89,10 @@ class ListDeepEqualityAccessor {
         switch (fieldType0) {
             case ORDEREDLIST:
             case UNORDEREDLIST:
-                ((AListPointable)item0).accept(visitor, arg);
+                ((AListVisitablePointable)item0).accept(visitor, arg);
                 break;
             case RECORD:
-                ((ARecordPointable)item0).accept(visitor, arg);
+                ((ARecordVisitablePointable)item0).accept(visitor, arg);
                 break;
             case ANY:
                 return false;

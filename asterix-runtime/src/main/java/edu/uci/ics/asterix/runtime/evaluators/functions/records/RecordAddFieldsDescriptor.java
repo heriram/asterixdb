@@ -1,3 +1,17 @@
+/*
+ * Copyright 2009-2013 by The Regents of the University of California
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * you may obtain a copy of the License from
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package edu.uci.ics.asterix.runtime.evaluators.functions.records;
 
 import edu.uci.ics.asterix.builders.RecordBuilder;
@@ -8,8 +22,8 @@ import edu.uci.ics.asterix.om.base.AString;
 import edu.uci.ics.asterix.om.functions.AsterixBuiltinFunctions;
 import edu.uci.ics.asterix.om.functions.IFunctionDescriptor;
 import edu.uci.ics.asterix.om.functions.IFunctionDescriptorFactory;
-import edu.uci.ics.asterix.om.pointables.AListPointable;
-import edu.uci.ics.asterix.om.pointables.ARecordPointable;
+import edu.uci.ics.asterix.om.pointables.AListVisitablePointable;
+import edu.uci.ics.asterix.om.pointables.ARecordVisitablePointable;
 import edu.uci.ics.asterix.om.pointables.PointableAllocator;
 import edu.uci.ics.asterix.om.pointables.base.IVisitablePointable;
 import edu.uci.ics.asterix.om.typecomputer.impl.AbstractRecordManipulationTypeComputer;
@@ -122,8 +136,8 @@ public class RecordAddFieldsDescriptor  extends AbstractScalarFunctionDynamicDes
                         vp0.set(abvs0);
                         vp1.set(abvs1);
 
-                        ARecordPointable recordPointable = (ARecordPointable) vp0;
-                        AListPointable listPointable = (AListPointable) vp1;
+                        ARecordVisitablePointable recordPointable = (ARecordVisitablePointable) vp0;
+                        AListVisitablePointable listPointable = (AListVisitablePointable) vp1;
 
                         try {
                             addFields(recordPointable, listPointable);
@@ -146,8 +160,8 @@ public class RecordAddFieldsDescriptor  extends AbstractScalarFunctionDynamicDes
 
                     }
 
-                    private void addFields(ARecordPointable inputRecordPointer,
-                            AListPointable listPointable) throws IOException, AsterixException,
+                    private void addFields(ARecordVisitablePointable inputRecordPointer,
+                            AListVisitablePointable listPointable) throws IOException, AsterixException,
                             AlgebricksException {
 
                         // Add original record without duplicate checking
@@ -166,8 +180,8 @@ public class RecordAddFieldsDescriptor  extends AbstractScalarFunctionDynamicDes
                                         PointableUtils.getTypeTag(fieldRecPointer));
                             }
 
-                            List<IVisitablePointable> names = ((ARecordPointable)fieldRecPointer).getFieldNames();
-                            List<IVisitablePointable> values = ((ARecordPointable)fieldRecPointer).getFieldValues();
+                            List<IVisitablePointable> names = ((ARecordVisitablePointable)fieldRecPointer).getFieldNames();
+                            List<IVisitablePointable> values = ((ARecordVisitablePointable)fieldRecPointer).getFieldValues();
 
                             IVisitablePointable namePointable = null;
                             IVisitablePointable valuePointable = null;

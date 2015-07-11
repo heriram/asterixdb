@@ -155,8 +155,8 @@ public class RecordMergeDescriptor extends AbstractScalarFunctionDynamicDescript
                         }
                     }
 
-                    private void mergeFields(ARecordType combinedType, ARecordPointable leftRecord,
-                            ARecordPointable rightRecord, boolean openFromParent, int nestedLevel) throws IOException,
+                    private void mergeFields(ARecordType combinedType, ARecordVisitablePointable leftRecord,
+                            ARecordVisitablePointable rightRecord, boolean openFromParent, int nestedLevel) throws IOException,
                             AsterixException, AlgebricksException {
                         if (rbStack.size() < (nestedLevel + 1)) {
                             rbStack.add(new RecordBuilder());
@@ -218,10 +218,13 @@ public class RecordMergeDescriptor extends AbstractScalarFunctionDynamicDescript
 
                     }
 
-                    //Takes in a record type, field name, and the field values (which are record) from two records
-                    //Merges them into one record of combinedType
-                    //And adds that record as a field to the Record in subrb
-                    //the second value can be null, indicated that you just add the value of left as a field to subrb
+                    /*
+                     * Takes in a record type, field name, and the field values (which are record) from two records
+                     * Merges them into one record of combinedType
+                     * And adds that record as a field to the Record in subrb
+                     * the second value can be null, indicated that you just add the value of left as a field to subrb
+                     *
+                     */
                     private void addFieldToSubRecord(ARecordType combinedType, IVisitablePointable fieldNamePointable,
                             IVisitablePointable leftValue, IVisitablePointable rightValue, boolean openFromParent,
                             int nestedLevel) throws IOException, AsterixException, AlgebricksException {
@@ -254,7 +257,7 @@ public class RecordMergeDescriptor extends AbstractScalarFunctionDynamicDescript
                                 if (combinedType != null) {
                                     ct = (ARecordType) combinedType.getFieldType(fieldName);
                                 }
-                                mergeFields(ct, (ARecordPointable) leftValue, (ARecordPointable) rightValue, false,
+                                mergeFields(ct, (ARecordVisitablePointable) leftValue, (ARecordVisitablePointable) rightValue, false,
                                         nestedLevel + 1);
                                 tabvs.reset();
                                 rbStack.get(nestedLevel + 1).write(tabvs.getDataOutput(), true);

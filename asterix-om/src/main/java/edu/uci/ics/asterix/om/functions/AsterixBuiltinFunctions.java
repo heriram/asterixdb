@@ -30,6 +30,7 @@ import edu.uci.ics.asterix.om.typecomputer.impl.ARectangleTypeComputer;
 import edu.uci.ics.asterix.om.typecomputer.impl.AStringTypeComputer;
 import edu.uci.ics.asterix.om.typecomputer.impl.ATimeTypeComputer;
 import edu.uci.ics.asterix.om.typecomputer.impl.AUUIDTypeComputer;
+import edu.uci.ics.asterix.om.typecomputer.impl.AnyTypeComputer;
 import edu.uci.ics.asterix.om.typecomputer.impl.BinaryBooleanOrNullFunctionTypeComputer;
 import edu.uci.ics.asterix.om.typecomputer.impl.BinaryStringBoolOrNullTypeComputer;
 import edu.uci.ics.asterix.om.typecomputer.impl.BinaryStringStringOrNullTypeComputer;
@@ -100,15 +101,12 @@ import edu.uci.ics.asterix.om.typecomputer.impl.UnaryBooleanOrNullFunctionTypeCo
 import edu.uci.ics.asterix.om.typecomputer.impl.UnaryStringInt64OrNullTypeComputer;
 import edu.uci.ics.asterix.om.typecomputer.impl.UnaryStringOrNullTypeComputer;
 import edu.uci.ics.asterix.om.typecomputer.impl.UnorderedListConstructorResultType;
-import edu.uci.ics.asterix.om.types.BuiltinType;
-import edu.uci.ics.asterix.om.types.IAType;
 import edu.uci.ics.asterix.om.types.hierachy.ATypeHierarchy;
 import edu.uci.ics.hyracks.algebricks.core.algebra.base.ILogicalExpression;
 import edu.uci.ics.hyracks.algebricks.core.algebra.expressions.AggregateFunctionCallExpression;
 import edu.uci.ics.hyracks.algebricks.core.algebra.functions.AlgebricksBuiltinFunctions;
 import edu.uci.ics.hyracks.algebricks.core.algebra.functions.FunctionIdentifier;
 import edu.uci.ics.hyracks.algebricks.core.algebra.functions.IFunctionInfo;
-import edu.uci.ics.hyracks.algebricks.core.algebra.metadata.IMetadataProvider;
 import org.apache.commons.lang3.mutable.Mutable;
 
 import java.util.HashMap;
