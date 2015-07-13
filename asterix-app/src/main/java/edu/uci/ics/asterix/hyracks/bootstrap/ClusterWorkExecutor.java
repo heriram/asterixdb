@@ -3,9 +3,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * you may obtain a copy of the License from
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,9 +20,9 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import edu.uci.ics.asterix.common.api.IClusterManagementWork;
 import edu.uci.ics.asterix.common.exceptions.AsterixException;
 import edu.uci.ics.asterix.event.schema.cluster.Node;
-import edu.uci.ics.asterix.metadata.api.IClusterManagementWork;
 import edu.uci.ics.asterix.metadata.cluster.AddNodeWork;
 import edu.uci.ics.asterix.metadata.cluster.ClusterManager;
 import edu.uci.ics.asterix.metadata.cluster.RemoveNodeWork;
@@ -50,8 +50,8 @@ public class ClusterWorkExecutor implements Runnable {
                 for (IClusterManagementWork w : workSet) {
                     switch (w.getClusterManagementWorkType()) {
                         case ADD_NODE:
-                            if (nodesToAdd < ((AddNodeWork) w).getNumberOfNodes()) {
-                                nodesToAdd = ((AddNodeWork) w).getNumberOfNodes();
+                            if (nodesToAdd < ((AddNodeWork) w).getNumberOfNodesRequested()) {
+                                nodesToAdd = ((AddNodeWork) w).getNumberOfNodesRequested();
                             }
                             nodeAdditionRequests.add(w);
                             break;

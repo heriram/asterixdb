@@ -3,9 +3,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * you may obtain a copy of the License from
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,19 +17,14 @@ package edu.uci.ics.asterix.metadata;
 
 import java.rmi.RemoteException;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 import edu.uci.ics.asterix.common.api.IAsterixAppRuntimeContext;
 import edu.uci.ics.asterix.common.config.DatasetConfig.DatasetType;
 import edu.uci.ics.asterix.common.config.DatasetConfig.IndexType;
+import edu.uci.ics.asterix.common.dataflow.AsterixLSMIndexUtil;
 import edu.uci.ics.asterix.common.exceptions.ACIDException;
 import edu.uci.ics.asterix.common.exceptions.AsterixException;
-import edu.uci.ics.asterix.common.feeds.FeedConnectionId;
 import edu.uci.ics.asterix.common.functions.FunctionSignature;
 import edu.uci.ics.asterix.common.transactions.AbstractOperationCallback;
 import edu.uci.ics.asterix.common.transactions.DatasetId;
@@ -51,8 +46,6 @@ import edu.uci.ics.asterix.metadata.entities.Dataverse;
 import edu.uci.ics.asterix.metadata.entities.ExternalDatasetDetails;
 import edu.uci.ics.asterix.metadata.entities.ExternalFile;
 import edu.uci.ics.asterix.metadata.entities.Feed;
-import edu.uci.ics.asterix.metadata.entities.FeedActivity;
-import edu.uci.ics.asterix.metadata.entities.FeedActivity.FeedActivityType;
 import edu.uci.ics.asterix.metadata.entities.FeedPolicy;
 import edu.uci.ics.asterix.metadata.entities.Function;
 import edu.uci.ics.asterix.metadata.entities.Index;
@@ -66,7 +59,6 @@ import edu.uci.ics.asterix.metadata.entitytupletranslators.DatasourceAdapterTupl
 import edu.uci.ics.asterix.metadata.entitytupletranslators.DatatypeTupleTranslator;
 import edu.uci.ics.asterix.metadata.entitytupletranslators.DataverseTupleTranslator;
 import edu.uci.ics.asterix.metadata.entitytupletranslators.ExternalFileTupleTranslator;
-import edu.uci.ics.asterix.metadata.entitytupletranslators.FeedActivityTupleTranslator;
 import edu.uci.ics.asterix.metadata.entitytupletranslators.FeedPolicyTupleTranslator;
 import edu.uci.ics.asterix.metadata.entitytupletranslators.FeedTupleTranslator;
 import edu.uci.ics.asterix.metadata.entitytupletranslators.FunctionTupleTranslator;
@@ -74,7 +66,6 @@ import edu.uci.ics.asterix.metadata.entitytupletranslators.IndexTupleTranslator;
 import edu.uci.ics.asterix.metadata.entitytupletranslators.LibraryTupleTranslator;
 import edu.uci.ics.asterix.metadata.entitytupletranslators.NodeGroupTupleTranslator;
 import edu.uci.ics.asterix.metadata.entitytupletranslators.NodeTupleTranslator;
-import edu.uci.ics.asterix.metadata.feeds.FeedActivityIdFactory;
 import edu.uci.ics.asterix.metadata.valueextractors.DatasetNameValueExtractor;
 import edu.uci.ics.asterix.metadata.valueextractors.DatatypeNameValueExtractor;
 import edu.uci.ics.asterix.metadata.valueextractors.MetadataEntityValueExtractor;
@@ -109,6 +100,7 @@ import edu.uci.ics.hyracks.storage.am.common.ophelpers.IndexOperation;
 import edu.uci.ics.hyracks.storage.am.common.ophelpers.MultiComparator;
 import edu.uci.ics.hyracks.storage.am.lsm.common.api.ILSMIndex;
 import edu.uci.ics.hyracks.storage.am.lsm.common.api.ILSMIndexAccessor;
+import edu.uci.ics.hyracks.storage.am.lsm.common.impls.AbstractLSMIndex;
 
 public class MetadataNode implements IMetadataNode {
     private static final long serialVersionUID = 1L;
@@ -311,8 +303,12 @@ public class MetadataNode implements IMetadataNode {
             txnCtx.registerIndexAndCallback(resourceID, lsmIndex, (AbstractOperationCallback) modCallback,
                     metadataIndex.isPrimaryIndex());
 
+            AsterixLSMIndexUtil.checkAndSetFirstLSN((AbstractLSMIndex) lsmIndex, transactionSubsystem.getLogManager());
+
             // TODO: fix exceptions once new BTree exception model is in hyracks.
             indexAccessor.forceInsert(tuple);
+        } catch (Exception e) {
+            throw e;
         } finally {
             indexLifecycleManager.close(resourceID);
         }
@@ -374,7 +370,7 @@ public class MetadataNode implements IMetadataNode {
             if (dataverseAdapters != null && dataverseAdapters.size() > 0) {
                 // Drop all functions in this dataverse.
                 for (DatasourceAdapter adapter : dataverseAdapters) {
-                    dropAdapter(jobId, dataverseName, adapter.getAdapterIdentifier().getAdapterName());
+                    dropAdapter(jobId, dataverseName, adapter.getAdapterIdentifier().getName());
                 }
             }
 
@@ -386,6 +382,14 @@ public class MetadataNode implements IMetadataNode {
                 for (int i = 0; i < dataverseFeeds.size(); i++) {
                     feed = dataverseFeeds.get(i);
                     dropFeed(jobId, dataverseName, feed.getFeedName());
+                }
+            }
+
+            List<FeedPolicy> feedPolicies = getDataversePolicies(jobId, dataverseName);
+            if (feedPolicies != null && feedPolicies.size() > 0) {
+                // Drop all feed ingestion policies in this dataverse.
+                for (FeedPolicy feedPolicy : feedPolicies) {
+                    dropFeedPolicy(jobId, dataverseName, feedPolicy.getPolicyName());
                 }
             }
 
@@ -633,19 +637,27 @@ public class MetadataNode implements IMetadataNode {
             throws Exception {
         long resourceID = metadataIndex.getResourceID();
         ILSMIndex lsmIndex = (ILSMIndex) indexLifecycleManager.getIndex(resourceID);
-        indexLifecycleManager.open(resourceID);
-        // prepare a Callback for logging
-        IModificationOperationCallback modCallback = createIndexModificationCallback(jobId, resourceID, metadataIndex,
-                lsmIndex, IndexOperation.DELETE);
-        ILSMIndexAccessor indexAccessor = lsmIndex.createAccessor(modCallback, NoOpOperationCallback.INSTANCE);
+        try {
+            indexLifecycleManager.open(resourceID);
+            // prepare a Callback for logging
+            IModificationOperationCallback modCallback = createIndexModificationCallback(jobId, resourceID,
+                    metadataIndex, lsmIndex, IndexOperation.DELETE);
+            ILSMIndexAccessor indexAccessor = lsmIndex.createAccessor(modCallback, NoOpOperationCallback.INSTANCE);
 
-        ITransactionContext txnCtx = transactionSubsystem.getTransactionManager().getTransactionContext(jobId, false);
-        txnCtx.setWriteTxn(true);
-        txnCtx.registerIndexAndCallback(resourceID, lsmIndex, (AbstractOperationCallback) modCallback,
-                metadataIndex.isPrimaryIndex());
+            ITransactionContext txnCtx = transactionSubsystem.getTransactionManager().getTransactionContext(jobId,
+                    false);
+            txnCtx.setWriteTxn(true);
+            txnCtx.registerIndexAndCallback(resourceID, lsmIndex, (AbstractOperationCallback) modCallback,
+                    metadataIndex.isPrimaryIndex());
 
-        indexAccessor.forceDelete(tuple);
-        indexLifecycleManager.close(resourceID);
+            AsterixLSMIndexUtil.checkAndSetFirstLSN((AbstractLSMIndex) lsmIndex, transactionSubsystem.getLogManager());
+
+            indexAccessor.forceDelete(tuple);
+        } catch (Exception e) {
+            throw e;
+        } finally {
+            indexLifecycleManager.close(resourceID);
+        }
     }
 
     @Override
@@ -1152,7 +1164,7 @@ public class MetadataNode implements IMetadataNode {
             insertTupleIntoIndex(jobId, MetadataPrimaryIndexes.DATASOURCE_ADAPTER_DATASET, adapterTuple);
 
         } catch (TreeIndexDuplicateKeyException e) {
-            throw new MetadataException("A adapter with this name " + adapter.getAdapterIdentifier().getAdapterName()
+            throw new MetadataException("A adapter with this name " + adapter.getAdapterIdentifier().getName()
                     + " already exists in dataverse '" + adapter.getAdapterIdentifier().getNamespace() + "'.", e);
         } catch (Exception e) {
             throw new MetadataException(e);
@@ -1334,76 +1346,6 @@ public class MetadataNode implements IMetadataNode {
     }
 
     @Override
-    public void registerFeedActivity(JobId jobId, FeedConnectionId feedId, FeedActivity feedActivity)
-            throws MetadataException, RemoteException {
-        try {
-            if (!FeedActivityIdFactory.isInitialized()) {
-                initializeFeedActivityIdFactory(jobId);
-            }
-            feedActivity.setActivityId(FeedActivityIdFactory.generateFeedActivityId());
-            FeedActivityTupleTranslator tupleReaderWriter = new FeedActivityTupleTranslator(true);
-            ITupleReference tuple = tupleReaderWriter.getTupleFromMetadataEntity(feedActivity);
-            insertTupleIntoIndex(jobId, MetadataPrimaryIndexes.FEED_ACTIVITY_DATASET, tuple);
-        } catch (Exception e) {
-            throw new MetadataException(e);
-        }
-
-    }
-
-    @Override
-    public FeedActivity getRecentFeedActivity(JobId jobId, FeedConnectionId feedId, FeedActivityType... activityType)
-            throws MetadataException, RemoteException {
-        try {
-            ITupleReference searchKey = createTuple(feedId.getDataverse(), feedId.getFeedName(),
-                    feedId.getDatasetName());
-            FeedActivityTupleTranslator tupleReaderWriter = new FeedActivityTupleTranslator(false);
-            List<FeedActivity> results = new ArrayList<FeedActivity>();
-            IValueExtractor<FeedActivity> valueExtractor = new MetadataEntityValueExtractor<FeedActivity>(
-                    tupleReaderWriter);
-            searchIndex(jobId, MetadataPrimaryIndexes.FEED_ACTIVITY_DATASET, searchKey, valueExtractor, results);
-            if (!results.isEmpty()) {
-                Collections.sort(results);
-                if (activityType == null) {
-                    return results.get(0);
-                } else {
-                    for (FeedActivity result : results) {
-                        for (FeedActivityType ft : activityType) {
-                            if (result.getActivityType().equals(ft)) {
-                                return result;
-                            }
-                        }
-                    }
-                }
-            }
-            return null;
-        } catch (Exception e) {
-            throw new MetadataException(e);
-        }
-    }
-
-    @Override
-    public void initializeFeedActivityIdFactory(JobId jobId) throws MetadataException, RemoteException {
-        try {
-            ITupleReference searchKey = createTuple();
-            FeedActivityTupleTranslator tupleReaderWriter = new FeedActivityTupleTranslator(true);
-            List<FeedActivity> results = new ArrayList<FeedActivity>();
-            IValueExtractor<FeedActivity> valueExtractor = new MetadataEntityValueExtractor<FeedActivity>(
-                    tupleReaderWriter);
-            searchIndex(jobId, MetadataPrimaryIndexes.FEED_ACTIVITY_DATASET, searchKey, valueExtractor, results);
-            int maxActivityId = 0;
-            for (FeedActivity fa : results) {
-                if (maxActivityId < fa.getActivityId()) {
-                    maxActivityId = fa.getActivityId();
-                }
-            }
-            FeedActivityIdFactory.initialize(maxActivityId);
-        } catch (Exception e) {
-            throw new MetadataException(e);
-        }
-
-    }
-
-    @Override
     public void addFeedPolicy(JobId jobId, FeedPolicy feedPolicy) throws MetadataException, RemoteException {
         try {
             // Insert into the 'FeedPolicy' dataset.
@@ -1434,58 +1376,6 @@ public class MetadataNode implements IMetadataNode {
                 return results.get(0);
             }
             return null;
-        } catch (Exception e) {
-            throw new MetadataException(e);
-        }
-    }
-
-    @Override
-    public List<FeedActivity> getActiveFeeds(JobId jobId, String dataverse, String dataset) throws MetadataException,
-            RemoteException {
-        List<FeedActivity> activeFeeds = new ArrayList<FeedActivity>();
-        Map<FeedConnectionId, FeedActivity> aFeeds = new HashMap<FeedConnectionId, FeedActivity>();
-        boolean invalidArgs = (dataverse == null && dataset != null);
-        if (invalidArgs) {
-            throw new MetadataException("Invalid arguments " + dataverse + " " + dataset);
-        }
-        try {
-            ITupleReference searchKey = createTuple();
-            FeedActivityTupleTranslator tupleReaderWriter = new FeedActivityTupleTranslator(true);
-            List<FeedActivity> results = new ArrayList<FeedActivity>();
-            IValueExtractor<FeedActivity> valueExtractor = new MetadataEntityValueExtractor<FeedActivity>(
-                    tupleReaderWriter);
-            searchIndex(jobId, MetadataPrimaryIndexes.FEED_ACTIVITY_DATASET, searchKey, valueExtractor, results);
-            Collections.sort(results); // recent activity first
-            FeedConnectionId fid = null;
-            Set<FeedConnectionId> terminatedFeeds = new HashSet<FeedConnectionId>();
-            for (FeedActivity fa : results) {
-                if (dataverse != null) {
-                    if (dataset != null
-                            && (!fa.getDataverseName().equals(dataverse) || !dataset.equals(fa.getDatasetName()))) {
-                        continue;
-                    }
-                }
-
-                fid = new FeedConnectionId(fa.getDataverseName(), fa.getFeedName(), fa.getDatasetName());
-                switch (fa.getActivityType()) {
-                    case FEED_BEGIN:
-                        if (!terminatedFeeds.contains(fid)) {
-                            if (aFeeds.get(fid) == null || fa.getActivityId() > aFeeds.get(fid).getActivityId()) {
-                                aFeeds.put(fid, fa);
-                            }
-                        }
-                        break;
-                    case FEED_END:
-                        terminatedFeeds.add(fid);
-                        break;
-                    default: //ignore    
-                }
-            }
-            for (FeedActivity f : aFeeds.values()) {
-                System.out.println("ACTIVE FEEDS " + f.getFeedName());
-                activeFeeds.add(f);
-            }
-            return activeFeeds;
         } catch (Exception e) {
             throw new MetadataException(e);
         }
@@ -1543,40 +1433,30 @@ public class MetadataNode implements IMetadataNode {
 
     }
 
-    public List<FeedActivity> getDatasetsServedByFeed(JobId jobId, String dataverse, String feedName)
-            throws MetadataException, RemoteException {
-        List<FeedActivity> feedActivities = new ArrayList<FeedActivity>();
+    @Override
+    public void dropFeedPolicy(JobId jobId, String dataverseName, String policyName) throws MetadataException,
+            RemoteException {
         try {
-            ITupleReference searchKey = createTuple(dataverse, feedName);
-            FeedActivityTupleTranslator tupleReaderWriter = new FeedActivityTupleTranslator(false);
-            List<FeedActivity> results = new ArrayList<FeedActivity>();
-            IValueExtractor<FeedActivity> valueExtractor = new MetadataEntityValueExtractor<FeedActivity>(
-                    tupleReaderWriter);
-            searchIndex(jobId, MetadataPrimaryIndexes.FEED_ACTIVITY_DATASET, searchKey, valueExtractor, results);
+            ITupleReference searchKey = createTuple(dataverseName, policyName);
+            ITupleReference tuple = getTupleToBeDeleted(jobId, MetadataPrimaryIndexes.FEED_POLICY_DATASET, searchKey);
+            deleteTupleFromIndex(jobId, MetadataPrimaryIndexes.FEED_POLICY_DATASET, tuple);
+        } catch (TreeIndexException e) {
+            throw new MetadataException("Unknown feed policy " + policyName, e);
+        } catch (Exception e) {
+            throw new MetadataException(e);
+        }
+    }
 
-            if (!results.isEmpty()) {
-                Collections.sort(results); // most recent feed activity
-                Set<String> terminatedDatasets = new HashSet<String>();
-                Set<String> activeDatasets = new HashSet<String>();
-
-                for (FeedActivity result : results) {
-                    switch (result.getFeedActivityType()) {
-                        case FEED_BEGIN:
-                            if (!terminatedDatasets.contains(result.getDatasetName())) {
-                                feedActivities.add(result);
-                                activeDatasets.add(result.getDatasetName());
-                            }
-                            break;
-                        case FEED_END:
-                            if (!activeDatasets.contains(result.getDatasetName())) {
-                                terminatedDatasets.add(result.getDatasetName());
-                            }
-                            break;
-                    }
-
-                }
-            }
-            return feedActivities;
+    @Override
+    public List<FeedPolicy> getDataversePolicies(JobId jobId, String dataverse) throws MetadataException,
+            RemoteException {
+        try {
+            ITupleReference searchKey = createTuple(dataverse);
+            FeedPolicyTupleTranslator tupleReaderWriter = new FeedPolicyTupleTranslator(false);
+            IValueExtractor<FeedPolicy> valueExtractor = new MetadataEntityValueExtractor<FeedPolicy>(tupleReaderWriter);
+            List<FeedPolicy> results = new ArrayList<FeedPolicy>();
+            searchIndex(jobId, MetadataPrimaryIndexes.FEED_POLICY_DATASET, searchKey, valueExtractor, results);
+            return results;
         } catch (Exception e) {
             throw new MetadataException(e);
         }

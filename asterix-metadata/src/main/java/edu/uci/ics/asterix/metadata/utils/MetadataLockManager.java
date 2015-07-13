@@ -1,3 +1,17 @@
+/*
+ * Copyright 2009-2013 by The Regents of the University of California
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * you may obtain a copy of the License from
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package edu.uci.ics.asterix.metadata.utils;
 
 import java.util.Collections;
@@ -15,6 +29,7 @@ public class MetadataLockManager {
     private final ConcurrentHashMap<String, ReentrantReadWriteLock> functionsLocks;
     private final ConcurrentHashMap<String, ReentrantReadWriteLock> nodeGroupsLocks;
     private final ConcurrentHashMap<String, ReentrantReadWriteLock> feedsLocks;
+    private final ConcurrentHashMap<String, ReentrantReadWriteLock> feedPolicyLocks;
     private final ConcurrentHashMap<String, ReentrantReadWriteLock> compactionPolicyLocks;
     private final ConcurrentHashMap<String, ReentrantReadWriteLock> dataTypeLocks;
 
@@ -24,6 +39,7 @@ public class MetadataLockManager {
         functionsLocks = new ConcurrentHashMap<String, ReentrantReadWriteLock>();
         nodeGroupsLocks = new ConcurrentHashMap<String, ReentrantReadWriteLock>();
         feedsLocks = new ConcurrentHashMap<String, ReentrantReadWriteLock>();
+        feedPolicyLocks = new ConcurrentHashMap<String, ReentrantReadWriteLock>();
         compactionPolicyLocks = new ConcurrentHashMap<String, ReentrantReadWriteLock>();
         dataTypeLocks = new ConcurrentHashMap<String, ReentrantReadWriteLock>();
     }
@@ -204,6 +220,19 @@ public class MetadataLockManager {
 
     public void releaseFeedWriteLock(String feedName) {
         feedsLocks.get(feedName).writeLock().unlock();
+    }
+    
+    public void acquireFeedPolicyWriteLock(String policyName) {
+        ReentrantReadWriteLock fLock = feedPolicyLocks.get(policyName);
+        if (fLock == null) {
+            feedPolicyLocks.putIfAbsent(policyName, new ReentrantReadWriteLock());
+            fLock = feedPolicyLocks.get(policyName);
+        }
+        fLock.writeLock().lock();
+    }
+
+    public void releaseFeedPolicyWriteLock(String policyName) {
+        feedPolicyLocks.get(policyName).writeLock().unlock();
     }
 
     public void acquireCompactionPolicyReadLock(String compactionPolicyName) {
@@ -411,6 +440,16 @@ public class MetadataLockManager {
         releaseFeedWriteLock(feedFullyQualifiedName);
         releaseDataverseReadLock(dataverseName);
     }
+    
+    public void dropFeedPolicyBegin(String dataverseName, String policyName) {
+        releaseFeedWriteLock(policyName);
+        releaseDataverseReadLock(dataverseName);
+    }
+
+    public void dropFeedPolicyEnd(String dataverseName, String policyName) {
+        releaseFeedWriteLock(policyName);
+        releaseDataverseReadLock(dataverseName);
+    }
 
     public void createFeedBegin(String dataverseName, String feedFullyQualifiedName) {
         acquireDataverseReadLock(dataverseName);
@@ -434,6 +473,16 @@ public class MetadataLockManager {
         releaseDataverseReadLock(dataverseName);
     }
 
+    public void createFeedPolicyBegin(String dataverseName, String policyName) {
+        acquireDataverseReadLock(dataverseName);
+        acquireFeedPolicyWriteLock(policyName);
+    }
+
+    public void createFeedPolicyEnd(String dataverseName, String policyName) {
+        releaseFeedPolicyWriteLock(policyName);
+        releaseDataverseReadLock(dataverseName);
+    }
+    
     public void disconnectFeedBegin(String dataverseName, String datasetFullyQualifiedName,
             String feedFullyQualifiedName) {
         acquireDataverseReadLock(dataverseName);
@@ -442,6 +491,19 @@ public class MetadataLockManager {
     }
 
     public void disconnectFeedEnd(String dataverseName, String datasetFullyQualifiedName, String feedFullyQualifiedName) {
+        releaseFeedReadLock(feedFullyQualifiedName);
+        releaseDatasetReadLock(datasetFullyQualifiedName);
+        releaseDataverseReadLock(dataverseName);
+    }
+    
+    public void subscribeFeedBegin(String dataverseName, String datasetFullyQualifiedName,
+            String feedFullyQualifiedName) {
+        acquireDataverseReadLock(dataverseName);
+        acquireDatasetReadLock(datasetFullyQualifiedName);
+        acquireFeedReadLock(feedFullyQualifiedName);
+    }
+    
+    public void subscribeFeedEnd(String dataverseName, String datasetFullyQualifiedName, String feedFullyQualifiedName) {
         releaseFeedReadLock(feedFullyQualifiedName);
         releaseDatasetReadLock(datasetFullyQualifiedName);
         releaseDataverseReadLock(dataverseName);

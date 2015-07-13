@@ -1,14 +1,30 @@
+/*
+ * Copyright 2009-2013 by The Regents of the University of California
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * you may obtain a copy of the License from
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package edu.uci.ics.asterix.external.adapter.factory;
 
 import java.util.Map;
 
 import edu.uci.ics.asterix.common.exceptions.AsterixException;
+import edu.uci.ics.asterix.common.feeds.FeedPolicyAccessor;
+import edu.uci.ics.asterix.common.feeds.api.IDatasourceAdapter;
+import edu.uci.ics.asterix.common.feeds.api.IIntakeProgressTracker;
 import edu.uci.ics.asterix.external.dataset.adapter.PullBasedAzureTwitterAdapter;
 import edu.uci.ics.asterix.metadata.MetadataManager;
 import edu.uci.ics.asterix.metadata.MetadataTransactionContext;
 import edu.uci.ics.asterix.metadata.entities.Datatype;
-import edu.uci.ics.asterix.metadata.feeds.IDatasourceAdapter;
-import edu.uci.ics.asterix.metadata.feeds.ITypedAdapterFactory;
+import edu.uci.ics.asterix.metadata.feeds.IFeedAdapterFactory;
 import edu.uci.ics.asterix.om.types.ARecordType;
 import edu.uci.ics.asterix.om.types.ATypeTag;
 import edu.uci.ics.asterix.om.types.IAType;
@@ -16,7 +32,7 @@ import edu.uci.ics.hyracks.algebricks.common.constraints.AlgebricksAbsoluteParti
 import edu.uci.ics.hyracks.algebricks.common.constraints.AlgebricksPartitionConstraint;
 import edu.uci.ics.hyracks.api.context.IHyracksTaskContext;
 
-public class PullBasedAzureTwitterAdapterFactory implements ITypedAdapterFactory {
+public class PullBasedAzureTwitterAdapterFactory implements IFeedAdapterFactory {
 
     private static final long serialVersionUID = 1L;
 
@@ -27,13 +43,14 @@ public class PullBasedAzureTwitterAdapterFactory implements ITypedAdapterFactory
     private static final String ACCOUNT_NAME_KEY = "account-name";
     private static final String ACCOUNT_KEY_KEY = "account-key";
 
-    private ARecordType recordType;
+    private ARecordType outputType;
     private Map<String, String> configuration;
     private String tableName;
     private String azureAccountName;
     private String azureAccountKey;
     private String[] locations;
     private String[] partitions;
+    private FeedPolicyAccessor ingestionPolicy;
 
     @Override
     public SupportedOperation getSupportedOperations() {
@@ -43,11 +60,6 @@ public class PullBasedAzureTwitterAdapterFactory implements ITypedAdapterFactory
     @Override
     public String getName() {
         return "azure_twitter";
-    }
-
-    @Override
-    public AdapterType getAdapterType() {
-        return AdapterType.TYPED;
     }
 
     @Override
@@ -63,17 +75,18 @@ public class PullBasedAzureTwitterAdapterFactory implements ITypedAdapterFactory
     @Override
     public IDatasourceAdapter createAdapter(IHyracksTaskContext ctx, int partition) throws Exception {
         return new PullBasedAzureTwitterAdapter(azureAccountName, azureAccountKey, tableName, partitions,
-                configuration, ctx, recordType);
+                configuration, ctx, outputType);
     }
 
     @Override
     public ARecordType getAdapterOutputType() {
-        return recordType;
+        return outputType;
     }
 
     @Override
-    public void configure(Map<String, String> configuration) throws Exception {
+    public void configure(Map<String, String> configuration, ARecordType outputType) throws Exception {
         this.configuration = configuration;
+        this.outputType = outputType;
 
         tableName = configuration.get(TABLE_NAME_KEY);
         if (tableName == null) {
@@ -125,7 +138,7 @@ public class PullBasedAzureTwitterAdapterFactory implements ITypedAdapterFactory
             if (type.getTypeTag() != ATypeTag.RECORD) {
                 throw new IllegalStateException();
             }
-            recordType = (ARecordType) t.getDatatype();
+            outputType = (ARecordType) t.getDatatype();
             MetadataManager.INSTANCE.commitTransaction(ctx);
         } catch (Exception e) {
             if (ctx != null) {
@@ -136,4 +149,21 @@ public class PullBasedAzureTwitterAdapterFactory implements ITypedAdapterFactory
             MetadataManager.INSTANCE.releaseReadLatch();
         }
     }
+
+    @Override
+    public boolean isRecordTrackingEnabled() {
+        return false;
+    }
+
+    @Override
+    public IIntakeProgressTracker createIntakeProgressTracker() {
+        return null;
+    }
+
+    public FeedPolicyAccessor getIngestionPolicy() {
+        return ingestionPolicy;
+    }
+    
+    
+
 }

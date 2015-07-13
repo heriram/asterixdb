@@ -3,9 +3,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * you may obtain a copy of the License from
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -38,8 +38,8 @@ public class MetadataBuiltinFunctions {
         addMetadataBuiltinFunctions();
         AsterixBuiltinFunctions.addUnnestFun(AsterixBuiltinFunctions.DATASET, false);
         AsterixBuiltinFunctions.addDatasetFunction(AsterixBuiltinFunctions.DATASET);
-        AsterixBuiltinFunctions.addUnnestFun(AsterixBuiltinFunctions.FEED_INGEST, false);
-        AsterixBuiltinFunctions.addDatasetFunction(AsterixBuiltinFunctions.FEED_INGEST);
+        AsterixBuiltinFunctions.addUnnestFun(AsterixBuiltinFunctions.FEED_COLLECT, false);
+        AsterixBuiltinFunctions.addDatasetFunction(AsterixBuiltinFunctions.FEED_COLLECT);
         AsterixBuiltinFunctions.addUnnestFun(AsterixBuiltinFunctions.FEED_INTERCEPT, false);
         AsterixBuiltinFunctions.addDatasetFunction(AsterixBuiltinFunctions.FEED_INTERCEPT);
     }
@@ -89,17 +89,17 @@ public class MetadataBuiltinFunctions {
             }
         }, true);
 
-        AsterixBuiltinFunctions.addPrivateFunction(AsterixBuiltinFunctions.FEED_INGEST, new IResultTypeComputer() {
+        AsterixBuiltinFunctions.addPrivateFunction(AsterixBuiltinFunctions.FEED_COLLECT, new IResultTypeComputer() {
 
             @Override
             public IAType computeType(ILogicalExpression expression, IVariableTypeEnvironment env,
                     IMetadataProvider<?, ?> mp) throws AlgebricksException {
                 AbstractFunctionCallExpression f = (AbstractFunctionCallExpression) expression;
-                if (f.getArguments().size() != 3) {
-                    throw new AlgebricksException("Incorrect number of arguments -> arity is 3, not "
-                            + f.getArguments().size());
+                if (f.getArguments().size() != AsterixBuiltinFunctions.FEED_COLLECT.getArity()) {
+                    throw new AlgebricksException("Incorrect number of arguments -> arity is "
+                            + AsterixBuiltinFunctions.FEED_COLLECT.getArity() + ", not " + f.getArguments().size());
                 }
-                ILogicalExpression a1 = f.getArguments().get(1).getValue();
+                ILogicalExpression a1 = f.getArguments().get(5).getValue();
                 IAType t1 = (IAType) env.getType(a1);
                 if (t1.getTypeTag() == ATypeTag.ANY) {
                     return BuiltinType.ANY;

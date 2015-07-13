@@ -3,9 +3,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * you may obtain a copy of the License from
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -14,12 +14,9 @@
  */
 package edu.uci.ics.asterix.result;
 
-import java.nio.ByteBuffer;
-
-import edu.uci.ics.asterix.common.config.AsterixCompilerProperties;
-import edu.uci.ics.asterix.common.config.GlobalConfig;
 import edu.uci.ics.asterix.om.util.AsterixAppContextInfo;
 import edu.uci.ics.hyracks.api.client.IHyracksClientConnection;
+import edu.uci.ics.hyracks.api.comm.IFrame;
 import edu.uci.ics.hyracks.api.comm.IFrameTupleAccessor;
 import edu.uci.ics.hyracks.api.dataset.DatasetJobRecord.Status;
 import edu.uci.ics.hyracks.api.dataset.IHyracksDataset;
@@ -47,15 +44,15 @@ public class ResultReader {
 
     public void open(JobId jobId, ResultSetId resultSetId) throws HyracksDataException {
         reader = hyracksDataset.createReader(jobId, resultSetId);
-        frameTupleAccessor = new ResultFrameTupleAccessor(FRAME_SIZE);
+        frameTupleAccessor = new ResultFrameTupleAccessor();
     }
 
     public Status getStatus() {
         return reader.getResultStatus();
     }
 
-    public int read(ByteBuffer buffer) throws HyracksDataException {
-        return reader.read(buffer);
+    public int read(IFrame frame) throws HyracksDataException {
+        return reader.read(frame);
     }
 
     public IFrameTupleAccessor getFrameTupleAccessor() {

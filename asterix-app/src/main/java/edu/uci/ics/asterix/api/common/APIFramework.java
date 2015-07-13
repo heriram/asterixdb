@@ -3,9 +3,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * you may obtain a copy of the License from
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -157,7 +157,7 @@ public class APIFramework {
     public static Pair<Query, Integer> reWriteQuery(List<FunctionDecl> declaredFunctions,
             AqlMetadataProvider metadataProvider, Query q, SessionConfig conf) throws AsterixException {
 
-        if (conf.is(SessionConfig.FORMAT_ONLY_PHYSICAL_OPS) && conf.is(SessionConfig.OOB_EXPR_TREE)) {
+        if (!conf.is(SessionConfig.FORMAT_ONLY_PHYSICAL_OPS) && conf.is(SessionConfig.OOB_EXPR_TREE)) {
             conf.out().println();
 
             if (conf.is(SessionConfig.FORMAT_HTML)) {
@@ -186,7 +186,7 @@ public class APIFramework {
             SessionConfig conf, ICompiledDmlStatement statement) throws AsterixException, AlgebricksException,
             JSONException, RemoteException, ACIDException {
 
-        if (conf.is(SessionConfig.FORMAT_ONLY_PHYSICAL_OPS) && conf.is(SessionConfig.OOB_REWRITTEN_EXPR_TREE)) {
+        if (!conf.is(SessionConfig.FORMAT_ONLY_PHYSICAL_OPS) && conf.is(SessionConfig.OOB_REWRITTEN_EXPR_TREE)) {
             conf.out().println();
 
             if (conf.is(SessionConfig.FORMAT_HTML)) {
@@ -219,7 +219,7 @@ public class APIFramework {
         }
 
         LogicalOperatorPrettyPrintVisitor pvisitor = new LogicalOperatorPrettyPrintVisitor();
-        if (conf.is(SessionConfig.FORMAT_ONLY_PHYSICAL_OPS) && conf.is(SessionConfig.OOB_LOGICAL_PLAN)) {
+        if (!conf.is(SessionConfig.FORMAT_ONLY_PHYSICAL_OPS) && conf.is(SessionConfig.OOB_LOGICAL_PLAN)) {
             conf.out().println();
 
             if (conf.is(SessionConfig.FORMAT_HTML)) {

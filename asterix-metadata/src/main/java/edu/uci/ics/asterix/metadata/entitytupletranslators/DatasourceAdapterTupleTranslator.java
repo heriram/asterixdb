@@ -3,9 +3,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * you may obtain a copy of the License from
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -85,7 +85,7 @@ public class DatasourceAdapterTupleTranslator extends AbstractTupleTranslator<Da
         aString.setValue(adapter.getAdapterIdentifier().getNamespace());
         stringSerde.serialize(aString, tupleBuilder.getDataOutput());
         tupleBuilder.addFieldEndOffset();
-        aString.setValue(adapter.getAdapterIdentifier().getAdapterName());
+        aString.setValue(adapter.getAdapterIdentifier().getName());
         stringSerde.serialize(aString, tupleBuilder.getDataOutput());
         tupleBuilder.addFieldEndOffset();
 
@@ -101,7 +101,7 @@ public class DatasourceAdapterTupleTranslator extends AbstractTupleTranslator<Da
 
         // write field 1
         fieldValue.reset();
-        aString.setValue(adapter.getAdapterIdentifier().getAdapterName());
+        aString.setValue(adapter.getAdapterIdentifier().getName());
         stringSerde.serialize(aString, fieldValue.getDataOutput());
         recordBuilder.addField(MetadataRecordTypes.DATASOURCE_ADAPTER_ARECORD_NAME_FIELD_INDEX, fieldValue);
 

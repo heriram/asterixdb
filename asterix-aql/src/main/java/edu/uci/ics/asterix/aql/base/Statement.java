@@ -3,9 +3,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * you may obtain a copy of the License from
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -37,10 +37,14 @@ public interface Statement extends IAqlExpression {
         INDEX_DECL,
         CREATE_DATAVERSE,
         INDEX_DROP,
-        CREATE_FEED,
+        CREATE_PRIMARY_FEED,
+        CREATE_SECONDARY_FEED,
         DROP_FEED,
         CONNECT_FEED,
         DISCONNECT_FEED,
+        SUBSCRIBE_FEED,
+        CREATE_FEED_POLICY,
+        DROP_FEED_POLICY,
         CREATE_FUNCTION,
         FUNCTION_DROP,
         COMPACT, 

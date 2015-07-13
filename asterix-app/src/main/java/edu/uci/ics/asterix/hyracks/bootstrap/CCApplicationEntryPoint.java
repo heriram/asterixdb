@@ -24,17 +24,20 @@ import org.eclipse.jetty.util.component.AbstractLifeCycle;
 
 import edu.uci.ics.asterix.api.http.servlet.APIServlet;
 import edu.uci.ics.asterix.api.http.servlet.AQLAPIServlet;
+import edu.uci.ics.asterix.api.http.servlet.ConnectorAPIServlet;
 import edu.uci.ics.asterix.api.http.servlet.DDLAPIServlet;
-import edu.uci.ics.asterix.api.http.servlet.FeedDashboardServlet;
-import edu.uci.ics.asterix.api.http.servlet.FeedDataProviderServlet;
 import edu.uci.ics.asterix.api.http.servlet.FeedServlet;
 import edu.uci.ics.asterix.api.http.servlet.QueryAPIServlet;
 import edu.uci.ics.asterix.api.http.servlet.QueryResultAPIServlet;
 import edu.uci.ics.asterix.api.http.servlet.QueryStatusAPIServlet;
+import edu.uci.ics.asterix.api.http.servlet.ShutdownAPIServlet;
 import edu.uci.ics.asterix.api.http.servlet.UpdateAPIServlet;
 import edu.uci.ics.asterix.common.api.AsterixThreadFactory;
 import edu.uci.ics.asterix.common.config.AsterixExternalProperties;
 import edu.uci.ics.asterix.common.config.AsterixMetadataProperties;
+import edu.uci.ics.asterix.common.feeds.api.ICentralFeedManager;
+import edu.uci.ics.asterix.feeds.CentralFeedManager;
+import edu.uci.ics.asterix.feeds.FeedLifecycleListener;
 import edu.uci.ics.asterix.metadata.MetadataManager;
 import edu.uci.ics.asterix.metadata.api.IAsterixStateProxy;
 import edu.uci.ics.asterix.metadata.bootstrap.AsterixStateProxy;
@@ -54,6 +57,7 @@ public class CCApplicationEntryPoint implements ICCApplicationEntryPoint {
     private Server webServer;
     private Server jsonAPIServer;
     private Server feedServer;
+    private ICentralFeedManager centralFeedManager;
 
     private static IAsterixStateProxy proxy;
     private ICCApplicationContext appCtx;
@@ -76,7 +80,7 @@ public class CCApplicationEntryPoint implements ICCApplicationEntryPoint {
         MetadataManager.INSTANCE = new MetadataManager(proxy, metadataProperties);
 
         AsterixAppContextInfo.getInstance().getCCApplicationContext()
-                .addJobLifecycleListener(FeedLifecycleListener.INSTANCE);
+        .addJobLifecycleListener(FeedLifecycleListener.INSTANCE);
 
         AsterixExternalProperties externalProperties = AsterixAppContextInfo.getInstance().getExternalProperties();
         setupWebServer(externalProperties);
@@ -88,7 +92,9 @@ public class CCApplicationEntryPoint implements ICCApplicationEntryPoint {
 
         setupFeedServer(externalProperties);
         feedServer.start();
-        
+        centralFeedManager = CentralFeedManager.getInstance(); 
+        centralFeedManager.start();
+
         waitUntilServerStart(webServer);
         waitUntilServerStart(jsonAPIServer);
         waitUntilServerStart(feedServer);
@@ -100,9 +106,9 @@ public class CCApplicationEntryPoint implements ICCApplicationEntryPoint {
         ccAppCtx.addClusterLifecycleListener(ClusterLifecycleListener.INSTANCE);
     }
 
-    private void waitUntilServerStart(AbstractLifeCycle webServer) throws Exception{
-        while(!webServer.isStarted()){
-            if(webServer.isFailed()){
+    private void waitUntilServerStart(AbstractLifeCycle webServer) throws Exception {
+        while (!webServer.isStarted()) {
+            if (webServer.isFailed()) {
                 throw new Exception("Server failed to start");
             }
             wait(1000);
@@ -156,6 +162,8 @@ public class CCApplicationEntryPoint implements ICCApplicationEntryPoint {
         context.addServlet(new ServletHolder(new UpdateAPIServlet()), "/update");
         context.addServlet(new ServletHolder(new DDLAPIServlet()), "/ddl");
         context.addServlet(new ServletHolder(new AQLAPIServlet()), "/aql");
+        context.addServlet(new ServletHolder(new ConnectorAPIServlet()), "/connector");
+        context.addServlet(new ServletHolder(new ShutdownAPIServlet()), "/admin/shutdown");
     }
 
     private void setupFeedServer(AsterixExternalProperties externalProperties) throws Exception {
@@ -169,9 +177,7 @@ public class CCApplicationEntryPoint implements ICCApplicationEntryPoint {
 
         feedServer.setHandler(context);
         context.addServlet(new ServletHolder(new FeedServlet()), "/");
-        context.addServlet(new ServletHolder(new FeedDashboardServlet()), "/feed/dashboard");
-        context.addServlet(new ServletHolder(new FeedDataProviderServlet()), "/feed/data");
-
+   
         // add paths here
     }
 }

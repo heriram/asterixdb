@@ -3,9 +3,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * you may obtain a copy of the License from
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -39,7 +39,7 @@ import edu.uci.ics.asterix.om.types.ARecordType;
  * fetching from an RSS feed source at regular interval.
  */
 @SuppressWarnings("rawtypes")
-public class RSSFeedClient extends PullBasedFeedClient {
+public class RSSFeedClient extends FeedClient {
 
     private long id = 0;
     private String idPrefix;
@@ -79,7 +79,7 @@ public class RSSFeedClient extends PullBasedFeedClient {
     }
 
     @Override
-    public InflowState setNextRecord() throws Exception {
+    public InflowState retrieveNextRecord() throws Exception {
         SyndEntryImpl feedEntry = getNextRSSFeed();
         if (feedEntry == null) {
             return InflowState.DATA_NOT_AVAILABLE;
@@ -133,9 +133,9 @@ public class RSSFeedClient extends PullBasedFeedClient {
 
 class FetcherEventListenerImpl implements FetcherListener {
 
-    private final IPullBasedFeedClient feedClient;
+    private final IFeedClient feedClient;
 
-    public FetcherEventListenerImpl(IPullBasedFeedClient feedClient) {
+    public FetcherEventListenerImpl(IFeedClient feedClient) {
         this.feedClient = feedClient;
     }
 
