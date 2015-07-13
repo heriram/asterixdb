@@ -1,16 +1,29 @@
+/*
+ * Copyright 2009-2013 by The Regents of the University of California
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * you may obtain a copy of the License from
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package edu.uci.ics.asterix.runtime.evaluators.visitors;
 
 import edu.uci.ics.asterix.common.exceptions.AsterixException;
 import edu.uci.ics.asterix.om.pointables.AFlatValuePointable;
-import edu.uci.ics.asterix.om.pointables.AListPointable;
-import edu.uci.ics.asterix.om.pointables.ARecordPointable;
+import edu.uci.ics.asterix.om.pointables.AListVisitablePointable;
+import edu.uci.ics.asterix.om.pointables.ARecordVisitablePointable;
 import edu.uci.ics.asterix.om.pointables.base.IVisitablePointable;
 import edu.uci.ics.asterix.om.pointables.visitor.IVisitablePointableVisitor;
 import edu.uci.ics.asterix.om.types.ATypeTag;
 import edu.uci.ics.asterix.runtime.evaluators.functions.PointableUtils;
 import edu.uci.ics.hyracks.algebricks.common.utils.Pair;
 import edu.uci.ics.hyracks.api.exceptions.HyracksDataException;
-import edu.uci.ics.hyracks.data.std.api.IValueReference;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -22,7 +35,7 @@ public class DeepEqualityVisitor implements IVisitablePointableVisitor<Void, Pai
             new HashMap<IVisitablePointable, RecordDeepEqualityAccessor>();
 
 
-    @Override public Void visit(AListPointable accessor, Pair<IVisitablePointable, Boolean> arg)
+    @Override public Void visit(AListVisitablePointable accessor, Pair<IVisitablePointable, Boolean> arg)
             throws AsterixException {
         ListDeepEqualityAccessor listDeepEqualityAccessor = laccessorToEqulity.get(accessor);
         if (listDeepEqualityAccessor == null) {
@@ -39,7 +52,7 @@ public class DeepEqualityVisitor implements IVisitablePointableVisitor<Void, Pai
         return null;
     }
 
-    @Override public Void visit(ARecordPointable accessor, Pair<IVisitablePointable, Boolean> arg)
+    @Override public Void visit(ARecordVisitablePointable accessor, Pair<IVisitablePointable, Boolean> arg)
             throws AsterixException {
         RecordDeepEqualityAccessor recDeepEqualityAccessor = raccessorToEquality.get(accessor);
         if (recDeepEqualityAccessor == null) {
@@ -59,8 +72,8 @@ public class DeepEqualityVisitor implements IVisitablePointableVisitor<Void, Pai
     @Override public Void visit(AFlatValuePointable accessor,Pair<IVisitablePointable, Boolean> arg)
             throws AsterixException {
 
-        ATypeTag tt1 = getTypeTag(accessor);
-        ATypeTag tt2 = getTypeTag(arg.first);
+        ATypeTag tt1 = PointableUtils.getTypeTag(accessor);
+        ATypeTag tt2 = PointableUtils.getTypeTag(arg.first);
 
         if (accessor.equals(arg.second)) {
             arg.second = true;
@@ -73,21 +86,11 @@ public class DeepEqualityVisitor implements IVisitablePointableVisitor<Void, Pai
         }
 
         try {
-            arg.second = byteArrayEqual(accessor, arg.first, 1);
+            arg.second = PointableUtils.byteArrayEqual(accessor, arg.first, 1);
         } catch (HyracksDataException e) {
             throw new AsterixException(e);
         }
 
         return null;
     }
-
-    public boolean byteArrayEqual(IValueReference valueRef1, IValueReference valueRef2, int dataOffset) throws
-            HyracksDataException {
-        return PointableUtils.INSTANCE.byteArrayEqual(valueRef1, valueRef2, dataOffset);
-    }
-
-    public ATypeTag getTypeTag(IVisitablePointable visitablePointable) {
-        return PointableUtils.INSTANCE.getTypeTag(visitablePointable);
-    }
-
 }

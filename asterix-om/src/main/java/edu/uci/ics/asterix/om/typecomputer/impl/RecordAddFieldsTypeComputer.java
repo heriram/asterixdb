@@ -1,9 +1,29 @@
+/*
+ * Copyright 2009-2013 by The Regents of the University of California
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * you may obtain a copy of the License from
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package edu.uci.ics.asterix.om.typecomputer.impl;
 
 import edu.uci.ics.asterix.common.exceptions.AsterixException;
 import edu.uci.ics.asterix.om.base.AString;
 import edu.uci.ics.asterix.om.constants.AsterixConstantValue;
-import edu.uci.ics.asterix.om.types.*;
+import edu.uci.ics.asterix.om.types.AOrderedListType;
+import edu.uci.ics.asterix.om.types.ARecordType;
+import edu.uci.ics.asterix.om.types.ATypeTag;
+import edu.uci.ics.asterix.om.types.AUnionType;
+import edu.uci.ics.asterix.om.types.BuiltinType;
+import edu.uci.ics.asterix.om.types.IAType;
+import edu.uci.ics.asterix.om.types.TypeHelper;
 import edu.uci.ics.hyracks.algebricks.common.exceptions.AlgebricksException;
 import edu.uci.ics.hyracks.algebricks.core.algebra.base.ILogicalExpression;
 import edu.uci.ics.hyracks.algebricks.core.algebra.base.LogicalExpressionTag;
@@ -13,7 +33,6 @@ import edu.uci.ics.hyracks.algebricks.core.algebra.expressions.ConstantExpressio
 import edu.uci.ics.hyracks.algebricks.core.algebra.expressions.IVariableTypeEnvironment;
 import edu.uci.ics.hyracks.algebricks.core.algebra.metadata.IMetadataProvider;
 import edu.uci.ics.hyracks.api.exceptions.HyracksDataException;
-import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.mutable.Mutable;
 
 import java.io.IOException;
@@ -88,18 +107,22 @@ public class RecordAddFieldsTypeComputer extends AbstractRecordManipulationTypeC
                 IAType[] ft = rtype.getFieldTypes();
                 for (int j=0; j<fn.length; j++) {
                     if (fn[j].equals(FIELD_NAME_NAME)) {
-                        ILogicalExpression recExpr = recConsExpr.getArguments().get(j).getValue();
-                        if (recExpr.getExpressionTag() == LogicalExpressionTag.CONSTANT) {
-                            AString as = (AString) ((AsterixConstantValue) ((ConstantExpression) recExpr)
-                                    .getValue()).getObject();
-                            if (as.getType().getTypeTag() == ATypeTag.STRING) {
-                                ILogicalExpression recFieldExpr = recConsExpr.getArguments().get(j+1).getValue();
-                                if (recFieldExpr.getExpressionTag() == LogicalExpressionTag.CONSTANT) {
-                                    as = (AString) ((AsterixConstantValue) ((ConstantExpression) recFieldExpr)
-                                            .getValue()).getObject();
-                                    additionalFieldNames.add(as.getStringValue());
+                        ILogicalExpression fieldNameExpr = recConsExpr.getArguments().get(j).getValue();
+                        switch (fieldNameExpr.getExpressionTag()) {
+                            case CONSTANT: // Top fields only
+                                AString as = (AString) ((AsterixConstantValue) ((ConstantExpression) fieldNameExpr).getValue()).getObject();
+                                if (as.getType().getTypeTag() == ATypeTag.STRING) {
+                                    // Get the actual "field-name" string
+                                    ILogicalExpression recFieldExpr = recConsExpr.getArguments().get(j + 1).getValue();
+                                    if (recFieldExpr.getExpressionTag() == LogicalExpressionTag.CONSTANT) {
+                                        as = (AString) ((AsterixConstantValue) ((ConstantExpression) recFieldExpr)
+                                                .getValue()).getObject();
+                                        additionalFieldNames.add(as.getStringValue());
+                                    }
                                 }
-                            }
+                                break;
+                            default:
+                                throw new AlgebricksException(fieldNameExpr + " is not supported.");
 
                         }
                     } else if (fn[j].equals(FIELD_VALUE_VALUE)) {
@@ -139,62 +162,5 @@ public class RecordAddFieldsTypeComputer extends AbstractRecordManipulationTypeC
         return resultType;
     }
 
-
-    private void addAdditionalFields(List<String> resultFieldNames, List<IAType> resultFieldTypes,
-            List<String> additionalFieldNames , List<IAType> additionalFieldTypes) throws AlgebricksException {
-
-        for (int i=0; i<additionalFieldNames.size(); i++) {
-            String fn = additionalFieldNames.get(i);
-            IAType ft = additionalFieldTypes.get(i);
-            int pos = Collections.binarySearch(resultFieldNames, fn);
-            if (pos >= 0) {
-                try {
-                    resultFieldTypes.set(pos, mergedNestedType(ft, resultFieldTypes.get(pos)));
-                } catch (AsterixException e) {
-                    throw new AlgebricksException(e);
-                }
-
-            } else {
-                resultFieldNames.add(fn);
-                resultFieldTypes.add(ft);
-            }
-        }
-    }
-
-
-    private IAType mergedNestedType(IAType fieldType1, IAType fieldType0) throws AlgebricksException, AsterixException {
-        if (fieldType1.getTypeTag() != ATypeTag.RECORD || fieldType0.getTypeTag() != ATypeTag.RECORD) {
-            throw new AlgebricksException("Duplicate field " + fieldType1.getTypeName() + " encountered");
-        }
-
-        ARecordType returnType = (ARecordType) fieldType0;
-        ARecordType fieldType1Copy = (ARecordType) fieldType1;
-
-        for (int i = 0; i < fieldType1Copy.getFieldTypes().length; i++) {
-            try {
-                int pos = returnType.findFieldPosition(fieldType1Copy.getFieldNames()[i]);
-                if (pos >= 0) {
-                    if (fieldType1Copy.getFieldTypes()[i].getTypeTag() != ATypeTag.RECORD) {
-                        break;
-                    }
-                    IAType[] oldTypes = returnType.getFieldTypes();
-                    oldTypes[pos] = mergedNestedType(fieldType1Copy.getFieldTypes()[i], returnType.getFieldTypes()[pos]);
-                    returnType = new ARecordType(returnType.getTypeName(), returnType.getFieldNames(), oldTypes,
-                            returnType.isOpen());
-                } else {
-                    IAType[] combinedFieldTypes = ArrayUtils
-                            .addAll(returnType.getFieldTypes().clone(), fieldType1Copy.getFieldTypes()[i]);
-                    returnType = new ARecordType(returnType.getTypeName(), ArrayUtils.addAll(
-                            returnType.getFieldNames(), fieldType1Copy.getFieldNames()[i]), combinedFieldTypes,
-                            returnType.isOpen());
-                }
-
-            } catch (IOException | AsterixException e) {
-                throw new AlgebricksException(e);
-            }
-        }
-
-        return returnType;
-    }
 
 }

@@ -9,6 +9,7 @@
 * [Similarity Functions](#SimilarityFunctions)
 * [Tokenizing Functions](#TokenizingFunctions)
 * [Temporal Functions](#TemporalFunctions)
+* [Record Functions](#RecordFunctions)
 * [Other Functions](#OtherFunctions)
 
 Asterix provides various classes of functions to support operations on numeric, string, spatial, and temporal data. This document explains how to use these functions.
@@ -17,11 +18,11 @@ Asterix provides various classes of functions to support operations on numeric, 
 ### abs ###
  * Syntax:
 
-        abs(numeric_expression)
+        abs(numeric_value)
 
  * Computes the absolute value of the argument.
  * Arguments:
-    * `numeric_expression`: A `int8`/`int16`/`int32`/`int64`/`float`/`double` value.
+    * `numeric_value`: A `int8`/`int16`/`int32`/`int64`/`float`/`double` value.
  * Return Value:
     * The absolute value of the argument with the same type as the input argument, or `null` if the argument is a `null` value.
 
@@ -43,11 +44,11 @@ Asterix provides various classes of functions to support operations on numeric, 
 ### ceiling ###
  * Syntax:
 
-        ceiling(numeric_expression)
+        ceiling(numeric_value)
 
  * Computes the smallest (closest to negative infinity) number with no fractional part that is not less than the value of the argument. If the argument is already equal to mathematical integer, then the result is the same as the argument.
  * Arguments:
-    * `numeric_expression`: A `int8`/`int16`/`int32`/`int64`/`float`/`double` value.
+    * `numeric_value`: A `int8`/`int16`/`int32`/`int64`/`float`/`double` value.
  * Return Value:
     * The ceiling value for the given number in the same type as the input argument, or `null` if the input is `null`.
 
@@ -69,11 +70,11 @@ Asterix provides various classes of functions to support operations on numeric, 
 ### floor ###
  * Syntax:
 
-        floor(numeric_expression)
+        floor(numeric_value)
 
  * Computes the largest (closest to positive infinity) number with no fractional part that is not greater than the value. If the argument is already equal to mathematical integer, then the result is the same as the argument.
  * Arguments:
-    * `numeric_expression`: A `int8`/`int16`/`int32`/`int64`/`float`/`double` value.
+    * `numeric_value`: A `int8`/`int16`/`int32`/`int64`/`float`/`double` value.
  * Return Value:
     * The floor value for the given number in the same type as the input argument, or `null` if the input is `null`.
 
@@ -95,11 +96,11 @@ Asterix provides various classes of functions to support operations on numeric, 
 ### round ###
  * Syntax:
 
-        round(numeric_expression)
+        round(numeric_value)
 
  * Computes the number with no fractional part that is closest (and also closest to positive infinity) to the argument.
  * Arguments:
-    * `numeric_expression`: A `int8`/`int16`/`int32`/`int64`/`float`/`double` value.
+    * `numeric_value`: A `int8`/`int16`/`int32`/`int64`/`float`/`double` value.
  * Return Value:
     * The rounded value for the given number in the same type as the input argument, or `null` if the input is `null`.
 
@@ -121,11 +122,11 @@ Asterix provides various classes of functions to support operations on numeric, 
 ### round-half-to-even ###
  * Syntax:
 
-        round-half-to-even(numeric_expression, [precision])
+        round-half-to-even(numeric_value, [precision])
 
- * Computes the closest numeric value to `numeric_expression` that is a multiple of ten to the power of minus `precision`. `precision` is optional and by default value `0` is used.
+ * Computes the closest numeric value to `numeric_value` that is a multiple of ten to the power of minus `precision`. `precision` is optional and by default value `0` is used.
  * Arguments:
-    * `numeric_expression`: A `int8`/`int16`/`int32`/`int64`/`float`/`double` value.
+    * `numeric_value`: A `int8`/`int16`/`int32`/`int64`/`float`/`double` value.
     * `precision`: An optional integer field representing the number of digits in the fraction of the the result
  * Return Value:
     * The rounded value for the given number in the same type as the input argument, or `null` if the input is `null`.
@@ -152,24 +153,24 @@ Asterix provides various classes of functions to support operations on numeric, 
 ### string-to-codepoint ###
  * Syntax:
 
-        string-to-codepoint(string_expression)
+        string-to-codepoint(string)
 
- * Converts the string `string_expression` to its code-based representation.
+ * Converts the string `string` to its code-based representation.
  * Arguments:
-    * `string_expression` : A `string` that will be converted.
+    * `string` : A `string` that will be converted.
  * Return Value:
-    * An `OrderedList` of the code points for the string `string_expression`.
+    * An `OrderedList` of the code points for the string `string`.
 
 ### codepoint-to-string ###
  * Syntax:
 
-        codepoint-to-string(list_expression)
+        codepoint-to-string(list)
 
- * Converts the ordered code-based representation `list_expression` to the corresponding string.
+ * Converts the ordered code-based representation `list` to the corresponding string.
  * Arguments:
-    * `list_expression` : An `OrderedList` of code-points.
+    * `list` : An `OrderedList` of code-points.
  * Return Value:
-    * A `string` representation of `list_expression`.
+    * A `string` representation of `list`.
 
  * Example:
 
@@ -189,14 +190,14 @@ Asterix provides various classes of functions to support operations on numeric, 
 ### contains ###
  * Syntax:
 
-        contains(string_expression, substring_to_contain)
+        contains(string, substring_to_contain)
 
- * Checks whether the string `string_expression` contains the string `substring_to_contain`
+ * Checks whether the string `string` contains the string `substring_to_contain`
  * Arguments:
-    * `string_expression` : A `string` that might contain the given substring.
+    * `string` : A `string` that might contain the given substring.
     * `substring_to_contain` : A target `string` that might be contained.
  * Return Value:
-    * A `boolean` value, `true` if `string_expression` contains `substring_to_contain`, and `false` otherwise.
+    * A `boolean` value, `true` if `string` contains `substring_to_contain`, and `false` otherwise.
  * Note: An n-gram index can be utilized for this function.
  * Example:
 
@@ -217,14 +218,14 @@ Asterix provides various classes of functions to support operations on numeric, 
 ### like ###
  * Syntax:
 
-        like(string_expression, string_pattern)
+        like(string, string_pattern)
 
- * Checks whether the string `string_expression` contains the string pattern `string_pattern`. Compared to the `contains` function, the `like` function also supports regular expressions.
+ * Checks whether the string `string` contains the string pattern `string_pattern`. Compared to the `contains` function, the `like` function also supports regular expressions.
  * Arguments:
-    * `string_expression` : A `string` that might contain the pattern or `null`.
+    * `string` : A `string` that might contain the pattern or `null`.
     * `string_pattern` : A pattern `string` that might be contained or `null`.
  * Return Value:
-    * A `boolean` value, `true` if `string_expression` contains the pattern `string_pattern`, and `false` otherwise.
+    * A `boolean` value, `true` if `string` contains the pattern `string_pattern`, and `false` otherwise.
 
  * Example:
 
@@ -245,14 +246,14 @@ Asterix provides various classes of functions to support operations on numeric, 
 ### starts-with ###
  * Syntax:
 
-        starts-with(string_expression, substring_to_start_with)
+        starts-with(string, substring_to_start_with)
 
- * Checks whether the string `string_expression` starts with the string `substring_to_start_with`.
+ * Checks whether the string `string` starts with the string `substring_to_start_with`.
  * Arguments:
-    * `string_expression` : A `string` that might start with the given string.
+    * `string` : A `string` that might start with the given string.
     * `substring_to_start_with` : A `string` that might be contained as the starting substring.
  * Return Value:
-    * A `boolean`, returns `true` if `string_expression` starts with the string `substring_to_start_with`, and `false` otherwise.
+    * A `boolean`, returns `true` if `string` starts with the string `substring_to_start_with`, and `false` otherwise.
 
  * Example:
 
@@ -274,14 +275,14 @@ Asterix provides various classes of functions to support operations on numeric, 
 ### ends-with ###
  * Syntax:
 
-        ends-with(string_expression, substring_to_end_with)
+        ends-with(string, substring_to_end_with)
 
- * Checks whether the string `string_expression` ends with the string `substring_to_end_with`.
+ * Checks whether the string `string` ends with the string `substring_to_end_with`.
  * Arguments:
-    * `string_expression` : A `string` that might end with the given string.
+    * `string` : A `string` that might end with the given string.
     * `substring_to_end_with` : A `string` that might be contained as the ending substring.
  * Return Value:
-    * A `boolean`, returns `true` if `string_expression` ends with the string `substring_to_end_with`, and `false` otherwise.
+    * A `boolean`, returns `true` if `string` ends with the string `substring_to_end_with`, and `false` otherwise.
 
  * Example:
 
@@ -302,11 +303,11 @@ Asterix provides various classes of functions to support operations on numeric, 
 ### string-concat ###
  * Syntax:
 
-        string-concat(list_expression)
+        string-concat(list)
 
- * Concatenates a list of strings `list_expression` into a single string.
+ * Concatenates a list of strings `list` into a single string.
  * Arguments:
-    * `list_expression` : An `OrderedList` or `UnorderedList` of `string`s (could be `null`) to be concatenated.
+    * `list` : An `OrderedList` or `UnorderedList` of `string`s (could be `null`) to be concatenated.
  * Return Value:
     * Returns the concatenated `string` value.
 
@@ -326,12 +327,12 @@ Asterix provides various classes of functions to support operations on numeric, 
 ### string-join ###
  * Syntax:
 
-        string-join(list_expression, string_expression)
+        string-join(list, string)
 
- * Joins a list of strings `list_expression` with the given separator `string_expression` into a single string.
+ * Joins a list of strings `list` with the given separator `string` into a single string.
  * Arguments:
-    * `list_expression` : An `OrderedList` or `UnorderedList` of strings (could be `null`) to be joined.
-    * `string_expression` : A `string` as the separator.
+    * `list` : An `OrderedList` or `UnorderedList` of strings (could be `null`) to be joined.
+    * `string` : A `string` as the separator.
  * Return Value:
     * Returns the joined `String`.
 
@@ -351,13 +352,13 @@ Asterix provides various classes of functions to support operations on numeric, 
 ### lowercase ###
  * Syntax:
 
-        lowercase(string_expression)
+        lowercase(string)
 
- * Converts a given string `string_expression` to its lowercase form.
+ * Converts a given string `string` to its lowercase form.
  * Arguments:
-    * `string_expression` : A `string` to be converted.
+    * `string` : A `string` to be converted.
  * Return Value:
-    * Returns a `string` as the lowercase form of the given `string_expression`.
+    * Returns a `string` as the lowercase form of the given `string`.
 
  * Example:
 
@@ -374,13 +375,13 @@ Asterix provides various classes of functions to support operations on numeric, 
 ### uppercase ###
  * Syntax:
 
- uppercase(string_expression)
+        uppercase(string)
 
- * Converts a given string `string_expression` to its uppercase form.
+ * Converts a given string `string` to its uppercase form.
  * Arguments:
-    * `string_expression` : A `string` to be converted.
+    * `string` : A `string` to be converted.
  * Return Value:
-    * Returns a `string` as the uppercase form of the given `string_expression`.
+    * Returns a `string` as the uppercase form of the given `string`.
 
  * Example:
 
@@ -398,13 +399,13 @@ Asterix provides various classes of functions to support operations on numeric, 
 ### uppercase ###
  * Syntax:
 
-        uppercase(string_expression)
+        uppercase(string)
 
- * Converts a given string `string_expression` to its uppercase form.
+ * Converts a given string `string` to its uppercase form.
  * Arguments:
-    * `string_expression` : A `string` to be converted.
+    * `string` : A `string` to be converted.
  * Return Value:
-    * Returns a `string` as the uppercase form of the given `string_expression`.
+    * Returns a `string` as the uppercase form of the given `string`.
 
  * Example:
 
@@ -422,14 +423,14 @@ Asterix provides various classes of functions to support operations on numeric, 
 ### matches ###
  * Syntax:
 
-        matches(string_expression, string_pattern)
+        matches(string, string_pattern)
 
- * Checks whether the strings `string_expression` matches the given pattern `string_pattern` (A Java regular expression pattern).
+ * Checks whether the strings `string` matches the given pattern `string_pattern` (A Java regular expression pattern).
  * Arguments:
-    * `string_expression` : A `string` that might contain the pattern.
+    * `string` : A `string` that might contain the pattern.
     * `string_pattern` : A pattern `string` to be matched.
  * Return Value:
-    * A `boolean`, returns `true` if `string_expression` matches the pattern `string_pattern`, and `false` otherwise.
+    * A `boolean`, returns `true` if `string` matches the pattern `string_pattern`, and `false` otherwise.
 
  * Example:
 
@@ -449,11 +450,11 @@ Asterix provides various classes of functions to support operations on numeric, 
 ### replace ###
  * Syntax:
 
-        replace(string_expression, string_pattern, string_replacement[, string_flags])
+        replace(string, string_pattern, string_replacement[, string_flags])
 
- * Checks whether the string `string_expression` matches the given pattern `string_pattern`, and replace the matched pattern `string_pattern` with the new pattern `string_replacement`.
+ * Checks whether the string `string` matches the given pattern `string_pattern`, and replace the matched pattern `string_pattern` with the new pattern `string_replacement`.
  * Arguments:
-    * `string_expression` : A `string` that might contain the pattern.
+    * `string` : A `string` that might contain the pattern.
     * `string_pattern` : A pattern `string` to be matched.
     * `string_replacement` : A pattern `string` to be used as the replacement.
     * `string_flag` : (Optional) A `string` with flags to be used during replace.
@@ -478,13 +479,13 @@ Asterix provides various classes of functions to support operations on numeric, 
 ### string-length ###
  * Syntax:
 
-        string-length(string_expression)
+        string-length(string)
 
- * Returns the length of the string `string_expression`.
+ * Returns the length of the string `string`.
  * Arguments:
-    * `string_expression` : A `string` or `null` that represents the string to be checked.
+    * `string` : A `string` or `null` that represents the string to be checked.
  * Return Value:
-    * An `int64` that represents the length of `string_expression`.
+    * An `int64` that represents the length of `string`.
 
  * Example:
 
@@ -516,12 +517,12 @@ Asterix provides various classes of functions to support operations on numeric, 
 ### substring ###
  * Syntax:
 
-        substring(string_expression, offset[, length])
+        substring(string, offset[, length])
 
- * Returns the substring from the given string `string_expression` based on the given start offset `offset` with the optional `length`.
+ * Returns the substring from the given string `string` based on the given start offset `offset` with the optional `length`.
  * Arguments:
-    * `string_expression` : A `string` to be extracted.
-    * `offset` : An `int64` as the starting offset of the substring in `string_expression`.
+    * `string` : A `string` to be extracted.
+    * `offset` : An `int64` as the starting offset of the substring in `string`.
     * `length` : (Optional) An `int64` as the length of the substring.
  * Return Value:
     * A `string` that represents the substring.
@@ -543,11 +544,11 @@ Asterix provides various classes of functions to support operations on numeric, 
 ### substring-before ###
  * Syntax:
 
-        substring-before(string_expression, string_pattern)
+        substring-before(string, string_pattern)
 
- * Returns the substring from the given string `string_expression` before the given pattern `string_pattern`.
+ * Returns the substring from the given string `string` before the given pattern `string_pattern`.
  * Arguments:
-    * `string_expression` : A `string` to be extracted.
+    * `string` : A `string` to be extracted.
     * `string_pattern` : A `string` pattern to be searched.
  * Return Value:
     * A `string` that represents the substring.
@@ -571,11 +572,11 @@ Asterix provides various classes of functions to support operations on numeric, 
 ### substring-after ###
  * Syntax:
 
-        substring-after(string_expression, string_pattern)
+        substring-after(string, string_pattern)
 
- * Returns the substring from the given string `string_expression` after the given pattern `string_pattern`.
+ * Returns the substring from the given string `string` after the given pattern `string_pattern`.
  * Arguments:
-    * `string_expression` : A `string` to be extracted.
+    * `string` : A `string` to be extracted.
     * `string_pattern` : A `string` pattern to be searched.
  * Return Value:
     * A `string` that represents the substring.
@@ -800,14 +801,14 @@ Asterix provides various classes of functions to support operations on numeric, 
 ### create-line ###
  * Syntax:
 
-        create-line(point_expression1, point_expression2)
+        create-line(point1, point2)
 
- * Creates the primitive type `line` using `point_expression1` and `point_expression2`.
+ * Creates the primitive type `line` using `point1` and `point2`.
  * Arguments:
-    * `point_expression1` : A `point` that represents the start point of the line.
-    * `point_expression2` : A `point` that represents the end point of the line.
+    * `point1` : A `point` that represents the start point of the line.
+    * `point2` : A `point` that represents the end point of the line.
  * Return Value:
-    * A spatial `line` created using the points provided in `point_expression1` and `point_expression2`.
+    * A spatial `line` created using the points provided in `point1` and `point2`.
 
  * Example:
 
@@ -825,14 +826,14 @@ Asterix provides various classes of functions to support operations on numeric, 
 ### create-rectangle ###
  * Syntax:
 
-        create-rectangle(point_expression1, point_expression2)
+        create-rectangle(point1, point2)
 
- * Creates the primitive type `rectangle` using `point_expression1` and `point_expression2`.
+ * Creates the primitive type `rectangle` using `point1` and `point2`.
  * Arguments:
-    * `point_expression1` : A `point` that represents the lower-left point of the rectangle.
-    * `point_expression2` : A `point` that represents the upper-right point of the rectangle.
+    * `point1` : A `point` that represents the lower-left point of the rectangle.
+    * `point2` : A `point` that represents the upper-right point of the rectangle.
  * Return Value:
-    * A spatial `rectangle` created using the points provided in `point_expression1` and `point_expression2`.
+    * A spatial `rectangle` created using the points provided in `point1` and `point2`.
 
  * Example:
 
@@ -850,14 +851,14 @@ Asterix provides various classes of functions to support operations on numeric, 
 ### create-circle ###
  * Syntax:
 
-        create-circle(point_expression, radius)
+        create-circle(point, radius)
 
- * Creates the primitive type `circle` using `point_expression` and `radius`.
+ * Creates the primitive type `circle` using `point` and `radius`.
  * Arguments:
-    * `point_expression` : A `point` that represents the center of the circle.
+    * `point` : A `point` that represents the center of the circle.
     * `radius` : A `double` that represents the radius of the circle.
  * Return Value:
-    * A spatial `circle` created using the center point and the radius provided in `point_expression` and `radius`.
+    * A spatial `circle` created using the center point and the radius provided in `point` and `radius`.
 
  * Example:
 
@@ -875,13 +876,13 @@ Asterix provides various classes of functions to support operations on numeric, 
 ### create-polygon ###
  * Syntax:
 
-        create-polygon(list_expression)
+        create-polygon(list)
 
- * Creates the primitive type `polygon` using the double values provided in the argument `list_expression`. Each two consecutive double values represent a point starting from the first double value in the list. Note that at least six double values should be specified, meaning a total of three points.
+ * Creates the primitive type `polygon` using the double values provided in the argument `list`. Each two consecutive double values represent a point starting from the first double value in the list. Note that at least six double values should be specified, meaning a total of three points.
  * Arguments:
-   * `list_expression` : An OrderedList of doubles representing the points of the polygon.
+   * `list` : An OrderedList of doubles representing the points of the polygon.
  * Return Value:
-   * A `polygon`, represents a spatial simple polygon created using the points provided in `list_expression`.
+   * A `polygon`, represents a spatial simple polygon created using the points provided in `list`.
 
  * Example:
 
@@ -899,13 +900,13 @@ Asterix provides various classes of functions to support operations on numeric, 
 ### get-x/get-y ###
  * Syntax:
 
-        get-x(point_expression) or get-y(point_expression)
+        get-x(point) or get-y(point)
 
- * Returns the x or y coordinates of a point `point_expression`.
+ * Returns the x or y coordinates of a point `point`.
  * Arguments:
-    * `point_expression` : A `point`.
+    * `point` : A `point`.
  * Return Value:
-    * A `double` representing the x or y coordinates of the point `point_expression`.
+    * A `double` representing the x or y coordinates of the point `point`.
 
  * Example:
 
@@ -978,14 +979,14 @@ Asterix provides various classes of functions to support operations on numeric, 
 ### spatial-distance ###
  * Syntax:
 
-        spatial-distance(point_expression1, point_expression2)
+        spatial-distance(point1, point2)
 
- * Returns the Euclidean distance between `point_expression1` and `point_expression2`.
+ * Returns the Euclidean distance between `point1` and `point2`.
  * Arguments:
-    * `point_expression1` : A `point`.
-    * `point_expression2` : A `point`.
+    * `point1` : A `point`.
+    * `point2` : A `point`.
  * Return Value:
-    * A `double` as the Euclidean distance between `point_expression1` and `point_expression2`.
+    * A `double` as the Euclidean distance between `point1` and `point2`.
 
  * Example:
 
@@ -1069,16 +1070,16 @@ Asterix provides various classes of functions to support operations on numeric, 
 ### spatial-cell ###
  * Syntax:
 
-        spatial-cell(point_expression1, point_expression2, x_increment, y_increment)
+        spatial-cell(point1, point2, x_increment, y_increment)
 
- * Returns the grid cell that `point_expression1` belongs to.
+ * Returns the grid cell that `point1` belongs to.
  * Arguments:
-    * `point_expression1` : A `point` representing the point of interest that its grid cell will be returned.
-    * `point_expression2` : A `point` representing the origin of the grid.
+    * `point1` : A `point` representing the point of interest that its grid cell will be returned.
+    * `point2` : A `point` representing the origin of the grid.
     * `x_increment` : A `double`, represents X increments.
     * `y_increment` : A `double`, represents Y increments.
  * Return Value:
-    * A `rectangle` representing the grid cell that `point_expression1` belongs to.
+    * A `rectangle` representing the grid cell that `point1` belongs to.
 
  * Example:
 
@@ -1173,7 +1174,7 @@ AsterixDB supports queries with different similarity functions, including edit d
 ### edit-distance-contains ###
 * Syntax:
 
-edit-distance-contains(expression1, expression2, threshold)
+        edit-distance-contains(expression1, expression2, threshold)
 
 * Checks whether `expression1` contains `expression2` with an [edit distance](http://en.wikipedia.org/wiki/Levenshtein_distance) within a given threshold.
 
@@ -1200,14 +1201,14 @@ edit-distance-contains(expression1, expression2, threshold)
 ### similarity-jaccard ###
  * Syntax:
 
-        similarity-jaccard(list_expression1, list_expression2)
+        similarity-jaccard(list1, list2)
 
- * Returns the [Jaccard similarity](http://en.wikipedia.org/wiki/Jaccard_index) of `list_expression1` and `list_expression2`.
+ * Returns the [Jaccard similarity](http://en.wikipedia.org/wiki/Jaccard_index) of `list1` and `list2`.
  * Arguments:
-    * `list_expression1` : An `UnorderedList` or `OrderedList`.
-    * `list_expression2` : An `UnorderedList` or `OrderedList`.
+    * `list1` : An `UnorderedList` or `OrderedList`.
+    * `list2` : An `UnorderedList` or `OrderedList`.
  * Return Value:
-    * A `float` that represents the Jaccard similarity of `list_expression1` and `list_expression2`.
+    * A `float` that represents the Jaccard similarity of `list1` and `list2`.
  * Note: A keyword index can be utilized for this function.
  * Example:
 
@@ -1234,18 +1235,18 @@ edit-distance-contains(expression1, expression2, threshold)
 ### similarity-jaccard-check ###
  * Syntax:
 
-        similarity-jaccard-check(list_expression1, list_expression2, threshold)
+        similarity-jaccard-check(list1, list2, threshold)
 
- * Checks whether `list_expression1` and `list_expression2` have a [Jaccard similarity](http://en.wikipedia.org/wiki/Jaccard_index) greater than or equal to threshold.  Again, the “check” version of Jaccard is faster than the "non-check" version.
+ * Checks whether `list1` and `list2` have a [Jaccard similarity](http://en.wikipedia.org/wiki/Jaccard_index) greater than or equal to threshold.  Again, the “check” version of Jaccard is faster than the "non-check" version.
 
  * Arguments:
-    * `list_expression1` : An `UnorderedList` or `OrderedList`.
-    * `list_expression2` : An `UnorderedList` or `OrderedList`.
+    * `list1` : An `UnorderedList` or `OrderedList`.
+    * `list2` : An `UnorderedList` or `OrderedList`.
     * `threshold` : A `float` that represents the similarity threshold.
  * Return Value:
     * An `OrderedList` with two items:
-     * The first item contains a `boolean` value representing whether `list_expression1` and `list_expression2` are similar.
-     * The second item contains a `float` that represents the Jaccard similarity of `list_expression1` and `list_expression2` if it is greater than or equal to the threshold, or 0 otherwise.
+     * The first item contains a `boolean` value representing whether `list1` and `list2` are similar.
+     * The second item contains a `float` that represents the Jaccard similarity of `list1` and `list2` if it is greater than or equal to the threshold, or 0 otherwise.
  * Note: A keyword index can be utilized for this function.
  * Example:
 
@@ -1316,11 +1317,11 @@ edit-distance-contains(expression1, expression2, threshold)
 ### word-tokens ###
  * Syntax:
 
-        word-tokens(string_expression)
+        word-tokens(string)
 
- * Returns a list of word tokens of `string_expression`.
+ * Returns a list of word tokens of `string`.
  * Arguments:
-    * `string_expression` : A `string` that will be tokenized.
+    * `string` : A `string` that will be tokenized.
  * Return Value:
     * An `OrderedList` of `string` word tokens.
 
@@ -1345,11 +1346,11 @@ edit-distance-contains(expression1, expression2, threshold)
 <!--### hashed-word-tokens ###
  * Syntax:
 
-        hashed-word-tokens(string_expression)
+        hashed-word-tokens(string)
 
- * Returns a list of hashed word tokens of `string_expression`.
+ * Returns a list of hashed word tokens of `string`.
  * Arguments:
-    * `string_expression` : A `string` that will be tokenized.
+    * `string` : A `string` that will be tokenized.
  * Return Value:
    * An `OrderedList` of `int32` hashed tokens.
 
@@ -1374,11 +1375,11 @@ edit-distance-contains(expression1, expression2, threshold)
 ### counthashed-word-tokens ###
  * Syntax:
 
-        counthashed-word-tokens(string_expression)
+        counthashed-word-tokens(string)
 
- * Returns a list of hashed word tokens of `string_expression`. The hashing mechanism gives duplicate tokens different hash values, based on the occurrence count of that token.
+ * Returns a list of hashed word tokens of `string`. The hashing mechanism gives duplicate tokens different hash values, based on the occurrence count of that token.
  * Arguments:
-    * `string_expression` : A `String` that will be tokenized.
+    * `string` : A `String` that will be tokenized.
  * Return Value:
     * An `OrderedList` of `Int32` hashed tokens.
  * Example:
@@ -1402,13 +1403,13 @@ edit-distance-contains(expression1, expression2, threshold)
 ### gram-tokens ###
  * Syntax:
 
-        gram-tokens(string_expression, gram_length, boolean_expression)
+        gram-tokens(string, gram_length, boolean_expression)
 
- * Returns a list of gram tokens of `string_expression`, which can be obtained by scanning the characters using a sliding window of a fixed length.
+ * Returns a list of gram tokens of `string`, which can be obtained by scanning the characters using a sliding window of a fixed length.
  * Arguments:
-    * `string_expression` : A `String` that will be tokenized.
+    * `string` : A `String` that will be tokenized.
     * `gram_length` : An `Int32` as the length of grams.
-   * `boolean_expression` : A `Boolean` value to indicate whether to generate additional grams by pre- and postfixing `string_expression` with special characters.
+   * `boolean_expression` : A `Boolean` value to indicate whether to generate additional grams by pre- and postfixing `string` with special characters.
  * Return Value:
     * An `OrderedList` of String gram tokens.
 
@@ -1437,13 +1438,13 @@ edit-distance-contains(expression1, expression2, threshold)
 ### hashed-gram-tokens ###
  * Syntax:
 
-        hashed-gram-tokens(string_expression, gram_length, boolean_expression)
+        hashed-gram-tokens(string, gram_length, boolean_expression)
 
- * Returns a list of hashed gram tokens of `string_expression`.
+ * Returns a list of hashed gram tokens of `string`.
  * Arguments:
-    * `string_expression` : A `String` that will be tokenized.
+    * `string` : A `String` that will be tokenized.
     * `gram_length` : An `Int32` as the length of grams.
-    * `boolean_expression` : A `Boolean` to indicate whether to generate additional grams by pre- and postfixing `string_expression` with special characters.
+    * `boolean_expression` : A `Boolean` to indicate whether to generate additional grams by pre- and postfixing `string` with special characters.
  * Return Value:
     * An `OrderedList` of `Int32` hashed gram tokens.
 
@@ -1474,13 +1475,13 @@ edit-distance-contains(expression1, expression2, threshold)
 ### counthashed-gram-tokens ###
  * Syntax:
 
-        counthashed-gram-tokens(string_expression, gram_length, boolean_expression)
+        counthashed-gram-tokens(string, gram_length, boolean_expression)
 
- * Returns a list of hashed gram tokens of `string_expression`. The hashing mechanism gives duplicate tokens different hash values, based on the occurrence count of that token.
+ * Returns a list of hashed gram tokens of `string`. The hashing mechanism gives duplicate tokens different hash values, based on the occurrence count of that token.
  * Arguments:
-    * `string_expression` : A `String` that will be tokenized.
+    * `string` : A `String` that will be tokenized.
     * `gram_length` : An `Int32`, length of grams to generate.
-    * `boolean_expression` : A `Boolean`, whether to generate additional grams by pre- and postfixing `string_expression` with special characters.
+    * `boolean_expression` : A `Boolean`, whether to generate additional grams by pre- and postfixing `string` with special characters.
  * Return Value:
     * An `OrderedList` of `Int32` hashed gram tokens.
 
@@ -1514,11 +1515,11 @@ edit-distance-contains(expression1, expression2, threshold)
 ### get-year/get-month/get-day/get-hour/get-minute/get-second/get-millisecond ###
  * Syntax:
 
-        get-year/get-month/get-day/get-hour/get-minute/get-second/get-millisecond(temporal_expression)
+        get-year/get-month/get-day/get-hour/get-minute/get-second/get-millisecond(temporal_value)
 
  * Accessors for accessing fields in a temporal value
  * Arguments:
-    * `temporal_expression` : a temporal value represented as one of the following types: `date`, `datetime`, `time`, and `duration`.
+    * `temporal_value` : a temporal value represented as one of the following types: `date`, `datetime`, `time`, and `duration`.
  * Return Value:
     * An `int64` value representing the field to be extracted.
 
@@ -1540,12 +1541,12 @@ edit-distance-contains(expression1, expression2, threshold)
 ### adjust-datetime-for-timezone ###
  * Syntax:
 
-        adjust-datetime-for-timezone(datetime_expression, string_expression)
+        adjust-datetime-for-timezone(datetime, string)
 
- * Adjusts the given datetime `datetime_expression` by applying the timezone information `string_expression`.
+ * Adjusts the given datetime `datetime` by applying the timezone information `string`.
  * Arguments:
-    * `datetime_expression` : A `datetime` value to be adjusted.
-    * `string_expression` : A `string` representing the timezone information.
+    * `datetime` : A `datetime` value to be adjusted.
+    * `string` : A `string` representing the timezone information.
  * Return Value:
     * A `string` value representing the new datetime after being adjusted by the timezone information.
 
@@ -1576,12 +1577,12 @@ edit-distance-contains(expression1, expression2, threshold)
 ### adjust-time-for-timezone ###
  * Syntax:
 
-        adjust-time-for-timezone(time_expression, string_expression)
+        adjust-time-for-timezone(time, string)
 
- * Adjusts the given time `time_expression` by applying the timezone information `string_expression`.
+ * Adjusts the given time `time` by applying the timezone information `string`.
  * Arguments:
-    * `time_expression` : A `time` value to be adjusted.
-    * `string_expression` : A `string` representing the timezone information.
+    * `time` : A `time` value to be adjusted.
+    * `string` : A `string` representing the timezone information.
  * Return Value:
     * A `string` value representing the new time after being adjusted by the timezone information.
 
@@ -1612,14 +1613,14 @@ edit-distance-contains(expression1, expression2, threshold)
 ### calendar-duration-from-datetime ###
  * Syntax:
 
-        calendar-duration-from-datetime(datetime_expression, duration_expression)
+        calendar-duration-from-datetime(datetime, duration_value)
 
- * Gets a user-friendly representation of the duration `duration_expression` based on the given datetime `datetime_expression`.
+ * Gets a user-friendly representation of the duration `duration_value` based on the given datetime `datetime`.
  * Arguments:
-    * `datetime_expression` : A `datetime` value to be used as the reference time point.
-    * `duration_expression` : A `duration` value to be converted.
+    * `datetime` : A `datetime` value to be used as the reference time point.
+    * `duration_value` : A `duration` value to be converted.
  * Return Value:
-    * A `duration` value with the duration as `duration_expression` but with a user-friendly representation.
+    * A `duration` value with the duration as `duration_value` but with a user-friendly representation.
 
  * Example:
 
@@ -1640,11 +1641,11 @@ edit-distance-contains(expression1, expression2, threshold)
 ### get-year-month-duration/get-day-time-duration ###
  * Syntax:
 
-        get-year-month-duration/get-day-time-duration(duration_expression)
+        get-year-month-duration/get-day-time-duration(duration_value)
 
- * Extracts the correct `duration` subtype from `duration_expression`.
+ * Extracts the correct `duration` subtype from `duration_value`.
  * Arguments:
-    * `duration_expression` : A `duration` value to be converted.
+    * `duration_value` : A `duration` value to be converted.
  * Return Value:
     * A `year-month-duration` value or a `day-time-duration` value.
 
@@ -1661,11 +1662,11 @@ edit-distance-contains(expression1, expression2, threshold)
 ### months-from-year-month-duration/milliseconds-from-day-time-duration ###
 * Syntax:
 
-        months-from-year-month-duration/milliseconds-from-day-time-duration(duration_expression)
+        months-from-year-month-duration/milliseconds-from-day-time-duration(duration_value)
 
 * Extracts the number of months or the number of milliseconds from the `duration` subtype.
 * Arguments:
-    * `duration_expression` : A `duration` of the correct subtype.
+    * `duration_value` : A `duration` of the correct subtype.
 * Return Value:
     * An `int64` representing the number or months/milliseconds.
 
@@ -1683,13 +1684,13 @@ edit-distance-contains(expression1, expression2, threshold)
 ### duration-from-months/duration-from-ms ###
 * Syntax:
 
-        duration-from-months/duration-from-ms(number_expression)
+        duration-from-months/duration-from-ms(number_value)
 
-* Creates a `duration` from `number_expression`.
+* Creates a `duration` from `number_value`.
 * Arguments:
-    * `number_expression` : An `int64` representing the number of months/milliseconds
+    * `number_value` : An `int64` representing the number of months/milliseconds
 * Return Value:
-    * A `duration` containing `number_expression` value for months/milliseconds
+    * A `duration` containing `number_value` value for months/milliseconds
 
 * Example:
 
@@ -1704,13 +1705,13 @@ edit-distance-contains(expression1, expression2, threshold)
 ### duration-from-interval ###
 * Syntax:
 
-        duration-from-interval(interval_expression)
+        duration-from-interval(interval_value)
 
-* Creates a `duration` from `interval_expression`.
+* Creates a `duration` from `interval_value`.
 * Arguments:
-    * `interval_expression` : An `interval` value
+    * `interval_value` : An `interval` value
 * Return Value:
-    * A `duration` repesenting the time in the `interval_expression`
+    * A `duration` repesenting the time in the `interval_value`
 
 * Example:
 
@@ -1778,22 +1779,22 @@ edit-distance-contains(expression1, expression2, threshold)
 ### get-date-from-datetime ###
  * Syntax:
 
-        get-date-from-datetime(datetime_expression)
+        get-date-from-datetime(datetime)
 
- * Gets the date value from the given datetime value `datetime_expression`.
+ * Gets the date value from the given datetime value `datetime`.
  * Arguments:
-    * `datetime_expression`: A `datetime` value to be extracted from.
+    * `datetime`: A `datetime` value to be extracted from.
  * Return Value:
     * A `date` value from the datetime.
 
 ### get-time-from-datetime ###
  * Syntax:
 
-        get-time-from-datetime(datetime_expression)
+        get-time-from-datetime(datetime)
 
- * Get the time value from the given datetime value `datetime_expression`
+ * Get the time value from the given datetime value `datetime`
  * Arguments:
-    * `datetime_expression`: A `datetime` value to be extracted from
+    * `datetime`: A `datetime` value to be extracted from
  * Return Value:
     * A `time` value from the datetime.
 
@@ -1816,11 +1817,11 @@ edit-distance-contains(expression1, expression2, threshold)
 ### day-of-week ###
 * Syntax:
 
-        day-of-week(date_expression)
+        day-of-week(date)
 
 * Finds the day of the week for a given date (1-7)
 * Arguments:
-    * `date_expression`: A `date` value (Can also be a `datetime`)
+    * `date`: A `date` value (Can also be a `datetime`)
 * Return Value:
     * An `int8` representing the day of the week (1-7)
 
@@ -1838,59 +1839,59 @@ edit-distance-contains(expression1, expression2, threshold)
 ### date-from-unix-time-in-days ###
  * Syntax:
 
-        date-from-unix-time-in-days(numeric_expression)
+        date-from-unix-time-in-days(numeric_value)
 
- * Gets a date representing the time after `numeric_expression` days since 1970-01-01.
+ * Gets a date representing the time after `numeric_value` days since 1970-01-01.
  * Arguments:
-    * `numeric_expression`: A `int8`/`int16`/`int32`/`int64` value representing the number of days.
+    * `numeric_value`: A `int8`/`int16`/`int32`/`int64` value representing the number of days.
  * Return Value:
-    * A `date` value as the time after `numeric_expression` days since 1970-01-01.
+    * A `date` value as the time after `numeric_value` days since 1970-01-01.
 
 ### datetime-from-unix-time-in-ms ###
  * Syntax:
 
-        datetime-from-unix-time-in-ms(numeric_expression)
+        datetime-from-unix-time-in-ms(numeric_value)
 
- * Gets a datetime representing the time after `numeric_expression` milliseconds since 1970-01-01T00:00:00Z.
+ * Gets a datetime representing the time after `numeric_value` milliseconds since 1970-01-01T00:00:00Z.
  * Arguments:
-    * `numeric_expression`: A `int8`/`int16`/`int32`/`int64` value representing the number of milliseconds.
+    * `numeric_value`: A `int8`/`int16`/`int32`/`int64` value representing the number of milliseconds.
  * Return Value:
-    * A `datetime` value as the time after `numeric_expression` milliseconds since 1970-01-01T00:00:00Z.
+    * A `datetime` value as the time after `numeric_value` milliseconds since 1970-01-01T00:00:00Z.
 
 ### datetime-from-unix-time-in-secs ###
  * Syntax:
 
-        datetime-from-unix-time-in-secs(numeric_expression)
+        datetime-from-unix-time-in-secs(numeric_value)
 
- * Gets a datetime representing the time after `numeric_expression` seconds since 1970-01-01T00:00:00Z.
+ * Gets a datetime representing the time after `numeric_value` seconds since 1970-01-01T00:00:00Z.
  * Arguments:
-    * `numeric_expression`: A `int8`/`int16`/`int32`/`int64` value representing the number of seconds.
+    * `numeric_value`: A `int8`/`int16`/`int32`/`int64` value representing the number of seconds.
  * Return Value:
-    * A `datetime` value as the time after `numeric_expression` seconds since 1970-01-01T00:00:00Z.
+    * A `datetime` value as the time after `numeric_value` seconds since 1970-01-01T00:00:00Z.
 
 
 ### datetime-from-date-time ###
 * Syntax:
 
-datetime-from-date-time(date_expression,time_expression)
+datetime-from-date-time(date,time)
 
-* Gets a datetime representing the combination of `date_expression` and `time_expression`
+* Gets a datetime representing the combination of `date` and `time`
     * Arguments:
-    * `date_expression`: A `date` value
-    * `time_expression` A `time` value
+    * `date`: A `date` value
+    * `time` A `time` value
 * Return Value:
-    * A `datetime` value by combining `date_expression` and `time_expression`
+    * A `datetime` value by combining `date` and `time`
 
 ### time-from-unix-time-in-ms ###
  * Syntax:
 
-        time-from-unix-time-in-ms(numeric_expression)
+        time-from-unix-time-in-ms(numeric_value)
 
- * Gets a time representing the time after `numeric_expression` milliseconds since 00:00:00.000Z.
+ * Gets a time representing the time after `numeric_value` milliseconds since 00:00:00.000Z.
  * Arguments:
-    * `numeric_expression`: A `int8`/`int16`/`int32`/`int64` value representing the number of milliseconds.
+    * `numeric_value`: A `int8`/`int16`/`int32`/`int64` value representing the number of milliseconds.
  * Return Value:
-    * A `time` value as the time after `numeric_expression` milliseconds since 00:00:00.000Z.
+    * A `time` value as the time after `numeric_value` milliseconds since 00:00:00.000Z.
 
  * Example:
 
@@ -1910,11 +1911,11 @@ datetime-from-date-time(date_expression,time_expression)
 ### parse-date/parse-time/parse-datetime ###
 * Syntax:
 
-parse-date/parse-time/parse-datetime(date_expression,formatting_expression)
+parse-date/parse-time/parse-datetime(date,formatting_expression)
 
-* Creates a `date/time/date-time` value by treating `date_expression` with formatting `formatting_expression`
+* Creates a `date/time/date-time` value by treating `date` with formatting `formatting_expression`
 * Arguments:
-    * `date_expression`: A `string` value representing the `date/time/datetime`. 
+    * `date`: A `string` value representing the `date/time/datetime`. 
     * `formatting_expression` A `string` value providing the formatting for `date_expression`.Characters used to create date expression:
        * `h` hours
        * `m` minutes
@@ -1928,7 +1929,7 @@ parse-date/parse-time/parse-datetime(date_expression,formatting_expression)
        * `W` weekday
        * `-`, `'`, `/`, `.`, `,`, `T` seperators for both time and date
 * Return Value:
-    * A `date/time/date-time` value corresponding to `date_expression`
+    * A `date/time/date-time` value corresponding to `date`
 
 * Example:
 
@@ -1943,11 +1944,11 @@ parse-date/parse-time/parse-datetime(date_expression,formatting_expression)
 ### print-date/print-time/print-datetime ###
 * Syntax:
 
-print-date/print-time/print-datetime(date_expression,formatting_expression)
+        print-date/print-time/print-datetime(date,formatting_expression)
 
-* Creates a `string` representing a `date/time/date-time` value of the `date_expression` using the formatting `formatting_expression`
+* Creates a `string` representing a `date/time/date-time` value of the `date` using the formatting `formatting_expression`
 * Arguments:
-    * `date_expression`: A `date/time/datetime` value.
+    * `date`: A `date/time/datetime` value.
     * `formatting_expression` A `string` value providing the formatting for `date_expression`. Characters used to create date expression:
        * `h` hours
        * `m` minutes
@@ -1961,7 +1962,7 @@ print-date/print-time/print-datetime(date_expression,formatting_expression)
        * `W` weekday
        * `-`, `'`, `/`, `.`, `,`, `T` seperators for both time and date
 * Return Value:
-    * A `string` value corresponding to `date_expression`
+    * A `string` value corresponding to `date`
 
 * Example:
 
@@ -2022,14 +2023,14 @@ print-date/print-time/print-datetime(date_expression,formatting_expression)
 ### get-overlapping-interval ###
  * Syntax:
 
-        get-overlapping-interval(interval_expression_1, interval_expression_2)
+        get-overlapping-interval(interval1, interval2)
 
  * Gets the start/end of the given interval for the specific date/datetime/time type.
  * Arguments:
-    * `interval_expression_1`: an `interval` value
-    * `interval_expression_2`: an `interval` value
+    * `interval1`: an `interval` value
+    * `interval2`: an `interval` value
  * Return Value:
-    * Returns an `interval` that is overlapping `interval_expression_1` and `interval_expression_2`. If `interval_expression_1` and `interval_expression_2` do not overlap `null` is returned. Note each interval must be of the same type.
+    * Returns an `interval` that is overlapping `interval1` and `interval2`. If `interval1` and `interval2` do not overlap `null` is returned. Note each interval must be of the same type.
 
  * Example:
 
@@ -2097,12 +2098,12 @@ See the [Allen's Relations](allens.html).
 ### interval-from-date ###
  * Syntax:
 
-        interval-from-date(string_expression1, string_expression2)
+        interval-from-date(string1, string2)
 
  * Constructor function for the `interval` type by parsing two date strings.
  * Arguments:
-    * `string_expression1` : The `string` value representing the starting date.
-    * `string_expression2` : The `string` value representing the ending date.
+    * `string1` : The `string` value representing the starting date.
+    * `string2` : The `string` value representing the ending date.
  * Return Value:
     * An `interval` value between the two dates.
 
@@ -2119,12 +2120,12 @@ See the [Allen's Relations](allens.html).
 ### interval-from-time ###
  * Syntax:
 
-        interval-from-time(string_expression1, string_expression2)
+        interval-from-time(string1, string2)
 
  * Constructor function for the `interval` type by parsing two time strings.
  * Arguments:
-    * `string_expression1` : The `string` value representing the starting time.
-    * `string_expression2` : The `string` value representing the ending time.
+    * `string1` : The `string` value representing the starting time.
+    * `string2` : The `string` value representing the ending time.
  * Return Value:
     * An `interval` value between the two times.
 
@@ -2141,12 +2142,12 @@ See the [Allen's Relations](allens.html).
 ### interval-from-datetime ###
  * Syntax:
 
-        interval-from-datetime(string_expression1, string_expression2)
+        interval-from-datetime(string1, string2)
 
  * Constructor function for `interval` type by parsing two datetime strings.
  * Arguments:
-    * `string_expression1` : The `string` value representing the starting datetime.
-    * `string_expression2` : The `string` value representing the ending datetime.
+    * `string1` : The `string` value representing the starting datetime.
+    * `string2` : The `string` value representing the ending datetime.
  * Return Value:
     * An `interval` value between the two datetimes.
 
@@ -2190,11 +2191,11 @@ See the [Allen's Relations](allens.html).
 
  * Syntax:
 
-        overlap-bins(interval_expression, time-bin-anchor, duration-bin-size)
+        overlap-bins(interval, time-bin-anchor, duration-bin-size)
 
- * Returns an ordered list of `interval` values representing each bin that is overlapping the `interval_expression`.
+ * Returns an ordered list of `interval` values representing each bin that is overlapping the `interval`.
  * Arguments:
-    * `interval_expression`: an `interval` value
+    * `interval`: an `interval` value
     * `time-bin-anchor`: a date/time/datetime value representing an anchor of a bin starts. The type of this argument should be the same as the first `time-to-bin` argument.
     * `duration-bin-size`: the duration value representing the size of the bin, in the type of year-month-duration or day-time-duration. The type of this duration should be compatible with the type of `time-to-bin`, so that the arithmetic operation between `time-to-bin` and `duration-bin-size` is well-defined. Currently AsterixDB supports the following arithmetic operations:
         * datetime +|- year-month-duration
@@ -2203,7 +2204,7 @@ See the [Allen's Relations](allens.html).
         * date +|- day-time-duration
         * time +|- day-time-duration
   * Return Value:
-    * A ordered list of `interval` values representing each bin that is overlapping the `interval_expression`. Note that the internal type as `time-to-bin` and `duration-bin-size`.
+    * A ordered list of `interval` values representing each bin that is overlapping the `interval`. Note that the internal type as `time-to-bin` and `duration-bin-size`.
 
   * Example:
 
@@ -2219,6 +2220,66 @@ See the [Allen's Relations](allens.html).
         { "timebins": [ interval-time("17:00:00.000Z, 17:30:00.000Z"), interval-time("17:30:00.000Z, 18:00:00.000Z"), interval-time("18:00:00.000Z, 18:30:00.000Z"), interval-time("18:30:00.000Z, 19:00:00.000Z") ], 
           "datebins": [ interval-date("1970-01-01, 1990-01-01"), interval-date("1990-01-01, 2010-01-01"), interval-date("2010-01-01, 2030-01-01") ], 
           "datetimebins": [ interval-datetime("1800-01-01T00:00:00.000Z, 1900-01-01T00:00:00.000Z"), interval-datetime("1900-01-01T00:00:00.000Z, 2000-01-01T00:00:00.000Z"), interval-datetime("2000-01-01T00:00:00.000Z, 2100-01-01T00:00:00.000Z") ] }
+
+
+## <a id="RecordFunctions">Record Functions</a> <font size="4"><a href="#toc">[Back to TOC]</a></font> ##
+
+
+### get-record-fields ###
+ * Syntax:
+
+        get-record-fields(record_expression)
+
+ * Access the record field names, type and open status for a given record.
+ * Arguments:
+    * `record_expression` : a record value.
+ * Return Value:
+    * An order list of `record` values that include the field-name `string`, field-type `string`, is-open `boolean` and optional nested `orderedList` for the values of a nested record.
+
+ * Example:
+
+        let $r1 := {"id": 1, 
+            "project": "AsterixDB", 
+            "address": {"city": "Irvine", "state": "CA"}, 
+            "related": ["Hivestrix", "Preglix", "Apache VXQuery"] }
+        return get-record-fields($r1)
+
+ * The expected result is:
+
+        [ { "field-name": "id", "field-type": "INT64", "is-open": false }, 
+          { "field-name": "project", "field-type": "STRING", "is-open": false }, 
+          { "field-name": "address", "field-type": "RECORD", "is-open": false, "nested": [ 
+            { "field-name": "city", "field-type": "STRING", "is-open": false }, 
+            { "field-name": "state", "field-type": "STRING", "is-open": false } ] }, 
+          { "field-name": "related", "field-type": "ORDEREDLIST", "is-open": false, "list": [ 
+            { "field-type": "STRING" }, 
+            { "field-type": "STRING" }, 
+            { "field-type": "STRING" } ] } ]
+
+ ]
+### get-record-field-value ###
+ * Syntax:
+
+        get-record-field-value(record_expression, string_expression)
+
+ * Access the field name given in the `string_expression` from the `record_expression`.
+ * Arguments:
+    * `record_expression` : A `record` value.
+    * `string_expression` : A `string` representing the top level field name.
+ * Return Value:
+    * An `any` value saved in the designated field of the record.
+
+ * Example:
+
+        let $r1 := {"id": 1, 
+            "project": "AsterixDB", 
+            "address": {"city": "Irvine", "state": "CA"}, 
+            "related": ["Hivestrix", "Preglix", "Apache VXQuery"] }
+        return get-record-field-value($r1, "project")
+
+ * The expected result is:
+
+        "AsterixDB"
 
 
 ## <a id="OtherFunctions">Other Functions</a> <font size="4"><a href="#toc">[Back to TOC]</a></font> ##
@@ -2274,13 +2335,13 @@ See the [Allen's Relations](allens.html).
 ### len ###
  * Syntax:
 
-    len(list_expression)
+    len(list)
 
- * Returns the length of the list list_expression.
+ * Returns the length of the list list.
  * Arguments:
-    * `list_expression` : An `OrderedList`, `UnorderedList` or `null`, represents the list need to be checked.
+    * `list` : An `OrderedList`, `UnorderedList` or `null`, represents the list need to be checked.
  * Return Value:
-    * An `Int32` that represents the length of list_expression.
+    * An `Int32` that represents the length of list.
 
  * Example:
 
@@ -2320,13 +2381,13 @@ See the [Allen's Relations](allens.html).
 ### range ###
  * Syntax:
 
-        range(start_numeric_expression, end_numeric_expression)
+        range(start_numeric_value, end_numeric_value)
 
-* Generates a series of `int64` values based start the `start_numeric_expression` until the `end_numeric_expression`.
+* Generates a series of `int64` values based start the `start_numeric_value` until the `end_numeric_value`.
   The `range` fucntion must be used list argument of a `for` expression.
 * Arguments:
-   * `start_numeric_expression`: A `int8`/`int16`/`int32`/`int64` value representing the start value.
-   * `end_numeric_expression`: A `int8`/`int16`/`int32`/`int64` value representing the max final value.
+   * `start_numeric_value`: A `int8`/`int16`/`int32`/`int64` value representing the start value.
+   * `end_numeric_value`: A `int8`/`int16`/`int32`/`int64` value representing the max final value.
 * Return Value:
     * A generated `uuid`.
 * Example:
@@ -2387,3 +2448,140 @@ See the [Allen's Relations](allens.html).
         3
 
 
+### deep-equal ###
+* Syntax:
+
+
+        deep-equal(var1, var2)
+
+
+ * Assess the equality between two variables of any type (e.g., records and lists).
+ * Arguments:
+    * `var1` : a data value, such as record and list.
+    * `var2`: a data value, such as record and list.
+ * Return Value:
+    * `true` or `false` depending on the data equality.
+
+
+ * Example:
+
+        let $r1 := {"id":1, 
+		    "project":"AsterixDB", 
+		    "address":{"city":"Irvine", "state":"CA"}, 
+		    "related":["Hivestrix", "Preglix", "Apache VXQuery"] }
+	
+		let $r2 := {"id":1, 
+		            "project":"AsterixDB", 
+		            "address":{"city":"San Diego", "state":"CA"}, 
+		            "related":["Hivestrix", "Preglix", "Apache VXQuery"] }
+		return deep-equal($r1, $r2)
+		
+ * The expected result is:
+
+        false
+
+### record-remove-fields ###
+ * Syntax:
+
+
+        record-remove-fields(input_record, field_names)
+
+
+ * Remove indicated fields from a record given a list of field names.
+ * Arguments:
+    * `input_record`:  a record value.
+    * `field_names`: an ordered list of strings and/or ordered list of ordered list of strings.
+                
+ * Return Value:
+    * A new record value without the fields listed in the second argument.
+
+
+ * Example:
+
+
+        let $r1 := {"id":1, 
+            "project":"AsterixDB", 
+            "address":{"city":"Irvine", "state":"CA"}, 
+            "related":["Hivestrix", "Preglix", "Apache VXQuery"] }
+        return remove-fields($r1, [["address", "city"], "related"])
+
+
+ * The expected result is:
+
+
+	       { "id":1, 
+	         "address":{"state":"CA"}, 
+	         "project":"AsterixDB"}
+	         
+### record-add-fields ###
+ * Syntax:
+
+
+        record-add-fields(input_record, fields)
+
+
+ * Add fields from a record given a list of field names.
+ * Arguments:
+    * `input_record` : a record value.
+    * `fields`: an ordered list of field descriptor records where each record has field-name and  field-value.
+ * Return Value:
+    * A new record value with the new fields included.
+
+
+ * Example:
+
+
+        let $r1 := {"id":1, 
+            "project":"AsterixDB", 
+            "address":{"city":"Irvine", "state":"CA"}, 
+            "related":["Hivestrix", "Preglix", "Apache VXQuery"] }
+        return record-add-fields($r1, [{"field-name":"employment-location", "field-value":create-point(30.0,70.0)}])
+
+
+ * The expected result is:
+
+	      {"id":1, 
+	       "project":"AsterixDB", 
+	       "address":{"city":"Irvine", "state":"CA"}, 
+	       "related":["Hivestrix", "Preglix", "Apache VXQuery"]
+	       "employment-location": point("30.0,70.0")}
+
+### record-merge ###
+ * Syntax:
+
+
+        record-merge(record1, record2)
+
+
+ * Merge two different records into a new record.
+ * Arguments:
+    * `record1` : a record value.
+    * `record2` : a record value.
+ * Return Value:
+    * A new record value with fields from both input records. If a field’s names in both records are the same, an exception is issued.
+
+
+ * Example:
+
+
+        let $r1 := {"id":1, 
+            "project":"AsterixDB", 
+            "address":{"city":"Irvine", "state":"CA"}, 
+            "related":["Hivestrix", "Preglix", "Apache VXQuery"] }
+			
+		let $r2 := {"user_id": 22,
+           "employer": "UC Irvine",
+           "employment-type": "visitor" }  
+        return  record-merge($r1, $r2)
+
+
+ * The expected result is:
+
+
+		{"id":1, 
+		"project":"AsterixDB", 
+		"address":{"city":"Irvine", "state":"CA"}, 
+		"related":["Hivestrix", "Preglix", "Apache VXQuery"]
+		"user-id": 22,
+		"employer": "UC Irvine",
+		"employment-type": "visitor"}

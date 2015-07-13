@@ -1,14 +1,29 @@
+/*
+ * Copyright 2009-2013 by The Regents of the University of California
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * you may obtain a copy of the License from
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package edu.uci.ics.asterix.runtime.evaluators.visitors;
 
 import edu.uci.ics.asterix.common.exceptions.AsterixException;
 import edu.uci.ics.asterix.dataflow.data.nontagged.comparators.ListItemBinaryComparatorFactory;
 import edu.uci.ics.asterix.dataflow.data.nontagged.hash.ListItemBinaryHashFunctionFactory;
 import edu.uci.ics.asterix.om.pointables.AFlatValuePointable;
-import edu.uci.ics.asterix.om.pointables.AListPointable;
-import edu.uci.ics.asterix.om.pointables.ARecordPointable;
+import edu.uci.ics.asterix.om.pointables.AListVisitablePointable;
+import edu.uci.ics.asterix.om.pointables.ARecordVisitablePointable;
 import edu.uci.ics.asterix.om.pointables.base.IVisitablePointable;
 import edu.uci.ics.asterix.om.types.ATypeTag;
 import edu.uci.ics.asterix.runtime.evaluators.functions.BinaryHashMap;
+import edu.uci.ics.asterix.runtime.evaluators.functions.PointableUtils;
 import edu.uci.ics.hyracks.algebricks.common.utils.Pair;
 import edu.uci.ics.hyracks.api.dataflow.value.IBinaryComparator;
 import edu.uci.ics.hyracks.api.dataflow.value.IBinaryHashFunction;
@@ -48,10 +63,10 @@ class RecordDeepEqualityAccessor {
 
         hashMap.clear();
 
-        ARecordPointable rec0 = (ARecordPointable) recAccessor0;
+        ARecordVisitablePointable rec0 = (ARecordVisitablePointable) recAccessor0;
         List<IVisitablePointable> fieldNames0 = rec0.getFieldNames();
 
-        ARecordPointable rec1 = (ARecordPointable) recAccessor1;
+        ARecordVisitablePointable rec1 = (ARecordVisitablePointable) recAccessor1;
         List<IVisitablePointable> fieldNames1 = rec1.getFieldNames();
 
         int s0 = fieldNames0.size();
@@ -93,8 +108,8 @@ class RecordDeepEqualityAccessor {
             }
 
             int index0 = IntegerPointable.getInteger(entry.buf, entry.off);
-            ATypeTag fieldType0 = visitor.getTypeTag(fieldTypes0.get(index0));
-            if(fieldType0 != visitor.getTypeTag(fieldTypes1.get(index1))) {
+            ATypeTag fieldType0 = PointableUtils.getTypeTag(fieldTypes0.get(index0));
+            if(fieldType0 != PointableUtils.getTypeTag(fieldTypes1.get(index1))) {
                 return false;
             }
 
@@ -102,10 +117,10 @@ class RecordDeepEqualityAccessor {
             switch (fieldType0) {
                 case ORDEREDLIST:
                 case UNORDEREDLIST:
-                    ((AListPointable)fieldValues0.get(index0)).accept(visitor, arg);
+                    ((AListVisitablePointable)fieldValues0.get(index0)).accept(visitor, arg);
                     break;
                 case RECORD:
-                    ((ARecordPointable)fieldValues0.get(index0)).accept(visitor, arg);
+                    ((ARecordVisitablePointable)fieldValues0.get(index0)).accept(visitor, arg);
                     break;
                 case ANY:
                     return false;

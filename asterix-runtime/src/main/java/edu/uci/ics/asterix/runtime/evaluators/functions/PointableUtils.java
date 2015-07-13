@@ -1,9 +1,23 @@
+/*
+ * Copyright 2009-2013 by The Regents of the University of California
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * you may obtain a copy of the License from
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package edu.uci.ics.asterix.runtime.evaluators.functions;
 
 import edu.uci.ics.asterix.dataflow.data.nontagged.serde.AStringSerializerDeserializer;
 import edu.uci.ics.asterix.formats.nontagged.AqlSerializerDeserializerProvider;
 import edu.uci.ics.asterix.om.base.ANull;
-import edu.uci.ics.asterix.om.pointables.ARecordPointable;
+import edu.uci.ics.asterix.om.pointables.ARecordVisitablePointable;
 import edu.uci.ics.asterix.om.pointables.base.IVisitablePointable;
 import edu.uci.ics.asterix.om.types.ATypeTag;
 import edu.uci.ics.asterix.om.types.BuiltinType;
@@ -23,6 +37,16 @@ import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.DataOutput;
 import java.io.IOException;
+
+/**
+ *
+ * An utility class for some frequently used methods like checking the equality between two pointables (binary values)
+ * (e.g., field names), string value of a fieldname pointable, getting the typetag of a pointable, etc.
+ *
+ * Note: To get the typetag of a fieldvalue (i) in a record, it is recommended to use the getFieldTypeTags().get(i)
+ * method rather than getting it from fhe field value itself.
+ *
+ */
 
 public class PointableUtils {
 
@@ -44,17 +68,23 @@ public class PointableUtils {
     private PointableUtils(){
     }
 
-    public static boolean compare(IValueReference a, IValueReference b) throws HyracksDataException {
-        // start+1 and len-1 due to the type tag
-        return (STRING_BINARY_COMPARATOR.compare(a.getByteArray(), a.getStartOffset() + 1, a.getLength() - 1,
-                b.getByteArray(), b.getStartOffset() + 1, b.getLength() - 1)==0);
+    public static int compareStringBinValues(IValueReference a, IValueReference b) throws HyracksDataException {
+        // start+1 and len-1 due to type tag ignore (only interested in String value)
+        return STRING_BINARY_COMPARATOR.compare(a.getByteArray(), a.getStartOffset() + 1, a.getLength() - 1,
+                b.getByteArray(), b.getStartOffset() + 1, b.getLength() - 1);
     }
 
-    public static boolean byteArrayEqual(IValueReference valueRef1, IValueReference valueRef2) throws HyracksDataException {
+    public static boolean isEqual(IValueReference a, IValueReference b) throws HyracksDataException {
+        return (compareStringBinValues(a, b)==0);
+    }
+
+    public static boolean byteArrayEqual(IValueReference valueRef1, IValueReference valueRef2)
+            throws HyracksDataException {
         return byteArrayEqual(valueRef1, valueRef2, 3);
     }
 
-    public static boolean byteArrayEqual(IValueReference valueRef1, IValueReference valueRef2, int dataOffset) throws HyracksDataException {
+    public static boolean byteArrayEqual(IValueReference valueRef1, IValueReference valueRef2, int dataOffset)
+            throws HyracksDataException {
         if (valueRef1 == null || valueRef2 == null) return false;
         if (valueRef1 == valueRef2) return true;
 
@@ -110,13 +140,13 @@ public class PointableUtils {
         return false;
     }
 
-    public static boolean isFieldName(ARecordPointable recordPointer, IVisitablePointable fieldNamePointable) {
+    public static boolean isAFieldName(ARecordVisitablePointable recordPointer, IVisitablePointable fieldNamePointable) {
         int fieldPosition = getFieldNamePosition(recordPointer, fieldNamePointable);
 
         return (fieldPosition>-1);
     }
 
-    public static int getFieldNamePosition(ARecordPointable recordPointer, IVisitablePointable fieldNamePointable) {
+    public static int getFieldNamePosition(ARecordVisitablePointable recordPointer, IVisitablePointable fieldNamePointable) {
         for (int i = 0; i < recordPointer.getFieldNames().size(); ++i) {
             IVisitablePointable fp = recordPointer.getFieldNames().get(i);
             if (fp.equals(fieldNamePointable)) {

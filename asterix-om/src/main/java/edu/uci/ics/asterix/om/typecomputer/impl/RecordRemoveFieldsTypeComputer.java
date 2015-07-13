@@ -1,3 +1,17 @@
+/*
+ * Copyright 2009-2013 by The Regents of the University of California
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * you may obtain a copy of the License from
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package edu.uci.ics.asterix.om.typecomputer.impl;
 
 import edu.uci.ics.asterix.common.exceptions.AsterixException;
@@ -79,26 +93,7 @@ public class RecordRemoveFieldsTypeComputer extends AbstractRecordManipulationTy
 
     private void getPathFromFunctionExpression(ILogicalExpression expression)
             throws AlgebricksException {
-        AbstractFunctionCallExpression funcExp = (AbstractFunctionCallExpression) expression;
-        List<Mutable<ILogicalExpression>> args = funcExp.getArguments();
-
-        List<String> path = getStringListFromPool();
-        for (Mutable<ILogicalExpression> arg : args) {
-            // At this point all elements has to be a constant
-            // Input list has only one level of nesting (list of list or list of strings)
-            ConstantExpression ce = (ConstantExpression) arg.getValue();
-            if (!(ce.getValue() instanceof AsterixConstantValue)) {
-                throw new AlgebricksException("Expecting a list of strings and found " + ce.getValue() + " instead.");
-            }
-            IAObject item = ((AsterixConstantValue) ce.getValue()).getObject();
-            ATypeTag type = item.getType().getTypeTag();
-            if (type == ATypeTag.STRING) {
-                path.add(((AString)item).getStringValue());
-            } else {
-                throw new AlgebricksException(type + " is currently not supported. Please check your function call.");
-            }
-        }
-
+        List<String> path = getListFromExpression(expression);
         // Add the path head to remove set
         fieldNameSet.add(path.get(0));
         pathList.add(path);
