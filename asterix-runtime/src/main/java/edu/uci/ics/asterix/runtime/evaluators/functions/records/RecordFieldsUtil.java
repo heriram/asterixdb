@@ -14,6 +14,9 @@
  */
 package edu.uci.ics.asterix.runtime.evaluators.functions.records;
 
+import java.io.DataOutput;
+import java.io.IOException;
+
 import edu.uci.ics.asterix.builders.AbvsBuilderFactory;
 import edu.uci.ics.asterix.builders.IARecordBuilder;
 import edu.uci.ics.asterix.builders.IAsterixListBuilder;
@@ -45,9 +48,6 @@ import edu.uci.ics.hyracks.data.std.api.IMutableValueStorage;
 import edu.uci.ics.hyracks.data.std.api.IPointable;
 import edu.uci.ics.hyracks.data.std.api.IValueReference;
 import edu.uci.ics.hyracks.data.std.util.ArrayBackedValueStorage;
-
-import java.io.DataOutput;
-import java.io.IOException;
 
 public class RecordFieldsUtil {
 
