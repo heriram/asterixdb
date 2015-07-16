@@ -51,6 +51,8 @@ public class JavaFunctionHelper implements IFunctionHelper {
     private final PointableAllocator pointableAllocator;
     private final Map<Integer, TypeInfo> poolTypeInfo;
 
+    private boolean isValidResult = false;
+
     public JavaFunctionHelper(IExternalFunctionInfo finfo, IDataOutputProvider outputProvider)
             throws AlgebricksException {
         this.finfo = finfo;
@@ -76,14 +78,27 @@ public class JavaFunctionHelper implements IFunctionHelper {
     public void setResult(IJObject result) throws IOException, AsterixException {
         if (result == null) {
             JNull.INSTANCE.serialize(outputProvider.getDataOutput(), true);
+            isValidResult = false;
         } else {
             try {
+                isValidResult = true;
                 result.serialize(outputProvider.getDataOutput(), true);
                 result.reset();
             } catch (IOException | AlgebricksException e) {
                 throw new HyracksDataException(e);
             }
         }
+    }
+
+    /**
+     * Gets the value of the result flag
+     *
+     * @return
+     *    boolean True is the setResult is called and result is not null
+     */
+    @Override
+    public boolean isValidResult() {
+        return this.isValidResult;
     }
 
     public void setArgument(int index, IValueReference valueReference) throws IOException, AsterixException {

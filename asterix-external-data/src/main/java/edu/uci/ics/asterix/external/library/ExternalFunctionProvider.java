@@ -73,7 +73,7 @@ class ExternalScalarFunction extends ExternalFunction implements IExternalScalar
          * we want to discard a null object
          */
         byte byteOutput = ((ArrayBackedValueStorage) out).getByteArray()[0];
-        if (byteOutput != SER_RECORD_TYPE_TAG) {
+        if (!argumentProvider.isValidResult() || byteOutput == SER_NULL_TYPE_TAG) {
             out.getDataOutput().writeByte(SER_NULL_TYPE_TAG);
         }
     }
