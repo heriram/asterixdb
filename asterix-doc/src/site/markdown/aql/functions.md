@@ -924,13 +924,13 @@ Asterix provides various classes of functions to support operations on numeric, 
 ### get-points ###
  * Syntax:
 
-        get-points(spatial_expression)
+        get-points(spatial_object)
 
- * Returns an ordered list of the points forming the spatial object `spatial_expression`.
+ * Returns an ordered list of the points forming the spatial object `spatial_object`.
  * Arguments:
-    * `spatial_expression` : A `point`, `line`, `rectangle`, `circle`, or `polygon`.
+    * `spatial_object` : A `point`, `line`, `rectangle`, `circle`, or `polygon`.
  * Return Value:
-    * An `OrderedList` of the points forming the spatial object `spatial_expression`.
+    * An `OrderedList` of the points forming the spatial object `spatial_object`.
 
  * Example:
 
@@ -1042,14 +1042,14 @@ Asterix provides various classes of functions to support operations on numeric, 
 ### spatial-intersect ###
  * Syntax:
 
-        spatial-intersect(spatial_expression1, spatial_expression2)
+        spatial-intersect(spatial_object1, spatial_object2)
 
  * Checks whether `@arg1` and `@arg2` spatially intersect each other.
  * Arguments:
-    * `spatial_expression1` : A `point`, `line`, `rectangle`, `circle`, or `polygon`.
-    * `spatial_expression2` : A `point`, `line`, `rectangle`, `circle`, or `polygon`.
+    * `spatial_object1` : A `point`, `line`, `rectangle`, `circle`, or `polygon`.
+    * `spatial_object2` : A `point`, `line`, `rectangle`, `circle`, or `polygon`.
  * Return Value:
-    * A `boolean` representing whether `spatial_expression1` and `spatial_expression2` spatially overlap with each other.
+    * A `boolean` representing whether `spatial_object1` and `spatial_object2` spatially overlap with each other.
 
  * Example:
 
@@ -2281,9 +2281,99 @@ See the [Allen's Relations](allens.html).
 
         "AsterixDB"
 
+### record-remove-fields ###
+ * Syntax:
+
+        record-remove-fields(input_record, field_names)
+
+ * Remove indicated fields from a record given a list of field names.
+ * Arguments:
+    * `input_record`:  a record value.
+    * `field_names`: an ordered list of strings and/or ordered list of ordered list of strings.
+                
+ * Return Value:
+    * A new record value without the fields listed in the second argument.
+
+
+ * Example:
+
+        let $r1 := {"id":1, 
+            "project":"AsterixDB", 
+            "address":{"city":"Irvine", "state":"CA"}, 
+            "related":["Hivestrix", "Preglix", "Apache VXQuery"] }
+        return remove-fields($r1, [["address", "city"], "related"])
+
+ * The expected result is:
+
+        { "id":1, 
+          "address":{"state":"CA"}, 
+          "project":"AsterixDB"}
+	         
+### record-add-fields ###
+ * Syntax:
+
+        record-add-fields(input_record, fields)
+
+ * Add fields from a record given a list of field names.
+ * Arguments:
+    * `input_record` : a record value.
+    * `fields`: an ordered list of field descriptor records where each record has field-name and  field-value.
+ * Return Value:
+    * A new record value with the new fields included.
+
+
+ * Example:
+
+        let $r1 := {"id":1, 
+            "project":"AsterixDB", 
+            "address":{"city":"Irvine", "state":"CA"}, 
+            "related":["Hivestrix", "Preglix", "Apache VXQuery"] }
+        return record-add-fields($r1, [{"field-name":"employment-location", "field-value":create-point(30.0,70.0)}])
+
+ * The expected result is:
+
+        {"id":1, 
+           "project":"AsterixDB", 
+           "address":{"city":"Irvine", "state":"CA"}, 
+           "related":["Hivestrix", "Preglix", "Apache VXQuery"]
+           "employment-location": point("30.0,70.0")}
+
+### record-merge ###
+ * Syntax:
+
+        record-merge(record1, record2)
+
+ * Merge two different records into a new record.
+ * Arguments:
+    * `record1` : a record value.
+    * `record2` : a record value.
+ * Return Value:
+    * A new record value with fields from both input records. If a field’s names in both records are the same, an exception is issued.
+
+
+ * Example:
+
+        let $r1 := {"id":1, 
+            "project":"AsterixDB", 
+            "address":{"city":"Irvine", "state":"CA"}, 
+            "related":["Hivestrix", "Preglix", "Apache VXQuery"] }
+			
+        let $r2 := {"user_id": 22,
+           "employer": "UC Irvine",
+           "employment-type": "visitor" }  
+        return  record-merge($r1, $r2)
+
+ * The expected result is:
+
+        {"id":1, 
+         "project":"AsterixDB", 
+         "address":{"city":"Irvine", "state":"CA"}, 
+         "related":["Hivestrix", "Preglix", "Apache VXQuery"]
+         "user-id": 22,
+         "employer": "UC Irvine",
+         "employment-type": "visitor"}
 
 ## <a id="OtherFunctions">Other Functions</a> <font size="4"><a href="#toc">[Back to TOC]</a></font> ##
-
 
 ### create-uuid ###
  * Syntax:
@@ -2451,7 +2541,6 @@ See the [Allen's Relations](allens.html).
 ### deep-equal ###
 * Syntax:
 
-
         deep-equal(var1, var2)
 
 
@@ -2466,122 +2555,16 @@ See the [Allen's Relations](allens.html).
  * Example:
 
         let $r1 := {"id":1, 
-		    "project":"AsterixDB", 
-		    "address":{"city":"Irvine", "state":"CA"}, 
-		    "related":["Hivestrix", "Preglix", "Apache VXQuery"] }
-	
-		let $r2 := {"id":1, 
-		            "project":"AsterixDB", 
-		            "address":{"city":"San Diego", "state":"CA"}, 
-		            "related":["Hivestrix", "Preglix", "Apache VXQuery"] }
-		return deep-equal($r1, $r2)
+            "project":"AsterixDB", 
+            "address":{"city":"Irvine", "state":"CA"}, 
+            "related":["Hivestrix", "Preglix", "Apache VXQuery"] }
+
+        let $r2 := {"id":1, 
+                    "project":"AsterixDB", 
+                    "address":{"city":"San Diego", "state":"CA"}, 
+                    "related":["Hivestrix", "Preglix", "Apache VXQuery"] }
+        return deep-equal($r1, $r2)
 		
  * The expected result is:
 
         false
-
-### record-remove-fields ###
- * Syntax:
-
-
-        record-remove-fields(input_record, field_names)
-
-
- * Remove indicated fields from a record given a list of field names.
- * Arguments:
-    * `input_record`:  a record value.
-    * `field_names`: an ordered list of strings and/or ordered list of ordered list of strings.
-                
- * Return Value:
-    * A new record value without the fields listed in the second argument.
-
-
- * Example:
-
-
-        let $r1 := {"id":1, 
-            "project":"AsterixDB", 
-            "address":{"city":"Irvine", "state":"CA"}, 
-            "related":["Hivestrix", "Preglix", "Apache VXQuery"] }
-        return remove-fields($r1, [["address", "city"], "related"])
-
-
- * The expected result is:
-
-
-	       { "id":1, 
-	         "address":{"state":"CA"}, 
-	         "project":"AsterixDB"}
-	         
-### record-add-fields ###
- * Syntax:
-
-
-        record-add-fields(input_record, fields)
-
-
- * Add fields from a record given a list of field names.
- * Arguments:
-    * `input_record` : a record value.
-    * `fields`: an ordered list of field descriptor records where each record has field-name and  field-value.
- * Return Value:
-    * A new record value with the new fields included.
-
-
- * Example:
-
-
-        let $r1 := {"id":1, 
-            "project":"AsterixDB", 
-            "address":{"city":"Irvine", "state":"CA"}, 
-            "related":["Hivestrix", "Preglix", "Apache VXQuery"] }
-        return record-add-fields($r1, [{"field-name":"employment-location", "field-value":create-point(30.0,70.0)}])
-
-
- * The expected result is:
-
-	      {"id":1, 
-	       "project":"AsterixDB", 
-	       "address":{"city":"Irvine", "state":"CA"}, 
-	       "related":["Hivestrix", "Preglix", "Apache VXQuery"]
-	       "employment-location": point("30.0,70.0")}
-
-### record-merge ###
- * Syntax:
-
-
-        record-merge(record1, record2)
-
-
- * Merge two different records into a new record.
- * Arguments:
-    * `record1` : a record value.
-    * `record2` : a record value.
- * Return Value:
-    * A new record value with fields from both input records. If a field’s names in both records are the same, an exception is issued.
-
-
- * Example:
-
-
-        let $r1 := {"id":1, 
-            "project":"AsterixDB", 
-            "address":{"city":"Irvine", "state":"CA"}, 
-            "related":["Hivestrix", "Preglix", "Apache VXQuery"] }
-			
-		let $r2 := {"user_id": 22,
-           "employer": "UC Irvine",
-           "employment-type": "visitor" }  
-        return  record-merge($r1, $r2)
-
-
- * The expected result is:
-
-
-		{"id":1, 
-		"project":"AsterixDB", 
-		"address":{"city":"Irvine", "state":"CA"}, 
-		"related":["Hivestrix", "Preglix", "Apache VXQuery"]
-		"user-id": 22,
-		"employer": "UC Irvine",
-		"employment-type": "visitor"}
