@@ -947,7 +947,7 @@ public class AsterixBuiltinFunctions {
         addFunction(WORD_TOKENS, OrderedListOfAStringTypeComputer.INSTANCE, true);
 
         // records
-        addPrivateFunction(RECORD_MERGE, RecordMergeTypeComputer.INSTANCE, true);
+        addFunction(RECORD_MERGE, RecordMergeTypeComputer.INSTANCE, true);
         addFunction(ADD_FIELDS, RecordAddFieldsTypeComputer.INSTANCE, true);
         addFunction(REMOVE_FIELDS, RecordRemoveFieldsTypeComputer.INSTANCE, true);
         addPrivateFunction(CLOSED_RECORD_CONSTRUCTOR, ClosedRecordConstructorResultType.INSTANCE, true);
