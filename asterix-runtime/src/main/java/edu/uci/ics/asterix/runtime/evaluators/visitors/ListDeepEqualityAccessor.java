@@ -22,6 +22,7 @@ import edu.uci.ics.asterix.om.pointables.AListVisitablePointable;
 import edu.uci.ics.asterix.om.pointables.ARecordVisitablePointable;
 import edu.uci.ics.asterix.om.pointables.base.IVisitablePointable;
 import edu.uci.ics.asterix.om.types.ATypeTag;
+import edu.uci.ics.asterix.om.util.AsterixAppContextInfo;
 import edu.uci.ics.asterix.runtime.evaluators.functions.BinaryHashMap;
 import edu.uci.ics.asterix.runtime.evaluators.functions.BinaryHashMap.BinaryEntry;
 import edu.uci.ics.asterix.runtime.evaluators.functions.PointableUtils;
@@ -39,18 +40,25 @@ class ListDeepEqualityAccessor {
     private DeepEqualityVisitor visitor;
 
     private final int TABLE_SIZE = 100;
-    private final int TABLE_FRAME_SIZE = 32768;
+    private final int TABLE_FRAME_SIZE = AsterixAppContextInfo.getInstance().getCompilerProperties().getFrameSize();
 
     private IBinaryHashFunction putHashFunc = ListItemBinaryHashFunctionFactory.INSTANCE.createBinaryHashFunction();
     private IBinaryHashFunction getHashFunc = ListItemBinaryHashFunctionFactory.INSTANCE.createBinaryHashFunction();
     private IBinaryComparator cmp = ListItemBinaryComparatorFactory.INSTANCE.createBinaryComparator();
-    private BinaryHashMap hashMap = new BinaryHashMap(TABLE_SIZE, TABLE_FRAME_SIZE, putHashFunc, getHashFunc, cmp);
+    private BinaryHashMap hashMap;
     private BinaryEntry keyEntry = new BinaryEntry();
     private BinaryEntry valEntry = new BinaryEntry();
 
-
-
     public ListDeepEqualityAccessor() {
+        init(TABLE_SIZE);
+    }
+
+    public ListDeepEqualityAccessor(int tableSize) {
+        init(tableSize);
+    }
+
+    private void init(int tableSize) {
+        hashMap = new BinaryHashMap(tableSize, TABLE_FRAME_SIZE, putHashFunc, getHashFunc, cmp);
         byte[] emptyValBuf = new byte[8];
         Arrays.fill(emptyValBuf, (byte) 0);
         valEntry.set(emptyValBuf, 0, 8);

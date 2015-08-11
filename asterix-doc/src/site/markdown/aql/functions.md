@@ -395,31 +395,6 @@ Asterix provides various classes of functions to support operations on numeric, 
 
         ASTERIX
 
-
-### uppercase ###
- * Syntax:
-
-        uppercase(string)
-
- * Converts a given string `string` to its uppercase form.
- * Arguments:
-    * `string` : A `string` to be converted.
- * Return Value:
-    * Returns a `string` as the uppercase form of the given `string`.
-
- * Example:
-
-        use dataverse TinySocial;
-
-        let $i := "asterix"
-        return uppercase($i)
-
-
- * The expected result is:
-
-        ASTERIX
-
-
 ### matches ###
  * Syntax:
 
@@ -2234,7 +2209,7 @@ See the [Allen's Relations](allens.html).
  * Arguments:
     * `input_record` : a record value.
  * Return Value:
-    * An order list of `record` values that include the field-name `string`, field-type `string`, is-open `boolean` (for debug purpose), and optional nested `orderedList` for the values of a nested record.
+    * An order list of `record` values that include the field-name `string`, field-type `string`, is-open `boolean` (used for debug purposes only: `true` if field is open and `false` otherwise), and optional nested `orderedList` for the values of a nested record.
 
  * Example:
 
@@ -2305,9 +2280,9 @@ See the [Allen's Relations](allens.html).
 
  * The expected result is:
 
-        { "id":1, 
-          "address":{"state":"CA"}, 
-          "project":"AsterixDB"}
+        { "id":1,
+        "project":"AsterixDB",
+        "address":{"state":"CA"}}
 	         
 ### record-add-fields ###
  * Syntax:
@@ -2544,7 +2519,7 @@ See the [Allen's Relations](allens.html).
         deep-equal(var1, var2)
 
 
- * Assess the equality between two variables of any type (e.g., records and lists).
+ * Assess the equality between two variables of any type (e.g., records and lists). Two objects are deeply equal iff both their types and values are equal.  
  * Arguments:
     * `var1` : a data value, such as record and list.
     * `var2`: a data value, such as record and list.

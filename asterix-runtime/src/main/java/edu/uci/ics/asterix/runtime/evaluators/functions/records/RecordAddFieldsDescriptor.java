@@ -164,6 +164,12 @@ public class RecordAddFieldsDescriptor  extends AbstractScalarFunctionDynamicDes
                             AListVisitablePointable listPointable) throws IOException, AsterixException,
                             AlgebricksException {
 
+                        List<IVisitablePointable> inputFields;
+                        List<IVisitablePointable> names;
+                        List<IVisitablePointable> values;
+                        IVisitablePointable namePointable = null;
+                        IVisitablePointable valuePointable = null;
+
                         // Add original record without duplicate checking
                         for (int i = 0; i < inputRecordPointer.getFieldNames().size(); ++i) {
                             IVisitablePointable fnp = inputRecordPointer.getFieldNames().get(i);
@@ -172,7 +178,8 @@ public class RecordAddFieldsDescriptor  extends AbstractScalarFunctionDynamicDes
                         }
 
                         // Get the fields from a list of record
-                        List<IVisitablePointable> inputFields = listPointable.getItems();
+                        inputFields = listPointable.getItems();
+
 
                         for(IVisitablePointable fieldRecPointer: inputFields)  {
                             if(!PointableUtils.isType(ATypeTag.RECORD, fieldRecPointer)) {
@@ -180,16 +187,14 @@ public class RecordAddFieldsDescriptor  extends AbstractScalarFunctionDynamicDes
                                         PointableUtils.getTypeTag(fieldRecPointer));
                             }
 
-                            List<IVisitablePointable> names = ((ARecordVisitablePointable)fieldRecPointer).getFieldNames();
-                            List<IVisitablePointable> values = ((ARecordVisitablePointable)fieldRecPointer).getFieldValues();
-
-                            IVisitablePointable namePointable = null;
-                            IVisitablePointable valuePointable = null;
+                            names = ((ARecordVisitablePointable)fieldRecPointer).getFieldNames();
+                            values = ((ARecordVisitablePointable)fieldRecPointer).getFieldValues();
 
                             // Get name and value of the field to be added
                             // Use loop to account for the cases where users switches the order of the fields
+                            IVisitablePointable fieldName;
                             for(int j=0; j<names.size(); j++) {
-                                IVisitablePointable fieldName = names.get(j);
+                                fieldName = names.get(j);
                                 // if fieldName is "field-name" then read the name
                                 if (PointableUtils.byteArrayEqual(fieldNamePointer, fieldName)) {
                                     namePointable = values.get(j);

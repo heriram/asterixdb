@@ -51,6 +51,7 @@ public class DeepEqualAssessor {
         if (vp0 == null || vp1 == null)
             return false;
 
+        // TODO: In the next version add support for equivalent types that are not necessarily the same type
         if (PointableUtils.getTypeTag(vp0) != PointableUtils.getTypeTag(vp1))
             return false;
 

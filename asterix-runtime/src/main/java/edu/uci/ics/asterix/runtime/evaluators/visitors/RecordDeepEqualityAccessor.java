@@ -22,6 +22,7 @@ import edu.uci.ics.asterix.om.pointables.AListVisitablePointable;
 import edu.uci.ics.asterix.om.pointables.ARecordVisitablePointable;
 import edu.uci.ics.asterix.om.pointables.base.IVisitablePointable;
 import edu.uci.ics.asterix.om.types.ATypeTag;
+import edu.uci.ics.asterix.om.util.AsterixAppContextInfo;
 import edu.uci.ics.asterix.runtime.evaluators.functions.BinaryHashMap;
 import edu.uci.ics.asterix.runtime.evaluators.functions.PointableUtils;
 import edu.uci.ics.hyracks.algebricks.common.utils.Pair;
@@ -37,16 +38,25 @@ class RecordDeepEqualityAccessor {
     private DeepEqualityVisitor visitor;
 
     private final int TABLE_SIZE = 100;
-    private final int TABLE_FRAME_SIZE = 32768;
+    private final int TABLE_FRAME_SIZE = AsterixAppContextInfo.getInstance().getCompilerProperties().getFrameSize();
 
     private IBinaryHashFunction putHashFunc = ListItemBinaryHashFunctionFactory.INSTANCE.createBinaryHashFunction();
     private IBinaryHashFunction getHashFunc = ListItemBinaryHashFunctionFactory.INSTANCE.createBinaryHashFunction();
     private IBinaryComparator cmp = ListItemBinaryComparatorFactory.INSTANCE.createBinaryComparator();
-    private BinaryHashMap hashMap = new BinaryHashMap(TABLE_SIZE, TABLE_FRAME_SIZE, putHashFunc, getHashFunc, cmp);
+    private BinaryHashMap hashMap;
     private BinaryHashMap.BinaryEntry keyEntry = new BinaryHashMap.BinaryEntry();
     private BinaryHashMap.BinaryEntry valEntry = new BinaryHashMap.BinaryEntry();
 
+    public RecordDeepEqualityAccessor(int tableSize) {
+        init(tableSize);
+    }
+
     public RecordDeepEqualityAccessor() {
+        init(TABLE_SIZE);
+    }
+
+    private void init(int tableSize) {
+        hashMap = new BinaryHashMap(tableSize, TABLE_FRAME_SIZE, putHashFunc, getHashFunc, cmp);
         byte[] emptyValBuf = new byte[8];
         Arrays.fill(emptyValBuf, (byte) 0);
         valEntry.set(emptyValBuf, 0, 8);
@@ -77,10 +87,7 @@ class RecordDeepEqualityAccessor {
         // Build phase: Add items into hash map, starting with first list.
         for (int i = 0; i < s0; i++) {
             IVisitablePointable item = fieldNames0.get(i);
-            byte[] buf = item.getByteArray();
-            int off = item.getStartOffset();
-            int len = item.getLength();
-            keyEntry.set(buf, off, len);
+            keyEntry.set(item.getByteArray(), item.getStartOffset(), item.getLength());
             IntegerPointable.setInteger(valEntry.buf, 0, i);
             BinaryHashMap.BinaryEntry entry = hashMap.put(keyEntry, valEntry);
         }
@@ -98,10 +105,7 @@ class RecordDeepEqualityAccessor {
         Pair<IVisitablePointable, Boolean> arg=null;
         for(int index1=0; index1<fieldNames1.size(); index1++) {
             IVisitablePointable item = fieldNames1.get(index1);
-            byte[] buf = item.getByteArray();
-            int off = item.getStartOffset();
-            int len = item.getLength();
-            keyEntry.set(buf, off, len);
+            keyEntry.set(item.getByteArray(), item.getStartOffset(), item.getLength());
             BinaryHashMap.BinaryEntry entry = hashMap.get(keyEntry);
             if (entry == null) {
                 return false;
