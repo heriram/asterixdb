@@ -2228,13 +2228,13 @@ See the [Allen's Relations](allens.html).
 ### get-record-fields ###
  * Syntax:
 
-        get-record-fields(record_expression)
+        get-record-fields(input_record)
 
  * Access the record field names, type and open status for a given record.
  * Arguments:
-    * `record_expression` : a record value.
+    * `input_record` : a record value.
  * Return Value:
-    * An order list of `record` values that include the field-name `string`, field-type `string`, is-open `boolean` and optional nested `orderedList` for the values of a nested record.
+    * An order list of `record` values that include the field-name `string`, field-type `string`, is-open `boolean` (for debug purpose), and optional nested `orderedList` for the values of a nested record.
 
  * Example:
 
@@ -2260,12 +2260,12 @@ See the [Allen's Relations](allens.html).
 ### get-record-field-value ###
  * Syntax:
 
-        get-record-field-value(record_expression, string_expression)
+        get-record-field-value(input_record, string)
 
  * Access the field name given in the `string_expression` from the `record_expression`.
  * Arguments:
-    * `record_expression` : A `record` value.
-    * `string_expression` : A `string` representing the top level field name.
+    * `input_record` : A `record` value.
+    * `string` : A `string` representing the top level field name.
  * Return Value:
     * An `any` value saved in the designated field of the record.
 
