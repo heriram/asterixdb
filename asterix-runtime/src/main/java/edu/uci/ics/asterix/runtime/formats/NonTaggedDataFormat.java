@@ -14,17 +14,6 @@
  */
 package edu.uci.ics.asterix.runtime.formats;
 
-import java.io.DataOutput;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import org.apache.commons.lang3.mutable.Mutable;
-import org.apache.commons.lang3.mutable.MutableObject;
-
 import edu.uci.ics.asterix.common.config.GlobalConfig;
 import edu.uci.ics.asterix.common.exceptions.AsterixRuntimeException;
 import edu.uci.ics.asterix.common.parse.IParseFileSplitsDecl;
@@ -163,6 +152,7 @@ import edu.uci.ics.asterix.runtime.evaluators.constructors.APolygonConstructorDe
 import edu.uci.ics.asterix.runtime.evaluators.constructors.ARectangleConstructorDescriptor;
 import edu.uci.ics.asterix.runtime.evaluators.constructors.AStringConstructorDescriptor;
 import edu.uci.ics.asterix.runtime.evaluators.constructors.ATimeConstructorDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.constructors.AUUIDFromStringConstructorDescriptor;
 import edu.uci.ics.asterix.runtime.evaluators.constructors.AYearMonthDurationConstructorDescriptor;
 import edu.uci.ics.asterix.runtime.evaluators.constructors.ClosedRecordConstructorDescriptor;
 import edu.uci.ics.asterix.runtime.evaluators.constructors.OpenRecordConstructorDescriptor;
@@ -361,6 +351,16 @@ import edu.uci.ics.hyracks.dataflow.common.data.parsers.IntegerParserFactory;
 import edu.uci.ics.hyracks.dataflow.common.data.parsers.LongParserFactory;
 import edu.uci.ics.hyracks.dataflow.common.data.parsers.UTF8StringParserFactory;
 import edu.uci.ics.hyracks.dataflow.std.file.ITupleParserFactory;
+import org.apache.commons.lang3.mutable.Mutable;
+import org.apache.commons.lang3.mutable.MutableObject;
+
+import java.io.DataOutput;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class NonTaggedDataFormat implements IDataFormat {
 
@@ -558,6 +558,7 @@ public class NonTaggedDataFormat implements IDataFormat {
         temp.add(ADurationConstructorDescriptor.FACTORY);
         temp.add(AYearMonthDurationConstructorDescriptor.FACTORY);
         temp.add(ADayTimeDurationConstructorDescriptor.FACTORY);
+        temp.add(AUUIDFromStringConstructorDescriptor.FACTORY);
 
         temp.add(DeepEqualityDescriptor.FACTORY);
 
