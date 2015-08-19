@@ -99,8 +99,6 @@ public class RecordAddFieldsDescriptor  extends AbstractScalarFunctionDynamicDes
 
                 final DataOutput out = output.getDataOutput();
 
-                final RecordBuilder recordBuilder = new RecordBuilder();
-                recordBuilder.reset(recType);
 
                 final ISerializerDeserializer<AString> stringSerde = AqlSerializerDeserializerProvider.INSTANCE
                         .getSerializerDeserializer(BuiltinType.ASTRING);
@@ -119,9 +117,12 @@ public class RecordAddFieldsDescriptor  extends AbstractScalarFunctionDynamicDes
 
 
                 return new ICopyEvaluator() {
+                    RecordBuilder recordBuilder;
 
                     @Override
                     public void evaluate(IFrameTupleReference tuple) throws AlgebricksException {
+                        recordBuilder = new RecordBuilder();
+                        recordBuilder.reset(recType);
                         abvs0.reset();
                         abvs1.reset();
 

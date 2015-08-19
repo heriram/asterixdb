@@ -1,0 +1,12 @@
+/*
+* Description  : Testing record-add-fields under different queries.
+* Expected Res : Success
+* Date         : 04 Aug 2015
+*/
+use dataverse TinySocial;
+
+for $r in dataset TweetMessages
+for $f in dataset FacebookMessages
+let $result := record-add-fields($r, [{"field-name":"fb-author-id", "field-value":$f.author-id}])
+order by $result
+return $result

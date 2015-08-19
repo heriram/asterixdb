@@ -1,0 +1,12 @@
+/*
+* Description  : Testing record-merge under different queries.
+* Expected Res : Success
+* Date         : 04 Aug 2015
+*/
+use dataverse TinySocial;
+
+for $r in dataset TweetMessages
+for $f in dataset FacebookMessages
+let $result := record-merge($r, $f)
+order by $result
+return $result

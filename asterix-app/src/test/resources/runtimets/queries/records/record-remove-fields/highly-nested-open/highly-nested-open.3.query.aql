@@ -1,0 +1,11 @@
+/*
+* Description  : Testing record-remove-fields under different queries.
+* Expected Res : Success
+* Date         : 04 Aug 2015
+*/
+use dataverse test;
+
+for $test in dataset Animals
+let $result := record-remove-fields($test, [["class", "fullClassification"]])
+order by $result.id
+return $result;

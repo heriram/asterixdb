@@ -1,0 +1,19 @@
+insert into dataset StreamDocuments (
+       { "doc_id": "doc3",
+        "stream_id": "3dd",
+        "title_cleansed": "",
+        "body_cleansed": "ccc aharon barak born in Israel jeremy mckinnon",
+        "dir_name": "2010-11-24-00",
+        "anchor_cleansed": "",
+        "language": "EN",
+        "schost": "http...",
+        "name":"social"
+});
+
+insert into dataset SourceInfo (
+{
+"id": 1,
+"name":"social",
+"description":"social media data"
+}
+);

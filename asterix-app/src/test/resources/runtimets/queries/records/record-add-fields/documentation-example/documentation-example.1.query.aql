@@ -1,0 +1,10 @@
+/*
+* Description  : Testing record-add-fields under different queries.
+* Expected Res : Success
+* Date         : 04 Aug 2015
+*/
+        let $r1 := {"id":1,
+            "project":"AsterixDB",
+            "address":{"city":"Irvine", "state":"CA"},
+            "related":["Hivestrix", "Preglix", "Apache VXQuery"] }
+        return record-add-fields($r1, [{"field-name":"employment-location", "field-value":create-point(30.0,70.0)}])
