@@ -14,14 +14,6 @@
  */
 package edu.uci.ics.asterix.om.functions;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import org.apache.commons.lang3.mutable.Mutable;
-
 import edu.uci.ics.asterix.common.functions.FunctionConstants;
 import edu.uci.ics.asterix.common.functions.FunctionSignature;
 import edu.uci.ics.asterix.om.typecomputer.base.IResultTypeComputer;
@@ -95,7 +87,9 @@ import edu.uci.ics.asterix.om.typecomputer.impl.OrderedListOfAPointTypeComputer;
 import edu.uci.ics.asterix.om.typecomputer.impl.OrderedListOfAStringTypeComputer;
 import edu.uci.ics.asterix.om.typecomputer.impl.OrderedListOfAnyTypeComputer;
 import edu.uci.ics.asterix.om.typecomputer.impl.QuadStringStringOrNullTypeComputer;
+import edu.uci.ics.asterix.om.typecomputer.impl.RecordAddFieldsTypeComputer;
 import edu.uci.ics.asterix.om.typecomputer.impl.RecordMergeTypeComputer;
+import edu.uci.ics.asterix.om.typecomputer.impl.RecordRemoveFieldsTypeComputer;
 import edu.uci.ics.asterix.om.typecomputer.impl.ScalarVersionOfAggregateResultType;
 import edu.uci.ics.asterix.om.typecomputer.impl.SubsetCollectionTypeComputer;
 import edu.uci.ics.asterix.om.typecomputer.impl.Substring2TypeComputer;
@@ -113,6 +107,13 @@ import edu.uci.ics.hyracks.algebricks.core.algebra.expressions.AggregateFunction
 import edu.uci.ics.hyracks.algebricks.core.algebra.functions.AlgebricksBuiltinFunctions;
 import edu.uci.ics.hyracks.algebricks.core.algebra.functions.FunctionIdentifier;
 import edu.uci.ics.hyracks.algebricks.core.algebra.functions.IFunctionInfo;
+import org.apache.commons.lang3.mutable.Mutable;
+
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class AsterixBuiltinFunctions {
 
@@ -170,9 +171,17 @@ public class AsterixBuiltinFunctions {
     public final static FunctionIdentifier UNORDERED_LIST_CONSTRUCTOR = new FunctionIdentifier(
             FunctionConstants.ASTERIX_NS, "unordered-list-constructor", FunctionIdentifier.VARARGS);
 
+    public final static FunctionIdentifier DEEP_EQUAL = new FunctionIdentifier(FunctionConstants.ASTERIX_NS,
+            "deep-equal", 2);
+
     // records
     public final static FunctionIdentifier RECORD_MERGE = new FunctionIdentifier(FunctionConstants.ASTERIX_NS,
-            "record-merge", 3);
+            "record-merge", 2);
+    public final static FunctionIdentifier REMOVE_FIELDS = new FunctionIdentifier(FunctionConstants.ASTERIX_NS,
+            "record-remove-fields", 2);
+    public final static FunctionIdentifier ADD_FIELDS = new FunctionIdentifier(FunctionConstants.ASTERIX_NS,
+            "record-add-fields", 2);
+
     public final static FunctionIdentifier CLOSED_RECORD_CONSTRUCTOR = new FunctionIdentifier(
             FunctionConstants.ASTERIX_NS, "closed-record-constructor", FunctionIdentifier.VARARGS);
     public final static FunctionIdentifier OPEN_RECORD_CONSTRUCTOR = new FunctionIdentifier(
@@ -742,6 +751,9 @@ public class AsterixBuiltinFunctions {
         addPrivateFunction(OR, BinaryBooleanOrNullFunctionTypeComputer.INSTANCE, true);
         addPrivateFunction(NUMERIC_ADD, NonTaggedNumericAddSubMulDivTypeComputer.INSTANCE, true);
 
+        // Deep equality
+        addFunction(DEEP_EQUAL, BinaryBooleanOrNullFunctionTypeComputer.INSTANCE, true);
+
         // and then, Asterix builtin functions
         addPrivateFunction(NOT_NULL, NotNullTypeComputer.INSTANCE, true);
         addPrivateFunction(ANY_COLLECTION_MEMBER, NonTaggedCollectionMemberResultType.INSTANCE, true);
@@ -936,7 +948,9 @@ public class AsterixBuiltinFunctions {
         addFunction(WORD_TOKENS, OrderedListOfAStringTypeComputer.INSTANCE, true);
 
         // records
-        addPrivateFunction(RECORD_MERGE, RecordMergeTypeComputer.INSTANCE, true);
+        addFunction(RECORD_MERGE, RecordMergeTypeComputer.INSTANCE, true);
+        addFunction(ADD_FIELDS, RecordAddFieldsTypeComputer.INSTANCE, true);
+        addFunction(REMOVE_FIELDS, RecordRemoveFieldsTypeComputer.INSTANCE, true);
         addPrivateFunction(CLOSED_RECORD_CONSTRUCTOR, ClosedRecordConstructorResultType.INSTANCE, true);
         addPrivateFunction(OPEN_RECORD_CONSTRUCTOR, OpenRecordConstructorResultType.INSTANCE, true);
         addPrivateFunction(FIELD_ACCESS_BY_INDEX, FieldAccessByIndexResultType.INSTANCE, true);

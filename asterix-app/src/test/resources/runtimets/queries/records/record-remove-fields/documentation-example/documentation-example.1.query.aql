@@ -1,0 +1,10 @@
+/*
+* Description  : record-remove-fields under different queries.
+* Expected Res : Success
+* Date         : 04 Aug 2015
+*/
+        let $r1 := {"id":1,
+            "project":"AsterixDB",
+            "address":{"city":"Irvine", "state":"CA"},
+            "related":["Hivestrix", "Preglix", "Apache VXQuery"] }
+        return record-remove-fields($r1, ["project"])
