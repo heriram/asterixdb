@@ -27,7 +27,11 @@ import edu.uci.ics.asterix.om.pointables.ARecordVisitablePointable;
 import edu.uci.ics.asterix.om.pointables.PointableAllocator;
 import edu.uci.ics.asterix.om.pointables.base.IVisitablePointable;
 import edu.uci.ics.asterix.om.typecomputer.impl.AbstractRecordManipulationTypeComputer;
-import edu.uci.ics.asterix.om.types.*;
+import edu.uci.ics.asterix.om.types.AOrderedListType;
+import edu.uci.ics.asterix.om.types.ARecordType;
+import edu.uci.ics.asterix.om.types.ATypeTag;
+import edu.uci.ics.asterix.om.types.BuiltinType;
+import edu.uci.ics.asterix.om.types.IAType;
 import edu.uci.ics.asterix.runtime.evaluators.base.AbstractScalarFunctionDynamicDescriptor;
 import edu.uci.ics.asterix.runtime.evaluators.functions.PointableUtils;
 import edu.uci.ics.hyracks.algebricks.common.exceptions.AlgebricksException;
@@ -115,13 +119,13 @@ public class RecordAddFieldsDescriptor  extends AbstractScalarFunctionDynamicDes
                     e.printStackTrace();
                 }
 
+                final RecordBuilder recordBuilder = new RecordBuilder();
 
                 return new ICopyEvaluator() {
-                    RecordBuilder recordBuilder;
+
 
                     @Override
                     public void evaluate(IFrameTupleReference tuple) throws AlgebricksException {
-                        recordBuilder = new RecordBuilder();
                         recordBuilder.reset(recType);
                         abvs0.reset();
                         abvs1.reset();
