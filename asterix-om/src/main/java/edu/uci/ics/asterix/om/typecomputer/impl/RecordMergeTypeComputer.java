@@ -47,7 +47,7 @@ public class RecordMergeTypeComputer extends AbstractRecordManipulationTypeCompu
         }
 
         if (t.getTypeTag() == ATypeTag.UNION) {
-            IAType innerType = ((AUnionType) t).getUnionList().get(1);
+            IAType innerType = ((AUnionType) t).getNullableType();
             if (innerType.getTypeTag() == ATypeTag.RECORD) {
                 return (ARecordType) innerType;
             }

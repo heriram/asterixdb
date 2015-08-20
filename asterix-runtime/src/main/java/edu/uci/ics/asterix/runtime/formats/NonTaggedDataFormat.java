@@ -913,13 +913,11 @@ public class NonTaggedDataFormat implements IDataFormat {
             } else {
                 IAType itemType = (IAType) context.getType(f.getArguments().get(0).getValue());
                 if (itemType instanceof AUnionType) {
-                    if (((AUnionType) itemType).isNullableType()) {
-                        itemType = ((AUnionType) itemType).getUnionList().get(
-                                AUnionType.OPTIONAL_TYPE_INDEX_IN_UNION_LIST);
-                    } else {
+                    if (((AUnionType) itemType).isNullableType())
+                        itemType = ((AUnionType) itemType).getNullableType();
+                    else
                         // Convert UNION types into ANY.
                         itemType = BuiltinType.ANY;
-                    }
                 }
                 ((ListifyAggregateDescriptor) fd).reset(new AOrderedListType(itemType, null));
             }
@@ -1019,7 +1017,7 @@ public class NonTaggedDataFormat implements IDataFormat {
                 case UNION: {
                     AUnionType unionT = (AUnionType) t;
                     if (unionT.isNullableType()) {
-                        IAType t2 = unionT.getUnionList().get(1);
+                        IAType t2 = unionT.getNullableType();
                         if (t2.getTypeTag() == ATypeTag.RECORD) {
                             ARecordType recType = (ARecordType) t2;
                             ((FieldAccessByIndexDescriptor) fd).reset(recType);

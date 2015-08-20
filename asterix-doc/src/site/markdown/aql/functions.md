@@ -198,7 +198,7 @@ Asterix provides various classes of functions to support operations on numeric, 
     * `substring_to_contain` : A target `string` that might be contained.
  * Return Value:
     * A `boolean` value, `true` if `string` contains `substring_to_contain`, and `false` otherwise.
- * Note: An n-gram index can be utilized for this function.
+ * Note: An [n-gram index](similarity.html#UsingIndexesToSupportSimilarityQueries) can be utilized for this function.
  * Example:
 
         use dataverse TinySocial;
@@ -1084,20 +1084,21 @@ Asterix provides various classes of functions to support operations on numeric, 
 
 ## <a id="SimilarityFunctions">Similarity Functions</a> <font size="4"><a href="#toc">[Back to TOC]</a></font> ##
 
-AsterixDB supports queries with different similarity functions, including edit distance and Jaccard.
+AsterixDB supports queries with different similarity functions,
+including [edit distance](http://en.wikipedia.org/wiki/Levenshtein_distance) and [Jaccard](https://en.wikipedia.org/wiki/Jaccard_index).
 
 ### edit-distance ###
  * Syntax:
 
         edit-distance(expression1, expression2)
 
- * Returns the [edit distance](http://en.wikipedia.org/wiki/Levenshtein_distance) of `expression1` and `expression2`.
+ * Returns the edit distance of `expression1` and `expression2`.
  * Arguments:
     * `expression1` : A `string` or a homogeneous `OrderedList` of a comparable item type.
     * `expression2` : The same type as `expression1`.
  * Return Value:
     * An `int64` that represents the edit distance between `expression1` and `expression2`.
- * Note: An n-gram index can be utilized for this function.
+ * Note: An [n-gram index](similarity.html#UsingIndexesToSupportSimilarityQueries) can be utilized for this function.
  * Example:
 
         use dataverse TinySocial;
@@ -1131,7 +1132,7 @@ AsterixDB supports queries with different similarity functions, including edit d
     * An `OrderedList` with two items:
         * The first item contains a `boolean` value representing whether `expression1` and `expression2` are similar.
         * The second item contains an `int64` that represents the edit distance of `expression1` and `expression2` if it is within the threshold, or 0 otherwise.
- * Note: An n-gram index can be utilized for this function.
+ * Note: An [n-gram index](similarity.html#UsingIndexesToSupportSimilarityQueries) can be utilized for this function.
  * Example:
 
         use dataverse TinySocial;
@@ -1161,8 +1162,9 @@ AsterixDB supports queries with different similarity functions, including edit d
     * An `OrderedList` with two items:
         * The first item contains a `boolean` value representing whether `expression1` can contain `expression2`.
         * The second item contains an `int32` that represents the required edit distance for `expression1` to contain `expression2` if the first item is true.
-* Note: An n-gram index can be utilized for this function.
+* Note: An [n-gram index](similarity.html#UsingIndexesToSupportSimilarityQueries) can be utilized for this function.
 * Example:
+
         let $i := edit-distance-contains("happy","hapr",2)
         return $i;
 
@@ -1184,13 +1186,13 @@ AsterixDB supports queries with different similarity functions, including edit d
     * `list2` : An `UnorderedList` or `OrderedList`.
  * Return Value:
     * A `float` that represents the Jaccard similarity of `list1` and `list2`.
- * Note: A keyword index can be utilized for this function.
+ * Note: A [keyword index](similarity.html#UsingIndexesToSupportSimilarityQueries) can be utilized for this function.
  * Example:
 
         use dataverse TinySocial;
 
         for $user in dataset('FacebookUsers')
-        let $sim := similarity-jaccard($user.friend-ids, [1,5,9])
+        let $sim := similarity-jaccard($user.friend-ids, [1,5,9,10])
         where $sim >= 0.6f
         return $user
 
@@ -1222,13 +1224,13 @@ AsterixDB supports queries with different similarity functions, including edit d
     * An `OrderedList` with two items:
      * The first item contains a `boolean` value representing whether `list1` and `list2` are similar.
      * The second item contains a `float` that represents the Jaccard similarity of `list1` and `list2` if it is greater than or equal to the threshold, or 0 otherwise.
- * Note: A keyword index can be utilized for this function.
+ * Note: A [keyword index](similarity.html#UsingIndexesToSupportSimilarityQueries) can be utilized for this function.
  * Example:
 
         use dataverse TinySocial;
 
         for $user in dataset('FacebookUsers')
-        let $sim := similarity-jaccard-check($user.friend-ids, [1,5,9], 0.6f)
+        let $sim := similarity-jaccard-check($user.friend-ids, [1,5,9,10], 0.6f)
         where $sim[0]
         return $sim[1]
 
@@ -1239,7 +1241,7 @@ AsterixDB supports queries with different similarity functions, including edit d
         1.0f
 
 
-### Similarity Operator ~# ###
+### Similarity Operator ~= ###
  * "`~=`" is syntactic sugar for expressing a similarity condition with a given similarity threshold.
  * The similarity function and threshold for "`~=`" are controlled via "set" directives.
  * The "`~=`" operator returns a `boolean` value that represents whether the operands are similar.
@@ -1252,7 +1254,7 @@ AsterixDB supports queries with different similarity functions, including edit d
         set simthreshold "0.6f";
 
         for $user in dataset('FacebookUsers')
-        where $user.friend-ids ~= [1,5,9]
+        where $user.friend-ids ~= [1,5,9,10]
         return $user
 
 
@@ -1290,11 +1292,12 @@ AsterixDB supports queries with different similarity functions, including edit d
 
 ## <a id="TokenizingFunctions">Tokenizing Functions</a> <font size="4"><a href="#toc">[Back to TOC]</a></font> ##
 ### word-tokens ###
+
  * Syntax:
 
         word-tokens(string)
 
- * Returns a list of word tokens of `string`.
+ * Returns a list of word tokens of `string` using non-alphanumeric characters as delimiters.
  * Arguments:
     * `string` : A `string` that will be tokenized.
  * Return Value:
