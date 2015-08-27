@@ -74,6 +74,7 @@ Next we make use of the `create feed` AQL statement to define our example data f
 The "push_twitter" adaptor requires setting up an application account with Twitter. To retrieve
 tweets, Twitter requires registering an application with Twitter. Registration involves providing a name and a brief description for the application. Each application has an associated OAuth authentication credential that includes OAuth keys and tokens. Accessing the 
 Twitter API requires providing the following.
+
 1. Consumer Key (API Key)
 2. Consumer Secret (API Secret)
 3. Access Token
@@ -181,7 +182,7 @@ Additionally, the latitude and longitude values (doubles) are combined into the 
         create feed ProcessedTwitterFeed if not exists
         using "push_twitter"
         (("type-name"="Tweet"))
-        apply function testlib#processRawTweet;
+        apply function testlib#addHashTagsInPlace;
 
 Note that a feed adaptor and a UDF act as pluggable components. These
 contribute towards providing a generic "plug-and-play" model where
@@ -214,11 +215,15 @@ example AQL statement that redefines the previous feed
 respective parent feed (TwitterFeed).
 
         use dataverse feeds;
+		
+        create feed TwitterFeed if not exists
+        using "push_twitter"
+	    (("type-name"="Tweet"))
 
         drop feed ProcessedTwitterFeed if exists;
 
         create secondary feed ProcessedTwitterFeed from feed TwitterFeed 
-        apply function testlib#addFeatures;
+        apply function testlib#addHashTags;
 
 The `addFeatures` function is already provided in the release.  Later
 in the tutorial we will explain how this function or
@@ -325,54 +330,69 @@ time, which is independent from other related feeds in the hierarchy.
 
 A Java UDF in AsterixDB is required to implement an interface. We shall next write a basic UDF that extracts the hashtags contained in the tweet's text and appends each into an unordered list. The list is added as an additional attribute to the tweet to form the augment version - ProcessedTweet.
 
-    package edu.uci.ics.asterix.external.library;
+    package org.apache.asterix.external.library;
 
-    import edu.uci.ics.asterix.external.library.java.JObjects.JRecord;
-    import edu.uci.ics.asterix.external.library.java.JObjects.JString;
-    import edu.uci.ics.asterix.external.library.java.JObjects.JUnorderedList;
-    import edu.uci.ics.asterix.external.library.java.JTypeTag;
+    import org.apache.asterix.external.library.java.JObjects.JDouble;
+    import org.apache.asterix.external.library.java.JObjects.JPoint;
+    import org.apache.asterix.external.library.java.JObjects.JRecord;
+    import org.apache.asterix.external.library.java.JObjects.JString;
+    import org.apache.asterix.external.library.java.JObjects.JUnorderedList;
+    import org.apache.asterix.external.library.java.JTypeTag;
+    import org.apache.asterix.external.util.Datatypes;
 
-    public class HashTagsFunction implements IExternalScalarFunction {
+    public class AddHashTagsFunction implements IExternalScalarFunction {
 
-    private JUnorderedList list = null;
+        private JUnorderedList list = null;
+        private JPoint location = null;
 
-    @Override
-    public void initialize(IFunctionHelper functionHelper) {
-        list = new JUnorderedList(functionHelper.getObject(JTypeTag.STRING));
-    }
-
-    @Override
-    public void deinitialize() {
-    }
-
-    @Override
-    public void evaluate(IFunctionHelper functionHelper) throws Exception {
-        list.clear();
-        JRecord inputRecord = (JRecord) functionHelper.getArgument(0);
-        JString text = (JString) inputRecord.getValueByName("message_text");
-
-        // extraction of hashtags
-        String[] tokens = text.getValue().split(" ");
-        for (String tk : tokens) {
-            if (tk.startsWith("#")) {
-                JString newField = (JString) functionHelper.getObject(JTypeTag.STRING);
-                newField.setValue(tk);
-                list.add(newField);
-            }
+        @Override
+        public void initialize(IFunctionHelper functionHelper) {
+            list = new JUnorderedList(functionHelper.getObject(JTypeTag.STRING));
+            location = new JPoint(0, 0);
         }
 
-        // forming the return value - an augmented tweet with an additional attribute - topics
-        JRecord result = (JRecord) functionHelper.getResultObject();
-        result.setField("tweetid", inputRecord.getFields()[0]);
-        result.setField("user", inputRecord.getFields()[1]);
-        result.setField("location_lat", inputRecord.getFields()[2]);
-        result.setField("location_long", inputRecord.getFields()[3]);
-        result.setField("send_time", inputRecord.getFields()[4]);
-        result.setField("message_text", inputRecord.getFields()[5]);
-        result.setField("topics", list);
+        @Override
+        public void deinitialize() {
+        }
 
-        functionHelper.setResult(result);
+        @Override
+        public void evaluate(IFunctionHelper functionHelper) throws Exception {
+            list.clear();
+            JRecord inputRecord = (JRecord) functionHelper.getArgument(0);
+            JString text = (JString) inputRecord.getValueByName(Datatypes.Tweet.MESSAGE);
+            JDouble latitude = (JDouble) inputRecord.getValueByName(Datatypes.Tweet.LATITUDE);
+            JDouble longitude = (JDouble) inputRecord.getValueByName(Datatypes.Tweet.LONGITUDE);
+
+            if (latitude != null && longitude != null) {
+                location.setValue(latitude.getValue(), longitude.getValue());
+            }
+            String[] tokens = text.getValue().split(" ");
+            for (String tk : tokens) {
+                if (tk.startsWith("#")) {
+                    JString newField = (JString) functionHelper.getObject(JTypeTag.STRING);
+                    newField.setValue(tk);
+                    list.add(newField);
+                }
+            }
+
+            JRecord outputRecord = (JRecord) functionHelper.getResultObject();
+            outputRecord.setField(Datatypes.Tweet.ID, inputRecord.getValueByName(Datatypes.Tweet.ID));
+
+            JRecord userRecord = (JRecord) inputRecord.getValueByName(Datatypes.Tweet.USER);
+            outputRecord.setField(Datatypes.ProcessedTweet.USER_NAME,
+                    userRecord.getValueByName(Datatypes.Tweet.SCREEN_NAME));
+
+            outputRecord.setField(Datatypes.ProcessedTweet.LOCATION, location);
+            outputRecord.setField(Datatypes.Tweet.CREATED_AT, inputRecord.getValueByName(Datatypes.Tweet.CREATED_AT));
+            outputRecord.setField(Datatypes.Tweet.MESSAGE, text);
+            outputRecord.setField(Datatypes.ProcessedTweet.TOPICS, list);
+
+            inputRecord.addField(Datatypes.ProcessedTweet.TOPICS, list);
+            functionHelper.setResult(outputRecord);
+        }
+
     }
+
 
 
 ## <a id="CreatingAnAsterixDBLibrary">Creating an AsterixDB Library</a> ###
@@ -389,7 +409,7 @@ We need to install our Java UDF so that we may use it in AQL statements/queries.
     		<libraryFunctions>
     			<libraryFunction>
     				<function_type>SCALAR</function_type>
-    				<name>addFeatures</name>
+    				<name>addHashTags</name>
     				<arguments>Tweet</arguments>
     				<return_type>ProcessedTweet</return_type>
     				<definition>edu.uci.ics.asterix.external.library.AddHashTagsFactory
