@@ -27,7 +27,11 @@ import edu.uci.ics.asterix.om.pointables.ARecordVisitablePointable;
 import edu.uci.ics.asterix.om.pointables.PointableAllocator;
 import edu.uci.ics.asterix.om.pointables.base.IVisitablePointable;
 import edu.uci.ics.asterix.om.typecomputer.impl.AbstractRecordManipulationTypeComputer;
-import edu.uci.ics.asterix.om.types.*;
+import edu.uci.ics.asterix.om.types.AOrderedListType;
+import edu.uci.ics.asterix.om.types.ARecordType;
+import edu.uci.ics.asterix.om.types.ATypeTag;
+import edu.uci.ics.asterix.om.types.BuiltinType;
+import edu.uci.ics.asterix.om.types.IAType;
 import edu.uci.ics.asterix.runtime.evaluators.base.AbstractScalarFunctionDynamicDescriptor;
 import edu.uci.ics.asterix.runtime.evaluators.functions.PointableUtils;
 import edu.uci.ics.hyracks.algebricks.common.exceptions.AlgebricksException;
@@ -99,8 +103,6 @@ public class RecordAddFieldsDescriptor  extends AbstractScalarFunctionDynamicDes
 
                 final DataOutput out = output.getDataOutput();
 
-                final RecordBuilder recordBuilder = new RecordBuilder();
-                recordBuilder.reset(recType);
 
                 final ISerializerDeserializer<AString> stringSerde = AqlSerializerDeserializerProvider.INSTANCE
                         .getSerializerDeserializer(BuiltinType.ASTRING);
@@ -117,11 +119,14 @@ public class RecordAddFieldsDescriptor  extends AbstractScalarFunctionDynamicDes
                     e.printStackTrace();
                 }
 
+                final RecordBuilder recordBuilder = new RecordBuilder();
 
                 return new ICopyEvaluator() {
 
+
                     @Override
                     public void evaluate(IFrameTupleReference tuple) throws AlgebricksException {
+                        recordBuilder.reset(recType);
                         abvs0.reset();
                         abvs1.reset();
 
@@ -164,6 +169,12 @@ public class RecordAddFieldsDescriptor  extends AbstractScalarFunctionDynamicDes
                             AListVisitablePointable listPointable) throws IOException, AsterixException,
                             AlgebricksException {
 
+                        List<IVisitablePointable> inputFields;
+                        List<IVisitablePointable> names;
+                        List<IVisitablePointable> values;
+                        IVisitablePointable namePointable = null;
+                        IVisitablePointable valuePointable = null;
+
                         // Add original record without duplicate checking
                         for (int i = 0; i < inputRecordPointer.getFieldNames().size(); ++i) {
                             IVisitablePointable fnp = inputRecordPointer.getFieldNames().get(i);
@@ -172,7 +183,8 @@ public class RecordAddFieldsDescriptor  extends AbstractScalarFunctionDynamicDes
                         }
 
                         // Get the fields from a list of record
-                        List<IVisitablePointable> inputFields = listPointable.getItems();
+                        inputFields = listPointable.getItems();
+
 
                         for(IVisitablePointable fieldRecPointer: inputFields)  {
                             if(!PointableUtils.isType(ATypeTag.RECORD, fieldRecPointer)) {
@@ -180,16 +192,14 @@ public class RecordAddFieldsDescriptor  extends AbstractScalarFunctionDynamicDes
                                         PointableUtils.getTypeTag(fieldRecPointer));
                             }
 
-                            List<IVisitablePointable> names = ((ARecordVisitablePointable)fieldRecPointer).getFieldNames();
-                            List<IVisitablePointable> values = ((ARecordVisitablePointable)fieldRecPointer).getFieldValues();
-
-                            IVisitablePointable namePointable = null;
-                            IVisitablePointable valuePointable = null;
+                            names = ((ARecordVisitablePointable)fieldRecPointer).getFieldNames();
+                            values = ((ARecordVisitablePointable)fieldRecPointer).getFieldValues();
 
                             // Get name and value of the field to be added
                             // Use loop to account for the cases where users switches the order of the fields
+                            IVisitablePointable fieldName;
                             for(int j=0; j<names.size(); j++) {
-                                IVisitablePointable fieldName = names.get(j);
+                                fieldName = names.get(j);
                                 // if fieldName is "field-name" then read the name
                                 if (PointableUtils.byteArrayEqual(fieldNamePointer, fieldName)) {
                                     namePointable = values.get(j);

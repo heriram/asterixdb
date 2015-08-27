@@ -14,17 +14,6 @@
  */
 package edu.uci.ics.asterix.runtime.formats;
 
-import java.io.DataOutput;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import org.apache.commons.lang3.mutable.Mutable;
-import org.apache.commons.lang3.mutable.MutableObject;
-
 import edu.uci.ics.asterix.common.config.GlobalConfig;
 import edu.uci.ics.asterix.common.exceptions.AsterixRuntimeException;
 import edu.uci.ics.asterix.common.parse.IParseFileSplitsDecl;
@@ -163,6 +152,7 @@ import edu.uci.ics.asterix.runtime.evaluators.constructors.APolygonConstructorDe
 import edu.uci.ics.asterix.runtime.evaluators.constructors.ARectangleConstructorDescriptor;
 import edu.uci.ics.asterix.runtime.evaluators.constructors.AStringConstructorDescriptor;
 import edu.uci.ics.asterix.runtime.evaluators.constructors.ATimeConstructorDescriptor;
+import edu.uci.ics.asterix.runtime.evaluators.constructors.AUUIDFromStringConstructorDescriptor;
 import edu.uci.ics.asterix.runtime.evaluators.constructors.AYearMonthDurationConstructorDescriptor;
 import edu.uci.ics.asterix.runtime.evaluators.constructors.ClosedRecordConstructorDescriptor;
 import edu.uci.ics.asterix.runtime.evaluators.constructors.OpenRecordConstructorDescriptor;
@@ -361,6 +351,16 @@ import edu.uci.ics.hyracks.dataflow.common.data.parsers.IntegerParserFactory;
 import edu.uci.ics.hyracks.dataflow.common.data.parsers.LongParserFactory;
 import edu.uci.ics.hyracks.dataflow.common.data.parsers.UTF8StringParserFactory;
 import edu.uci.ics.hyracks.dataflow.std.file.ITupleParserFactory;
+import org.apache.commons.lang3.mutable.Mutable;
+import org.apache.commons.lang3.mutable.MutableObject;
+
+import java.io.DataOutput;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class NonTaggedDataFormat implements IDataFormat {
 
@@ -558,6 +558,7 @@ public class NonTaggedDataFormat implements IDataFormat {
         temp.add(ADurationConstructorDescriptor.FACTORY);
         temp.add(AYearMonthDurationConstructorDescriptor.FACTORY);
         temp.add(ADayTimeDurationConstructorDescriptor.FACTORY);
+        temp.add(AUUIDFromStringConstructorDescriptor.FACTORY);
 
         temp.add(DeepEqualityDescriptor.FACTORY);
 
@@ -912,13 +913,11 @@ public class NonTaggedDataFormat implements IDataFormat {
             } else {
                 IAType itemType = (IAType) context.getType(f.getArguments().get(0).getValue());
                 if (itemType instanceof AUnionType) {
-                    if (((AUnionType) itemType).isNullableType()) {
-                        itemType = ((AUnionType) itemType).getUnionList().get(
-                                AUnionType.OPTIONAL_TYPE_INDEX_IN_UNION_LIST);
-                    } else {
+                    if (((AUnionType) itemType).isNullableType())
+                        itemType = ((AUnionType) itemType).getNullableType();
+                    else
                         // Convert UNION types into ANY.
                         itemType = BuiltinType.ANY;
-                    }
                 }
                 ((ListifyAggregateDescriptor) fd).reset(new AOrderedListType(itemType, null));
             }
@@ -1018,7 +1017,7 @@ public class NonTaggedDataFormat implements IDataFormat {
                 case UNION: {
                     AUnionType unionT = (AUnionType) t;
                     if (unionT.isNullableType()) {
-                        IAType t2 = unionT.getUnionList().get(1);
+                        IAType t2 = unionT.getNullableType();
                         if (t2.getTypeTag() == ATypeTag.RECORD) {
                             ARecordType recType = (ARecordType) t2;
                             ((FieldAccessByIndexDescriptor) fd).reset(recType);

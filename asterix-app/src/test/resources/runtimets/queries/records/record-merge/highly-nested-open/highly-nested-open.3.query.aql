@@ -1,0 +1,12 @@
+/*
+* Description  : Testing record-merge under different queries.
+* Expected Res : Success
+* Date         : 04 Aug 2015
+*/
+use dataverse test;
+
+let $rec:={"animal-info": "Test information"}
+for $test in dataset Animals
+let $result := record-merge($test, $rec)
+order by $result.id
+return $result;

@@ -134,8 +134,15 @@ abstract public class AbstractRecordManipulationTypeComputer implements IResultT
             IAType ft = additionalFieldTypes.get(i);
             int pos = Collections.binarySearch(resultFieldNames, fn);
             if (pos >= 0) {
+                IAType rt = resultFieldTypes.get(pos);
+                if (rt.getTypeTag() != ft.getTypeTag()) {
+                    throw new AlgebricksException("Duplicate field " + fn + " encountered");
+                }
                 try {
-                    resultFieldTypes.set(pos, mergedNestedType(ft, resultFieldTypes.get(pos)));
+                    // Only need to merge records
+                    if (ft.getTypeTag() == ATypeTag.RECORD && rt.getTypeTag() == ATypeTag.RECORD) {
+                        resultFieldTypes.set(pos, mergedNestedType(ft, rt));
+                    }
                 } catch (AsterixException e) {
                     throw new AlgebricksException(e);
                 }
@@ -185,14 +192,13 @@ abstract public class AbstractRecordManipulationTypeComputer implements IResultT
             try {
                 int pos = returnType.findFieldPosition(fieldType1Copy.getFieldNames()[i]);
                 if (pos >= 0) {
-                    if (fieldType1Copy.getFieldTypes()[i].getTypeTag() != ATypeTag.RECORD) {
-                        throw new AlgebricksException("Duplicate field " + fieldType1Copy.getTypeName() + " encountered");
-                        // TODO For next version: check equality of the content at runtime first before throwing an error
+                    // If a sub-record do merge, else ignore and let the values decide what to do
+                    if (fieldType1Copy.getFieldTypes()[i].getTypeTag() == ATypeTag.RECORD) {
+                        IAType[] oldTypes = returnType.getFieldTypes();
+                        oldTypes[pos] = mergedNestedType(fieldType1Copy.getFieldTypes()[i], returnType.getFieldTypes()[pos]);
+                        returnType = new ARecordType(returnType.getTypeName(), returnType.getFieldNames(), oldTypes,
+                                returnType.isOpen());
                     }
-                    IAType[] oldTypes = returnType.getFieldTypes();
-                    oldTypes[pos] = mergedNestedType(fieldType1Copy.getFieldTypes()[i], returnType.getFieldTypes()[pos]);
-                    returnType = new ARecordType(returnType.getTypeName(), returnType.getFieldNames(), oldTypes,
-                            returnType.isOpen());
                 } else {
                     IAType[] combinedFieldTypes = ArrayUtils
                             .addAll(returnType.getFieldTypes().clone(), fieldType1Copy.getFieldTypes()[i]);

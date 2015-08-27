@@ -1,0 +1,3 @@
+for $x in dataset StreamDocuments
+for $extra in dataset SourceInfo
+return deep-equal($x,$extra);

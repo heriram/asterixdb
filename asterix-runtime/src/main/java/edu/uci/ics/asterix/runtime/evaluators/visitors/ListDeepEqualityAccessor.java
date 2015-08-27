@@ -15,8 +15,6 @@
 package edu.uci.ics.asterix.runtime.evaluators.visitors;
 
 import edu.uci.ics.asterix.common.exceptions.AsterixException;
-import edu.uci.ics.asterix.dataflow.data.nontagged.comparators.ListItemBinaryComparatorFactory;
-import edu.uci.ics.asterix.dataflow.data.nontagged.hash.ListItemBinaryHashFunctionFactory;
 import edu.uci.ics.asterix.om.pointables.AFlatValuePointable;
 import edu.uci.ics.asterix.om.pointables.AListVisitablePointable;
 import edu.uci.ics.asterix.om.pointables.ARecordVisitablePointable;
@@ -26,34 +24,25 @@ import edu.uci.ics.asterix.runtime.evaluators.functions.BinaryHashMap;
 import edu.uci.ics.asterix.runtime.evaluators.functions.BinaryHashMap.BinaryEntry;
 import edu.uci.ics.asterix.runtime.evaluators.functions.PointableUtils;
 import edu.uci.ics.hyracks.algebricks.common.utils.Pair;
-import edu.uci.ics.hyracks.api.dataflow.value.IBinaryComparator;
-import edu.uci.ics.hyracks.api.dataflow.value.IBinaryHashFunction;
 import edu.uci.ics.hyracks.api.exceptions.HyracksDataException;
 import edu.uci.ics.hyracks.data.std.primitive.IntegerPointable;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.List;
 
 class ListDeepEqualityAccessor {
     private DeepEqualityVisitor visitor;
 
-    private final int TABLE_SIZE = 100;
-    private final int TABLE_FRAME_SIZE = 32768;
-
-    private IBinaryHashFunction putHashFunc = ListItemBinaryHashFunctionFactory.INSTANCE.createBinaryHashFunction();
-    private IBinaryHashFunction getHashFunc = ListItemBinaryHashFunctionFactory.INSTANCE.createBinaryHashFunction();
-    private IBinaryComparator cmp = ListItemBinaryComparatorFactory.INSTANCE.createBinaryComparator();
-    private BinaryHashMap hashMap = new BinaryHashMap(TABLE_SIZE, TABLE_FRAME_SIZE, putHashFunc, getHashFunc, cmp);
+    private BinaryHashMap hashMap;
     private BinaryEntry keyEntry = new BinaryEntry();
     private BinaryEntry valEntry = new BinaryEntry();
 
-
-
     public ListDeepEqualityAccessor() {
-        byte[] emptyValBuf = new byte[8];
-        Arrays.fill(emptyValBuf, (byte) 0);
-        valEntry.set(emptyValBuf, 0, 8);
+        hashMap = DeepEqualityVisitorUtils.initializeHashMap(valEntry);
+    }
+
+    public ListDeepEqualityAccessor(int tableSize, int tableFrameSize) {
+        hashMap = DeepEqualityVisitorUtils.initializeHashMap(tableSize, tableFrameSize, valEntry);
     }
 
     public boolean accessList(IVisitablePointable listAccessor0, IVisitablePointable listAccessor1,

@@ -198,7 +198,7 @@ Asterix provides various classes of functions to support operations on numeric, 
     * `substring_to_contain` : A target `string` that might be contained.
  * Return Value:
     * A `boolean` value, `true` if `string` contains `substring_to_contain`, and `false` otherwise.
- * Note: An n-gram index can be utilized for this function.
+ * Note: An [n-gram index](similarity.html#UsingIndexesToSupportSimilarityQueries) can be utilized for this function.
  * Example:
 
         use dataverse TinySocial;
@@ -394,31 +394,6 @@ Asterix provides various classes of functions to support operations on numeric, 
  * The expected result is:
 
         ASTERIX
-
-
-### uppercase ###
- * Syntax:
-
-        uppercase(string)
-
- * Converts a given string `string` to its uppercase form.
- * Arguments:
-    * `string` : A `string` to be converted.
- * Return Value:
-    * Returns a `string` as the uppercase form of the given `string`.
-
- * Example:
-
-        use dataverse TinySocial;
-
-        let $i := "asterix"
-        return uppercase($i)
-
-
- * The expected result is:
-
-        ASTERIX
-
 
 ### matches ###
  * Syntax:
@@ -924,13 +899,13 @@ Asterix provides various classes of functions to support operations on numeric, 
 ### get-points ###
  * Syntax:
 
-        get-points(spatial_expression)
+        get-points(spatial_object)
 
- * Returns an ordered list of the points forming the spatial object `spatial_expression`.
+ * Returns an ordered list of the points forming the spatial object `spatial_object`.
  * Arguments:
-    * `spatial_expression` : A `point`, `line`, `rectangle`, `circle`, or `polygon`.
+    * `spatial_object` : A `point`, `line`, `rectangle`, `circle`, or `polygon`.
  * Return Value:
-    * An `OrderedList` of the points forming the spatial object `spatial_expression`.
+    * An `OrderedList` of the points forming the spatial object `spatial_object`.
 
  * Example:
 
@@ -1042,14 +1017,14 @@ Asterix provides various classes of functions to support operations on numeric, 
 ### spatial-intersect ###
  * Syntax:
 
-        spatial-intersect(spatial_expression1, spatial_expression2)
+        spatial-intersect(spatial_object1, spatial_object2)
 
  * Checks whether `@arg1` and `@arg2` spatially intersect each other.
  * Arguments:
-    * `spatial_expression1` : A `point`, `line`, `rectangle`, `circle`, or `polygon`.
-    * `spatial_expression2` : A `point`, `line`, `rectangle`, `circle`, or `polygon`.
+    * `spatial_object1` : A `point`, `line`, `rectangle`, `circle`, or `polygon`.
+    * `spatial_object2` : A `point`, `line`, `rectangle`, `circle`, or `polygon`.
  * Return Value:
-    * A `boolean` representing whether `spatial_expression1` and `spatial_expression2` spatially overlap with each other.
+    * A `boolean` representing whether `spatial_object1` and `spatial_object2` spatially overlap with each other.
 
  * Example:
 
@@ -1109,20 +1084,21 @@ Asterix provides various classes of functions to support operations on numeric, 
 
 ## <a id="SimilarityFunctions">Similarity Functions</a> <font size="4"><a href="#toc">[Back to TOC]</a></font> ##
 
-AsterixDB supports queries with different similarity functions, including edit distance and Jaccard.
+AsterixDB supports queries with different similarity functions,
+including [edit distance](http://en.wikipedia.org/wiki/Levenshtein_distance) and [Jaccard](https://en.wikipedia.org/wiki/Jaccard_index).
 
 ### edit-distance ###
  * Syntax:
 
         edit-distance(expression1, expression2)
 
- * Returns the [edit distance](http://en.wikipedia.org/wiki/Levenshtein_distance) of `expression1` and `expression2`.
+ * Returns the edit distance of `expression1` and `expression2`.
  * Arguments:
     * `expression1` : A `string` or a homogeneous `OrderedList` of a comparable item type.
     * `expression2` : The same type as `expression1`.
  * Return Value:
     * An `int64` that represents the edit distance between `expression1` and `expression2`.
- * Note: An n-gram index can be utilized for this function.
+ * Note: An [n-gram index](similarity.html#UsingIndexesToSupportSimilarityQueries) can be utilized for this function.
  * Example:
 
         use dataverse TinySocial;
@@ -1156,7 +1132,7 @@ AsterixDB supports queries with different similarity functions, including edit d
     * An `OrderedList` with two items:
         * The first item contains a `boolean` value representing whether `expression1` and `expression2` are similar.
         * The second item contains an `int64` that represents the edit distance of `expression1` and `expression2` if it is within the threshold, or 0 otherwise.
- * Note: An n-gram index can be utilized for this function.
+ * Note: An [n-gram index](similarity.html#UsingIndexesToSupportSimilarityQueries) can be utilized for this function.
  * Example:
 
         use dataverse TinySocial;
@@ -1186,8 +1162,9 @@ AsterixDB supports queries with different similarity functions, including edit d
     * An `OrderedList` with two items:
         * The first item contains a `boolean` value representing whether `expression1` can contain `expression2`.
         * The second item contains an `int32` that represents the required edit distance for `expression1` to contain `expression2` if the first item is true.
-* Note: An n-gram index can be utilized for this function.
+* Note: An [n-gram index](similarity.html#UsingIndexesToSupportSimilarityQueries) can be utilized for this function.
 * Example:
+
         let $i := edit-distance-contains("happy","hapr",2)
         return $i;
 
@@ -1209,13 +1186,13 @@ AsterixDB supports queries with different similarity functions, including edit d
     * `list2` : An `UnorderedList` or `OrderedList`.
  * Return Value:
     * A `float` that represents the Jaccard similarity of `list1` and `list2`.
- * Note: A keyword index can be utilized for this function.
+ * Note: A [keyword index](similarity.html#UsingIndexesToSupportSimilarityQueries) can be utilized for this function.
  * Example:
 
         use dataverse TinySocial;
 
         for $user in dataset('FacebookUsers')
-        let $sim := similarity-jaccard($user.friend-ids, [1,5,9])
+        let $sim := similarity-jaccard($user.friend-ids, [1,5,9,10])
         where $sim >= 0.6f
         return $user
 
@@ -1247,13 +1224,13 @@ AsterixDB supports queries with different similarity functions, including edit d
     * An `OrderedList` with two items:
      * The first item contains a `boolean` value representing whether `list1` and `list2` are similar.
      * The second item contains a `float` that represents the Jaccard similarity of `list1` and `list2` if it is greater than or equal to the threshold, or 0 otherwise.
- * Note: A keyword index can be utilized for this function.
+ * Note: A [keyword index](similarity.html#UsingIndexesToSupportSimilarityQueries) can be utilized for this function.
  * Example:
 
         use dataverse TinySocial;
 
         for $user in dataset('FacebookUsers')
-        let $sim := similarity-jaccard-check($user.friend-ids, [1,5,9], 0.6f)
+        let $sim := similarity-jaccard-check($user.friend-ids, [1,5,9,10], 0.6f)
         where $sim[0]
         return $sim[1]
 
@@ -1264,7 +1241,7 @@ AsterixDB supports queries with different similarity functions, including edit d
         1.0f
 
 
-### Similarity Operator ~# ###
+### Similarity Operator ~= ###
  * "`~=`" is syntactic sugar for expressing a similarity condition with a given similarity threshold.
  * The similarity function and threshold for "`~=`" are controlled via "set" directives.
  * The "`~=`" operator returns a `boolean` value that represents whether the operands are similar.
@@ -1277,7 +1254,7 @@ AsterixDB supports queries with different similarity functions, including edit d
         set simthreshold "0.6f";
 
         for $user in dataset('FacebookUsers')
-        where $user.friend-ids ~= [1,5,9]
+        where $user.friend-ids ~= [1,5,9,10]
         return $user
 
 
@@ -1315,11 +1292,12 @@ AsterixDB supports queries with different similarity functions, including edit d
 
 ## <a id="TokenizingFunctions">Tokenizing Functions</a> <font size="4"><a href="#toc">[Back to TOC]</a></font> ##
 ### word-tokens ###
+
  * Syntax:
 
         word-tokens(string)
 
- * Returns a list of word tokens of `string`.
+ * Returns a list of word tokens of `string` using non-alphanumeric characters as delimiters.
  * Arguments:
     * `string` : A `string` that will be tokenized.
  * Return Value:
@@ -2228,13 +2206,13 @@ See the [Allen's Relations](allens.html).
 ### get-record-fields ###
  * Syntax:
 
-        get-record-fields(record_expression)
+        get-record-fields(input_record)
 
  * Access the record field names, type and open status for a given record.
  * Arguments:
-    * `record_expression` : a record value.
+    * `input_record` : a record value.
  * Return Value:
-    * An order list of `record` values that include the field-name `string`, field-type `string`, is-open `boolean` and optional nested `orderedList` for the values of a nested record.
+    * An order list of `record` values that include the field-name `string`, field-type `string`, is-open `boolean` (used for debug purposes only: `true` if field is open and `false` otherwise), and optional nested `orderedList` for the values of a nested record.
 
  * Example:
 
@@ -2260,12 +2238,12 @@ See the [Allen's Relations](allens.html).
 ### get-record-field-value ###
  * Syntax:
 
-        get-record-field-value(record_expression, string_expression)
+        get-record-field-value(input_record, string)
 
  * Access the field name given in the `string_expression` from the `record_expression`.
  * Arguments:
-    * `record_expression` : A `record` value.
-    * `string_expression` : A `string` representing the top level field name.
+    * `input_record` : A `record` value.
+    * `string` : A `string` representing the top level field name.
  * Return Value:
     * An `any` value saved in the designated field of the record.
 
@@ -2281,9 +2259,99 @@ See the [Allen's Relations](allens.html).
 
         "AsterixDB"
 
+### record-remove-fields ###
+ * Syntax:
+
+        record-remove-fields(input_record, field_names)
+
+ * Remove indicated fields from a record given a list of field names.
+ * Arguments:
+    * `input_record`:  a record value.
+    * `field_names`: an ordered list of strings and/or ordered list of ordered list of strings.
+                
+ * Return Value:
+    * A new record value without the fields listed in the second argument.
+
+
+ * Example:
+
+        let $r1 := {"id":1, 
+            "project":"AsterixDB", 
+            "address":{"city":"Irvine", "state":"CA"}, 
+            "related":["Hivestrix", "Preglix", "Apache VXQuery"] }
+        return remove-fields($r1, [["address", "city"], "related"])
+
+ * The expected result is:
+
+        { "id":1,
+        "project":"AsterixDB",
+        "address":{"state":"CA"}}
+	         
+### record-add-fields ###
+ * Syntax:
+
+        record-add-fields(input_record, fields)
+
+ * Add fields from a record given a list of field names.
+ * Arguments:
+    * `input_record` : a record value.
+    * `fields`: an ordered list of field descriptor records where each record has field-name and  field-value.
+ * Return Value:
+    * A new record value with the new fields included.
+
+
+ * Example:
+
+        let $r1 := {"id":1, 
+            "project":"AsterixDB", 
+            "address":{"city":"Irvine", "state":"CA"}, 
+            "related":["Hivestrix", "Preglix", "Apache VXQuery"] }
+        return record-add-fields($r1, [{"field-name":"employment-location", "field-value":create-point(30.0,70.0)}])
+
+ * The expected result is:
+
+        {"id":1, 
+           "project":"AsterixDB", 
+           "address":{"city":"Irvine", "state":"CA"}, 
+           "related":["Hivestrix", "Preglix", "Apache VXQuery"]
+           "employment-location": point("30.0,70.0")}
+
+### record-merge ###
+ * Syntax:
+
+        record-merge(record1, record2)
+
+ * Merge two different records into a new record.
+ * Arguments:
+    * `record1` : a record value.
+    * `record2` : a record value.
+ * Return Value:
+    * A new record value with fields from both input records. If a field’s names in both records are the same, an exception is issued.
+
+
+ * Example:
+
+        let $r1 := {"id":1, 
+            "project":"AsterixDB", 
+            "address":{"city":"Irvine", "state":"CA"}, 
+            "related":["Hivestrix", "Preglix", "Apache VXQuery"] }
+			
+        let $r2 := {"user_id": 22,
+           "employer": "UC Irvine",
+           "employment-type": "visitor" }  
+        return  record-merge($r1, $r2)
+
+ * The expected result is:
+
+        {"id":1, 
+         "project":"AsterixDB", 
+         "address":{"city":"Irvine", "state":"CA"}, 
+         "related":["Hivestrix", "Preglix", "Apache VXQuery"]
+         "user-id": 22,
+         "employer": "UC Irvine",
+         "employment-type": "visitor"}
 
 ## <a id="OtherFunctions">Other Functions</a> <font size="4"><a href="#toc">[Back to TOC]</a></font> ##
-
 
 ### create-uuid ###
  * Syntax:
@@ -2451,11 +2519,10 @@ See the [Allen's Relations](allens.html).
 ### deep-equal ###
 * Syntax:
 
-
         deep-equal(var1, var2)
 
 
- * Assess the equality between two variables of any type (e.g., records and lists).
+ * Assess the equality between two variables of any type (e.g., records and lists). Two objects are deeply equal iff both their types and values are equal.  
  * Arguments:
     * `var1` : a data value, such as record and list.
     * `var2`: a data value, such as record and list.
@@ -2466,122 +2533,16 @@ See the [Allen's Relations](allens.html).
  * Example:
 
         let $r1 := {"id":1, 
-		    "project":"AsterixDB", 
-		    "address":{"city":"Irvine", "state":"CA"}, 
-		    "related":["Hivestrix", "Preglix", "Apache VXQuery"] }
-	
-		let $r2 := {"id":1, 
-		            "project":"AsterixDB", 
-		            "address":{"city":"San Diego", "state":"CA"}, 
-		            "related":["Hivestrix", "Preglix", "Apache VXQuery"] }
-		return deep-equal($r1, $r2)
+            "project":"AsterixDB", 
+            "address":{"city":"Irvine", "state":"CA"}, 
+            "related":["Hivestrix", "Preglix", "Apache VXQuery"] }
+
+        let $r2 := {"id":1, 
+                    "project":"AsterixDB", 
+                    "address":{"city":"San Diego", "state":"CA"}, 
+                    "related":["Hivestrix", "Preglix", "Apache VXQuery"] }
+        return deep-equal($r1, $r2)
 		
  * The expected result is:
 
         false
-
-### record-remove-fields ###
- * Syntax:
-
-
-        record-remove-fields(input_record, field_names)
-
-
- * Remove indicated fields from a record given a list of field names.
- * Arguments:
-    * `input_record`:  a record value.
-    * `field_names`: an ordered list of strings and/or ordered list of ordered list of strings.
-                
- * Return Value:
-    * A new record value without the fields listed in the second argument.
-
-
- * Example:
-
-
-        let $r1 := {"id":1, 
-            "project":"AsterixDB", 
-            "address":{"city":"Irvine", "state":"CA"}, 
-            "related":["Hivestrix", "Preglix", "Apache VXQuery"] }
-        return remove-fields($r1, [["address", "city"], "related"])
-
-
- * The expected result is:
-
-
-	       { "id":1, 
-	         "address":{"state":"CA"}, 
-	         "project":"AsterixDB"}
-	         
-### record-add-fields ###
- * Syntax:
-
-
-        record-add-fields(input_record, fields)
-
-
- * Add fields from a record given a list of field names.
- * Arguments:
-    * `input_record` : a record value.
-    * `fields`: an ordered list of field descriptor records where each record has field-name and  field-value.
- * Return Value:
-    * A new record value with the new fields included.
-
-
- * Example:
-
-
-        let $r1 := {"id":1, 
-            "project":"AsterixDB", 
-            "address":{"city":"Irvine", "state":"CA"}, 
-            "related":["Hivestrix", "Preglix", "Apache VXQuery"] }
-        return record-add-fields($r1, [{"field-name":"employment-location", "field-value":create-point(30.0,70.0)}])
-
-
- * The expected result is:
-
-	      {"id":1, 
-	       "project":"AsterixDB", 
-	       "address":{"city":"Irvine", "state":"CA"}, 
-	       "related":["Hivestrix", "Preglix", "Apache VXQuery"]
-	       "employment-location": point("30.0,70.0")}
-
-### record-merge ###
- * Syntax:
-
-
-        record-merge(record1, record2)
-
-
- * Merge two different records into a new record.
- * Arguments:
-    * `record1` : a record value.
-    * `record2` : a record value.
- * Return Value:
-    * A new record value with fields from both input records. If a field’s names in both records are the same, an exception is issued.
-
-
- * Example:
-
-
-        let $r1 := {"id":1, 
-            "project":"AsterixDB", 
-            "address":{"city":"Irvine", "state":"CA"}, 
-            "related":["Hivestrix", "Preglix", "Apache VXQuery"] }
-			
-		let $r2 := {"user_id": 22,
-           "employer": "UC Irvine",
-           "employment-type": "visitor" }  
-        return  record-merge($r1, $r2)
-
-
- * The expected result is:
-
-
-		{"id":1, 
-		"project":"AsterixDB", 
-		"address":{"city":"Irvine", "state":"CA"}, 
-		"related":["Hivestrix", "Preglix", "Apache VXQuery"]
-		"user-id": 22,
-		"employer": "UC Irvine",
-		"employment-type": "visitor"}

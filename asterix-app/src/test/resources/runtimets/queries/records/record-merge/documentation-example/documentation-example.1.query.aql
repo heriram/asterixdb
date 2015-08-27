@@ -1,0 +1,10 @@
+/*
+* Description  : record-merge under different queries.
+* Expected Res : Success
+* Date         : 04 Aug 2015
+*/
+let $r1 := {"id":1, "project":"AsterixDB",
+"address":{"city":"Irvine", "state":"CA"}, "related":["Hivestrix", "Preglix", "Apache VXQuery"]}
+let $r2 := {"user_id": 22, "employer": "UC Irvine", "employment-type": "visitor" }
+let $result := record-merge($r1, $r2)
+return $result

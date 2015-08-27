@@ -47,7 +47,7 @@ public class RecordMergeTypeComputer extends AbstractRecordManipulationTypeCompu
         }
 
         if (t.getTypeTag() == ATypeTag.UNION) {
-            IAType innerType = ((AUnionType) t).getUnionList().get(1);
+            IAType innerType = ((AUnionType) t).getNullableType();
             if (innerType.getTypeTag() == ATypeTag.RECORD) {
                 return (ARecordType) innerType;
             }
@@ -98,8 +98,14 @@ public class RecordMergeTypeComputer extends AbstractRecordManipulationTypeCompu
         for (int i = 0; i < fieldNames.length; ++i) {
             int pos = Collections.binarySearch(resultFieldNames, fieldNames[i]);
             if (pos >= 0) {
+                IAType rt = resultFieldTypes.get(pos);
+                if (rt.getTypeTag() != fieldTypes[i].getTypeTag()) {
+                    throw new AlgebricksException("Duplicate field " + fieldNames[i] + " encountered");
+                }
                 try {
-                    resultFieldTypes.set(pos, mergedNestedType(fieldTypes[i], resultFieldTypes.get(pos)));
+                    if(fieldTypes[i].getTypeTag() == ATypeTag.RECORD && rt.getTypeTag() == ATypeTag.RECORD) {
+                        resultFieldTypes.set(pos, mergedNestedType(fieldTypes[i], rt));
+                    }
                 } catch (AsterixException e) {
                     throw new AlgebricksException(e);
                 }

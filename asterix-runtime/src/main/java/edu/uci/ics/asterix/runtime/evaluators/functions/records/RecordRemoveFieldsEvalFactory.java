@@ -23,6 +23,7 @@ import edu.uci.ics.asterix.om.functions.AsterixBuiltinFunctions;
 import edu.uci.ics.asterix.om.pointables.AListVisitablePointable;
 import edu.uci.ics.asterix.om.pointables.ARecordVisitablePointable;
 import edu.uci.ics.asterix.om.pointables.PointableAllocator;
+import edu.uci.ics.asterix.om.pointables.base.DefaultOpenFieldType;
 import edu.uci.ics.asterix.om.pointables.base.IVisitablePointable;
 import edu.uci.ics.asterix.om.types.AOrderedListType;
 import edu.uci.ics.asterix.om.types.ARecordType;
@@ -199,12 +200,15 @@ class RecordRemoveFieldsEvalFactory implements ICopyEvaluatorFactory {
             }
 
 
-            private void addKeptFieldToSubRecord(ARecordType resType, IVisitablePointable fieldNamePointable,
+            private void addKeptFieldToSubRecord(ARecordType subRecordType, IVisitablePointable fieldNamePointable,
                     IVisitablePointable fieldValuePointable, IVisitablePointable fieldTypePointable,
                     AListVisitablePointable inputList, int nestedLevel)
                     throws IOException, AsterixException, AlgebricksException {
 
                 String fieldName = getFieldName(fieldNamePointable);
+
+                ARecordType resType = subRecordType != null ? subRecordType :
+                        DefaultOpenFieldType.NESTED_OPEN_RECORD_TYPE;
 
                 if (resType.isClosedField(fieldName)) {
                     int pos = resType.findFieldPosition(fieldName);

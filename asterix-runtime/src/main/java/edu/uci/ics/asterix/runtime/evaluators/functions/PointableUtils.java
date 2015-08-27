@@ -28,6 +28,7 @@ import edu.uci.ics.hyracks.api.dataflow.value.ISerializerDeserializer;
 import edu.uci.ics.hyracks.api.exceptions.HyracksDataException;
 import edu.uci.ics.hyracks.data.std.accessors.PointableBinaryComparatorFactory;
 import edu.uci.ics.hyracks.data.std.api.IMutableValueStorage;
+import edu.uci.ics.hyracks.data.std.api.IPointable;
 import edu.uci.ics.hyracks.data.std.api.IValueReference;
 import edu.uci.ics.hyracks.data.std.primitive.UTF8StringPointable;
 import edu.uci.ics.hyracks.data.std.util.ByteArrayAccessibleOutputStream;
@@ -156,9 +157,18 @@ public class PointableUtils {
         return -1;
     }
 
-
-    public static UTF8StringPointable serializeString(String str, IMutableValueStorage vs) throws AlgebricksException {
-        UTF8StringPointable fnp = (UTF8StringPointable) UTF8StringPointable.FACTORY.createPointable();
+    /**
+     *
+     * @param str
+     *    The input string
+     * @param vs
+     *    The storage buffer
+     * @param fnp
+     *    The pointable, e.g., fnp = UTF8StringPointable.FACTORY.createPointable();
+     *
+     * @throws AlgebricksException
+     */
+    public static void serializeString(String str, IMutableValueStorage vs, IPointable fnp) throws AlgebricksException {
         vs.reset();
         try {
             UTF8StringSerializerDeserializer.INSTANCE.serialize(str, vs.getDataOutput());
@@ -166,6 +176,5 @@ public class PointableUtils {
             throw new AlgebricksException("Could not serialize " + str);
         }
         fnp.set(vs);
-        return fnp;
     }
 }

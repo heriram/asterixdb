@@ -61,7 +61,7 @@ public class DeepEqualityDescriptor  extends AbstractScalarFunctionDynamicDescri
 
         return new ICopyEvaluatorFactory() {
             private static final long serialVersionUID = 1L;
-            private ISerializerDeserializer boolSerde = AqlSerializerDeserializerProvider.INSTANCE
+            private final ISerializerDeserializer boolSerde = AqlSerializerDeserializerProvider.INSTANCE
                     .getSerializerDeserializer(BuiltinType.ABOOLEAN);
 
             @Override
@@ -81,7 +81,7 @@ public class DeepEqualityDescriptor  extends AbstractScalarFunctionDynamicDescri
 
                     final DeepEqualityVisitor equalityVisitor = new DeepEqualityVisitor();
                     final Pair<IVisitablePointable, Boolean> arg = new
-                            Pair<IVisitablePointable, Boolean>(accessor1, Boolean.FALSE);
+                            Pair<IVisitablePointable, Boolean>(accessor1, false);
 
                     @Override
                     public void evaluate(IFrameTupleReference tuple) throws AlgebricksException {

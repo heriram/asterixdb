@@ -1,0 +1,9 @@
+/*
+* Description  : Testing record-merge under different queries.
+* Expected Res : Success
+* Date         : 04 Aug 2015
+*/
+use dataverse test;
+
+load dataset Animals using localfs
+(("path"="nc1://data/classifications/animals.adm"),("format"="adm"));

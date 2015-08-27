@@ -15,8 +15,6 @@
 package edu.uci.ics.asterix.runtime.evaluators.visitors;
 
 import edu.uci.ics.asterix.common.exceptions.AsterixException;
-import edu.uci.ics.asterix.dataflow.data.nontagged.comparators.ListItemBinaryComparatorFactory;
-import edu.uci.ics.asterix.dataflow.data.nontagged.hash.ListItemBinaryHashFunctionFactory;
 import edu.uci.ics.asterix.om.pointables.AFlatValuePointable;
 import edu.uci.ics.asterix.om.pointables.AListVisitablePointable;
 import edu.uci.ics.asterix.om.pointables.ARecordVisitablePointable;
@@ -25,31 +23,24 @@ import edu.uci.ics.asterix.om.types.ATypeTag;
 import edu.uci.ics.asterix.runtime.evaluators.functions.BinaryHashMap;
 import edu.uci.ics.asterix.runtime.evaluators.functions.PointableUtils;
 import edu.uci.ics.hyracks.algebricks.common.utils.Pair;
-import edu.uci.ics.hyracks.api.dataflow.value.IBinaryComparator;
-import edu.uci.ics.hyracks.api.dataflow.value.IBinaryHashFunction;
 import edu.uci.ics.hyracks.api.exceptions.HyracksDataException;
 import edu.uci.ics.hyracks.data.std.primitive.IntegerPointable;
 
-import java.util.Arrays;
 import java.util.List;
 
 class RecordDeepEqualityAccessor {
     private DeepEqualityVisitor visitor;
 
-    private final int TABLE_SIZE = 100;
-    private final int TABLE_FRAME_SIZE = 32768;
-
-    private IBinaryHashFunction putHashFunc = ListItemBinaryHashFunctionFactory.INSTANCE.createBinaryHashFunction();
-    private IBinaryHashFunction getHashFunc = ListItemBinaryHashFunctionFactory.INSTANCE.createBinaryHashFunction();
-    private IBinaryComparator cmp = ListItemBinaryComparatorFactory.INSTANCE.createBinaryComparator();
-    private BinaryHashMap hashMap = new BinaryHashMap(TABLE_SIZE, TABLE_FRAME_SIZE, putHashFunc, getHashFunc, cmp);
     private BinaryHashMap.BinaryEntry keyEntry = new BinaryHashMap.BinaryEntry();
     private BinaryHashMap.BinaryEntry valEntry = new BinaryHashMap.BinaryEntry();
+    private BinaryHashMap hashMap;
+
+    public RecordDeepEqualityAccessor(int tableSize, int tableFrameSize) {
+        hashMap = DeepEqualityVisitorUtils.initializeHashMap(tableSize, tableFrameSize, valEntry);
+    }
 
     public RecordDeepEqualityAccessor() {
-        byte[] emptyValBuf = new byte[8];
-        Arrays.fill(emptyValBuf, (byte) 0);
-        valEntry.set(emptyValBuf, 0, 8);
+        hashMap = DeepEqualityVisitorUtils.initializeHashMap(valEntry);
     }
 
     public boolean accessRecord(IVisitablePointable recAccessor0, IVisitablePointable recAccessor1,
@@ -77,10 +68,7 @@ class RecordDeepEqualityAccessor {
         // Build phase: Add items into hash map, starting with first list.
         for (int i = 0; i < s0; i++) {
             IVisitablePointable item = fieldNames0.get(i);
-            byte[] buf = item.getByteArray();
-            int off = item.getStartOffset();
-            int len = item.getLength();
-            keyEntry.set(buf, off, len);
+            keyEntry.set(item.getByteArray(), item.getStartOffset(), item.getLength());
             IntegerPointable.setInteger(valEntry.buf, 0, i);
             BinaryHashMap.BinaryEntry entry = hashMap.put(keyEntry, valEntry);
         }
@@ -98,10 +86,7 @@ class RecordDeepEqualityAccessor {
         Pair<IVisitablePointable, Boolean> arg=null;
         for(int index1=0; index1<fieldNames1.size(); index1++) {
             IVisitablePointable item = fieldNames1.get(index1);
-            byte[] buf = item.getByteArray();
-            int off = item.getStartOffset();
-            int len = item.getLength();
-            keyEntry.set(buf, off, len);
+            keyEntry.set(item.getByteArray(), item.getStartOffset(), item.getLength());
             BinaryHashMap.BinaryEntry entry = hashMap.get(keyEntry);
             if (entry == null) {
                 return false;

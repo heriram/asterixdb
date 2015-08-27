@@ -1,0 +1,1 @@
+deep-equal({{{"s":"Hivestrix", "v":"0.1.0"}, "Preglix", "Apache VXQuery"}}, {{ "Apache VXQuery",{"s":"Hivestrix", "v":"0.1.0"}, "Preglix"}});
