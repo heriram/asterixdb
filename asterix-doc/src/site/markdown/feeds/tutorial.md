@@ -216,10 +216,6 @@ respective parent feed (TwitterFeed).
 
         use dataverse feeds;
 		
-        create feed TwitterFeed if not exists
-        using "push_twitter"
-	    (("type-name"="Tweet"))
-
         drop feed ProcessedTwitterFeed if exists;
 
         create secondary feed ProcessedTwitterFeed from feed TwitterFeed 
@@ -393,6 +389,25 @@ A Java UDF in AsterixDB is required to implement an interface. We shall next wri
 
     }
 
+A Java UDF has an associated factory class that is required and is used by AsterixDB in creating an instance of the function at runtime. Given below is the corresponding factory class.
+
+    package org.apache.asterix.external.library;
+
+    import org.apache.asterix.external.library.IExternalScalarFunction;
+    import org.apache.asterix.external.library.IFunctionFactory;
+
+    public class AddHashTagsFunctionFactory implements IFunctionFactory {
+
+        @Override
+        public IExternalScalarFunction getExternalFunction() {
+            return new AddHashTagsFunction();
+        }
+    }
+
+At this stage, we shall compile the above two source files. To do so, we would need the following jars.
+
+    asterix-common-0.8.7-SNAPSHOT.jar
+    asterix-external-data-0.8.7-SNAPSHOT.jar
 
 
 ## <a id="CreatingAnAsterixDBLibrary">Creating an AsterixDB Library</a> ###
@@ -400,7 +415,7 @@ A Java UDF in AsterixDB is required to implement an interface. We shall next wri
 We need to install our Java UDF so that we may use it in AQL statements/queries. An AsterixDB library has a pre-defined structure which is as follows.
 	
 
- - A jar file, which contains the class files for your UDF source code. 
+ - A **jar** file, which contains the class files for your UDF source code. 
 
  - File `descriptor.xml`, which is a descriptor with meta-information about the library.
 
@@ -412,7 +427,7 @@ We need to install our Java UDF so that we may use it in AQL statements/queries.
     				<name>addHashTags</name>
     				<arguments>Tweet</arguments>
     				<return_type>ProcessedTweet</return_type>
-    				<definition>edu.uci.ics.asterix.external.library.AddHashTagsFactory
+    				<definition>org.apache.asterix.external.library.AddHashTagsFunctionFactory
     				</definition>
     			</libraryFunction>
     		</libraryFunctions>
