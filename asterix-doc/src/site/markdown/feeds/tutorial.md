@@ -167,7 +167,7 @@ lightweight version called "ProcessedTweet", which is defined next.
             created_at:string,
             message_text:string,
             country: string,
-            topics: [string]
+            topics: {{string}}
         };
 
         create dataset ProcessedTweets(ProcessedTweet)
