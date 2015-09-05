@@ -279,3 +279,10 @@ You may now use the AsterixDB library in AQL statements and queries. To look at 
 	return $x
 
 Our library is now installed and is ready to be used.
+
+To uninstall a library, use the Managix uninstall command as follows:
+
+    $ managix stop -n my_asterix
+    
+	$ managix uninstall -n my_asterix -d feeds -l testlib
+	
