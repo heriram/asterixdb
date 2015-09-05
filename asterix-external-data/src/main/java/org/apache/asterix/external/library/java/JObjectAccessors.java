@@ -240,7 +240,7 @@ public class JObjectAccessors {
                 baaos.reset();
                 if(off >= 0 && off <= byteArray.length && len >= 0 && off + len - byteArray.length <= 0) {
                     baaos.write(byteArray, off, len);
-                    ((JString) jObject).setValue(JObjectUtil.getNormalizedString(baaos.toString("UTF8")));
+                    ((JString) jObject).setValue(JObjectUtil.getNormalizedString(baaos.toString("UTF-8")));
                 } else {
                     ((JString) jObject).setValue("");
                 }
