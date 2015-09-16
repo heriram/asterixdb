@@ -239,8 +239,8 @@ public class JObjectAccessors {
 
             try {
                 byte byteArray[] = pointable.getByteArray();
-                int len = pointable.getLength();
-                int off = pointable.getStartOffset()+1;
+                int len = pointable.getLength()-3;
+                int off = pointable.getStartOffset()+3;
                 baaos.reset();
                 if(off >= 0 && off <= byteArray.length && len >= 0 && off + len - byteArray.length <= 0) {
                     baaos.write(byteArray, off, len);
