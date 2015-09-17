@@ -93,8 +93,6 @@ import java.util.List;
 public class JObjectAccessors {
     private static ByteArrayAccessibleOutputStream baaos = new ByteArrayAccessibleOutputStream();
     private static ByteArrayAccessibleInputStream baais = new ByteArrayAccessibleInputStream(baaos.getByteArray(), 0, 0);
-    private static DataInputStream dis = new DataInputStream(baais);
-
 
     public static IJObjectAccessor createFlatJObjectAccessor(ATypeTag aTypeTag) {
         IJObjectAccessor accessor = null;

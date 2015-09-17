@@ -7,13 +7,11 @@
 * [Installing an AsterixDB Library](#installingUDF)
 
 In this document, we describe the support for implementing, using, and installing user-defined functions (UDF) in
-AsterixDB. We will explain how we can use UDFs to preprocess, e.g., data collected using 
-feeds (see the [feeds tutorial](feeds/tutorial.html)).
+AsterixDB. We will explain how we can use UDFs to preprocess, e.g., data collected using feeds (see the [feeds tutorial](feeds/tutorial.html)).
 
 ## <a id="PreprocessingCollectedData">Preprocessing Collected Data</a> ###
 
-In the following we assume that you already created the `TwitterFeed` and its corresponding 
-data types and dataset following the instruction explained in the [feeds tutorial](feeds/tutorial.html).
+In the following we assume that you already created the `TwitterFeed` and its corresponding data types and dataset following the instruction explained in the [feeds tutorial](feeds/tutorial.html).
 
 A feed definition may optionally include the specification of a
 user-defined function that is to be applied to each feed record prior
@@ -33,7 +31,7 @@ reason about an AQL UDF and involve the use of indexes during
 its invocation.
 
 We consider an example transformation of a raw tweet into its
-lightweight version called `ProcessedTweet`, which is defined next. 
+lightweight version called `ProcessedTweet`, which is defined next.
 
         use dataverse feeds;
 
@@ -48,22 +46,22 @@ lightweight version called `ProcessedTweet`, which is defined next.
         };
 
         create dataset ProcessedTweets(ProcessedTweet)
-        primary key id;        
-        
+        primary key id;
+
 The processing required in transforming a collected tweet to its lighter version of type `ProcessedTweet` involves extracting the topics or hash-tags (if any) in a tweet
 and collecting them in the referred "topics" attribute for the tweet.
-Additionally, the latitude and longitude values (doubles) are combined into the spatial point type. Note that spatial data types are considered as first-class citizens that come with the support for creating indexes. Next we show a revised version of our example TwitterFeed that involves the use of a UDF. We assume that the UDF that contains the transformation logic into a "ProcessedTweet" is available as a Java UDF inside an AsterixDB library named 'testlib'. We defer the writing of a Java UDF and its installation as part of an AsterixDB library to a later section of this document. 
+Additionally, the latitude and longitude values (doubles) are combined into the spatial point type. Note that spatial data types are considered as first-class citizens that come with the support for creating indexes. Next we show a revised version of our example TwitterFeed that involves the use of a UDF. We assume that the UDF that contains the transformation logic into a "ProcessedTweet" is available as a Java UDF inside an AsterixDB library named 'testlib'. We defer the writing of a Java UDF and its installation as part of an AsterixDB library to a later section of this document.
 
         use dataverse feeds;
 
         create feed ProcessedTwitterFeed if not exists
         using "push_twitter"
         (("type-name"="Tweet"),
-        ("consumer.key"="************"),  
+        ("consumer.key"="************"),
         ("consumer.secret"="**************"),
-        ("access.token"="**********"),  
+        ("access.token"="**********"),
         ("access.token.secret"="*************"))
-        
+
         apply function testlib#addHashTagsInPlace;
 
 Note that a feed adaptor and a UDF act as pluggable components. These
@@ -91,24 +89,24 @@ feed is similar to its parent feed in every other aspect; it can
 have an associated UDF to allow for any subsequent processing,
 can be persisted into a dataset, and/or can be made to derive other
 secondary feeds to form a cascade network. A primary feed and a
-dependent secondary feed form a hierarchy. As an example, we next show an 
+dependent secondary feed form a hierarchy. As an example, we next show an
 example AQL statement that redefines the previous feed
 "ProcessedTwitterFeed" in terms of their
 respective parent feed (TwitterFeed).
 
         use dataverse feeds;
-		
+
         drop feed ProcessedTwitterFeed if exists;
 
-        create secondary feed ProcessedTwitterFeed from feed TwitterFeed 
+        create secondary feed ProcessedTwitterFeed from feed TwitterFeed
         apply function testlib#addHashTags;
 
-The `addHashTags` function is already provided in the release.  Below 
-we will explain how this function or other functions can be implemented and added to the system.
+The `addHashTags` function is already provided in the release.
+Below we will explain how this function or other functions can be implemented and added to the system.
 
 ## <a id="WritingAnExternalUDF">Writing an External UDF</a> ###
 
-A Java UDF in AsterixDB is required to implement an interface. We shall next write a basic UDF that extracts the 
+A Java UDF in AsterixDB is required to implement an interface. We shall next write a basic UDF that extracts the
 hashtags contained in the tweet's text and appends each into an unordered list. The list is added as an additional
 attribute to the tweet to form the augment version - ProcessedTweet`.
 
@@ -198,35 +196,34 @@ At this stage, we shall compile the above two source files. To do so, we would n
 ## <a id="CreatingAnAsterixDBLibrary">Creating an AsterixDB Library</a> ###
 
 We need to install our Java UDF so that we may use it in AQL statements/queries. An AsterixDB library has a pre-defined structure which is as follows.
-	
 
- - A **jar** file, which contains the class files for your UDF source code. 
+ - A **jar** file, which contains the class files for your UDF source code.
 
  - File `descriptor.xml`, which is a descriptor with meta-information about the library.
 
-	    <externalLibrary xmlns="library">
-    		<language>JAVA</language>
-    		<libraryFunctions>
-    			<libraryFunction>
-    				<function_type>SCALAR</function_type>
-    				<name>addHashTags</name>
-    				<arguments>Tweet</arguments>
-    				<return_type>ProcessedTweet</return_type>
-    				<definition>org.apache.asterix.external.library.AddHashTagsFunctionFactory
-    				</definition>
-    			</libraryFunction>
-    		</libraryFunctions>
-    	</externalLibrary>
+        <externalLibrary xmlns="library">
+            <language>JAVA</language>
+            <libraryFunctions>
+                <libraryFunction>
+                    <function_type>SCALAR</function_type>
+                    <name>addHashTags</name>
+                    <arguments>Tweet</arguments>
+                    <return_type>ProcessedTweet</return_type>
+                    <definition>org.apache.asterix.external.library.AddHashTagsFunctionFactory
+                    </definition>
+                </libraryFunction>
+            </libraryFunctions>
+        </externalLibrary>
 
 
 - lib: other dependency jars
 
-If the Java UDF requires additional dependency jars, you may add them under a "lib" folder is required. 
+If the Java UDF requires additional dependency jars, you may add them under a "lib" folder is required.
 
 We create a zip bundle that contains the jar file and the library descriptor xml file. The zip would have the following structure.
 
-	$ unzip -l ./tweetlib.zip 
-	Archive:  ./tweetlib.zip
+    $ unzip -l ./tweetlib.zip
+    Archive:  ./tweetlib.zip
 
         Length     Date   Time    Name
         --------    ----   ----    ----
@@ -234,55 +231,52 @@ We create a zip bundle that contains the jar file and the library descriptor xml
         405     04-23-14 17:16   tweet.xml
         --------                   -------
         761222                   2 files
-        
+
 ### <a name="installingUDF">Installing an AsterixDB Library</a>###
 
 We assume you have followed the [installation instructions](../install.html) to set up a running AsterixDB instance. Let us refer your AsterixDB instance by the name "my_asterix".
 
 - Step 1: Stop the AsterixDB instance if it is in the ACTIVE state.
 
-   		$ managix stop -n my_asterix
-    
+        $ managix stop -n my_asterix
 
 - Step 2: Install the library using Managix install command. Just to illustrate, we use the help command to look up the syntax
 
-	    $ managix help  -cmd install
-    	Installs a library to an asterix instance.
-    	Options
-    	n  Name of Asterix Instance
-    	d  Name of the dataverse under which the library will be installed
-    	l  Name of the library
-    	p  Path to library zip bundle
-	
+        $ managix help  -cmd install
+        Installs a library to an asterix instance.
+        Options
+        n  Name of Asterix Instance
+        d  Name of the dataverse under which the library will be installed
+        l  Name of the library
+        p  Path to library zip bundle
 
 Above is a sample output and explains the usage and the required parameters. Each library has a name and is installed under a dataverse. Recall that we had created a dataverse by the name - "feeds" prior to  creating our datatypes and dataset. We shall name our library - "testlib".
 
 We assume you have a library zip bundle that needs to be installed.
 To install the library, use the Managix install command. An example is shown below.
 
-	$ managix install -n my_asterix -d feeds -l testlib -p <put the absolute path of the library zip bundle here> 
+        $ managix install -n my_asterix -d feeds -l testlib -p <put the absolute path of the library zip bundle here>
 
 You should see the following message:
 
-	INFO: Installed library testlib
+        INFO: Installed library testlib
 
 We shall next start our AsterixDB instance using the start command as shown below.
 
-	$ managix start -n my_asterix
+        $ managix start -n my_asterix
 
 You may now use the AsterixDB library in AQL statements and queries. To look at the installed artifacts, you may execute the following query at the AsterixDB web-console.
 
-	for $x in dataset Metadata.Function 
-	return $x
+        for $x in dataset Metadata.Function
+        return $x
 
-	for $x in dataset Metadata.Library	
-	return $x
+        for $x in dataset Metadata.Library
+        return $x
 
 Our library is now installed and is ready to be used.
 
 To uninstall a library, use the Managix uninstall command as follows:
 
-    $ managix stop -n my_asterix
-    
-	$ managix uninstall -n my_asterix -d feeds -l testlib
-	
+        $ managix stop -n my_asterix
+
+        $ managix uninstall -n my_asterix -d feeds -l testlib

@@ -20,40 +20,28 @@ package org.apache.asterix.external.util;
 
 public class Datatypes {
 
-    /*public static final class Tweet {
-        public static final String ID = "id";
-        public static final String USER = "user";
-        public static final String MESSAGE = "message_text";
-        public static final String LATITUDE = "latitude";
-        public static final String LONGITUDE = "longitude";
-        public static final String CREATED_AT = "created_at";
-        public static final String SCREEN_NAME = "screen_name";
-        public static final String COUNTRY = "country";
-    }*/
-
     /*
+        The following assumes this DDL (but ignoring the field name orders):
 
-    The following assumes this DDL (but ignoring the field name orders):
+        create type TwitterUser if not exists as open{
+            screen_name: string,
+            language: string,
+            friends_count: int32,
+            status_count: int32,
+            name: string,
+            followers_count: string
+        };
 
-    create type TwitterUser if not exists as open{
-        screen_name: string,
-        language: string,
-        friends_count: int32,
-        status_count: int32,
-        name: string,
-        followers_count: string
-    };
+        create type Tweet if not exists as open{
+            id: string,
+            user: TwitterUser,
+            latitude:double,
+            longitude:double,
+            created_at:string,
+            message_text:string
+        };
 
-    create type Tweet if not exists as open{
-        id: string,
-        user: TwitterUser,
-        latitude:double,
-        longitude:double,
-        created_at:string,
-        message_text:string
-    };
-
-*/
+    */
     public static class Tweet {
         public static final String ID = "id";
         public static final String USER = "user";
@@ -64,7 +52,7 @@ public class Datatypes {
 
         public static final String COUNTRY = "country";
 
-        // User fields (for the sub record "user"
+        // User fields (for the sub record "user")
         public static final String SCREEN_NAME = "screen_name";
         public static final String LANGUAGE = "language";
         public static final String FRIENDS_COUNT = "friends_count";
@@ -76,6 +64,7 @@ public class Datatypes {
 
 
     /*
+        The following assumes this DDL (but ignoring the field name orders):
 
         create type ProcessedTweet if not exists as open {
             id: string,
@@ -86,6 +75,7 @@ public class Datatypes {
             country: string,
             topics: [string]
         };
+
     */
     public static final class ProcessedTweet {
         public static final String USER_NAME = "user_name";
