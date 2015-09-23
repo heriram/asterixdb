@@ -18,14 +18,6 @@
  */
 package org.apache.asterix.om.functions;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import org.apache.commons.lang3.mutable.Mutable;
-
 import org.apache.asterix.common.functions.FunctionConstants;
 import org.apache.asterix.common.functions.FunctionSignature;
 import org.apache.asterix.om.typecomputer.base.IResultTypeComputer;
@@ -99,7 +91,9 @@ import org.apache.asterix.om.typecomputer.impl.OrderedListOfAPointTypeComputer;
 import org.apache.asterix.om.typecomputer.impl.OrderedListOfAStringTypeComputer;
 import org.apache.asterix.om.typecomputer.impl.OrderedListOfAnyTypeComputer;
 import org.apache.asterix.om.typecomputer.impl.QuadStringStringOrNullTypeComputer;
+import org.apache.asterix.om.typecomputer.impl.RecordAddFieldsTypeComputer;
 import org.apache.asterix.om.typecomputer.impl.RecordMergeTypeComputer;
+import org.apache.asterix.om.typecomputer.impl.RecordRemoveFieldsTypeComputer;
 import org.apache.asterix.om.typecomputer.impl.ScalarVersionOfAggregateResultType;
 import org.apache.asterix.om.typecomputer.impl.SubsetCollectionTypeComputer;
 import org.apache.asterix.om.typecomputer.impl.Substring2TypeComputer;
@@ -112,11 +106,18 @@ import org.apache.asterix.om.typecomputer.impl.UnaryStringInt64OrNullTypeCompute
 import org.apache.asterix.om.typecomputer.impl.UnaryStringOrNullTypeComputer;
 import org.apache.asterix.om.typecomputer.impl.UnorderedListConstructorResultType;
 import org.apache.asterix.om.types.hierachy.ATypeHierarchy;
+import org.apache.commons.lang3.mutable.Mutable;
 import org.apache.hyracks.algebricks.core.algebra.base.ILogicalExpression;
 import org.apache.hyracks.algebricks.core.algebra.expressions.AggregateFunctionCallExpression;
 import org.apache.hyracks.algebricks.core.algebra.functions.AlgebricksBuiltinFunctions;
 import org.apache.hyracks.algebricks.core.algebra.functions.FunctionIdentifier;
 import org.apache.hyracks.algebricks.core.algebra.functions.IFunctionInfo;
+
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class AsterixBuiltinFunctions {
 
@@ -174,9 +175,17 @@ public class AsterixBuiltinFunctions {
     public final static FunctionIdentifier UNORDERED_LIST_CONSTRUCTOR = new FunctionIdentifier(
             FunctionConstants.ASTERIX_NS, "unordered-list-constructor", FunctionIdentifier.VARARGS);
 
+    public final static FunctionIdentifier DEEP_EQUAL = new FunctionIdentifier(FunctionConstants.ASTERIX_NS,
+            "deep-equal", 2);
+
     // records
     public final static FunctionIdentifier RECORD_MERGE = new FunctionIdentifier(FunctionConstants.ASTERIX_NS,
-            "record-merge", 3);
+            "record-merge", 2);
+    public final static FunctionIdentifier REMOVE_FIELDS = new FunctionIdentifier(FunctionConstants.ASTERIX_NS,
+            "record-remove-fields", 2);
+    public final static FunctionIdentifier ADD_FIELDS = new FunctionIdentifier(FunctionConstants.ASTERIX_NS,
+            "record-add-fields", 2);
+
     public final static FunctionIdentifier CLOSED_RECORD_CONSTRUCTOR = new FunctionIdentifier(
             FunctionConstants.ASTERIX_NS, "closed-record-constructor", FunctionIdentifier.VARARGS);
     public final static FunctionIdentifier OPEN_RECORD_CONSTRUCTOR = new FunctionIdentifier(
@@ -746,6 +755,9 @@ public class AsterixBuiltinFunctions {
         addPrivateFunction(OR, BinaryBooleanOrNullFunctionTypeComputer.INSTANCE, true);
         addPrivateFunction(NUMERIC_ADD, NonTaggedNumericAddSubMulDivTypeComputer.INSTANCE, true);
 
+        // Deep equality
+        addFunction(DEEP_EQUAL, BinaryBooleanOrNullFunctionTypeComputer.INSTANCE, true);
+
         // and then, Asterix builtin functions
         addPrivateFunction(NOT_NULL, NotNullTypeComputer.INSTANCE, true);
         addPrivateFunction(ANY_COLLECTION_MEMBER, NonTaggedCollectionMemberResultType.INSTANCE, true);
@@ -940,7 +952,9 @@ public class AsterixBuiltinFunctions {
         addFunction(WORD_TOKENS, OrderedListOfAStringTypeComputer.INSTANCE, true);
 
         // records
-        addPrivateFunction(RECORD_MERGE, RecordMergeTypeComputer.INSTANCE, true);
+        addFunction(RECORD_MERGE, RecordMergeTypeComputer.INSTANCE, true);
+        addFunction(ADD_FIELDS, RecordAddFieldsTypeComputer.INSTANCE, true);
+        addFunction(REMOVE_FIELDS, RecordRemoveFieldsTypeComputer.INSTANCE, true);
         addPrivateFunction(CLOSED_RECORD_CONSTRUCTOR, ClosedRecordConstructorResultType.INSTANCE, true);
         addPrivateFunction(OPEN_RECORD_CONSTRUCTOR, OpenRecordConstructorResultType.INSTANCE, true);
         addPrivateFunction(FIELD_ACCESS_BY_INDEX, FieldAccessByIndexResultType.INSTANCE, true);

@@ -175,6 +175,7 @@ import org.apache.asterix.runtime.evaluators.functions.CreatePointDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.CreatePolygonDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.CreateRectangleDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.CreateUUIDDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.DeepEqualityDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.EditDistanceCheckDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.EditDistanceContainsDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.EditDistanceDescriptor;
@@ -258,7 +259,9 @@ import org.apache.asterix.runtime.evaluators.functions.records.FieldAccessNested
 import org.apache.asterix.runtime.evaluators.functions.records.FieldAccessNestedEvalFactory;
 import org.apache.asterix.runtime.evaluators.functions.records.GetRecordFieldValueDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.records.GetRecordFieldsDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.records.RecordAddFieldsDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.records.RecordMergeDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.records.RecordRemoveFieldsDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.temporal.AdjustDateTimeForTimeZoneDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.temporal.AdjustTimeForTimeZoneDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.temporal.CalendarDuartionFromDateDescriptor;
@@ -312,6 +315,8 @@ import org.apache.asterix.runtime.runningaggregates.std.TidRunningAggregateDescr
 import org.apache.asterix.runtime.unnestingfunctions.std.RangeDescriptor;
 import org.apache.asterix.runtime.unnestingfunctions.std.ScanCollectionDescriptor;
 import org.apache.asterix.runtime.unnestingfunctions.std.SubsetCollectionDescriptor;
+import org.apache.commons.lang3.mutable.Mutable;
+import org.apache.commons.lang3.mutable.MutableObject;
 import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
 import org.apache.hyracks.algebricks.common.exceptions.NotImplementedException;
 import org.apache.hyracks.algebricks.common.utils.Triple;
@@ -351,8 +356,6 @@ import org.apache.hyracks.dataflow.common.data.parsers.IntegerParserFactory;
 import org.apache.hyracks.dataflow.common.data.parsers.LongParserFactory;
 import org.apache.hyracks.dataflow.common.data.parsers.UTF8StringParserFactory;
 import org.apache.hyracks.dataflow.std.file.ITupleParserFactory;
-import org.apache.commons.lang3.mutable.Mutable;
-import org.apache.commons.lang3.mutable.MutableObject;
 
 import java.io.DataOutput;
 import java.io.IOException;
@@ -560,6 +563,8 @@ public class NonTaggedDataFormat implements IDataFormat {
         temp.add(ADayTimeDurationConstructorDescriptor.FACTORY);
         temp.add(AUUIDFromStringConstructorDescriptor.FACTORY);
 
+        temp.add(DeepEqualityDescriptor.FACTORY);
+
         temp.add(CreateUUIDDescriptor.FACTORY);
         // Spatial
         temp.add(CreatePointDescriptor.FACTORY);
@@ -604,7 +609,10 @@ public class NonTaggedDataFormat implements IDataFormat {
         temp.add(SimilarityJaccardPrefixDescriptor.FACTORY);
         temp.add(SimilarityJaccardPrefixCheckDescriptor.FACTORY);
 
+        //Record functions
         temp.add(RecordMergeDescriptor.FACTORY);
+        temp.add(RecordAddFieldsDescriptor.FACTORY);
+        temp.add(RecordRemoveFieldsDescriptor.FACTORY);
         temp.add(SwitchCaseDescriptor.FACTORY);
         temp.add(RegExpDescriptor.FACTORY);
         temp.add(InjectFailureDescriptor.FACTORY);
@@ -778,8 +786,9 @@ public class NonTaggedDataFormat implements IDataFormat {
                         factories);
             }
             return evalFactory;
-        } else
+        } else {
             throw new AlgebricksException("Could not find field " + fldName + " in the schema.");
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -916,12 +925,51 @@ public class NonTaggedDataFormat implements IDataFormat {
                 ((ListifyAggregateDescriptor) fd).reset(new AOrderedListType(itemType, null));
             }
         }
+
+        if (fd.getIdentifier().equals(AsterixBuiltinFunctions.DEEP_EQUAL)) {
+            AbstractFunctionCallExpression f = (AbstractFunctionCallExpression) expr;
+            IAType outType = (IAType) context.getType(expr);
+            IAType type0 = (IAType) context.getType(f.getArguments().get(0).getValue());
+            IAType type1 = (IAType) context.getType(f.getArguments().get(1).getValue());
+            ((DeepEqualityDescriptor) fd).reset(type0, type1);
+        }
+
         if (fd.getIdentifier().equals(AsterixBuiltinFunctions.RECORD_MERGE)) {
             AbstractFunctionCallExpression f = (AbstractFunctionCallExpression) expr;
             IAType outType = (IAType) context.getType(expr);
             IAType type0 = (IAType) context.getType(f.getArguments().get(0).getValue());
             IAType type1 = (IAType) context.getType(f.getArguments().get(1).getValue());
             ((RecordMergeDescriptor) fd).reset(outType, type0, type1);
+        }
+
+        if (fd.getIdentifier().equals(AsterixBuiltinFunctions.ADD_FIELDS)) {
+            AbstractFunctionCallExpression f = (AbstractFunctionCallExpression) expr;
+            IAType outType = (IAType) context.getType(expr);
+            IAType type0 = (IAType) context.getType(f.getArguments().get(0).getValue());
+            ILogicalExpression le = f.getArguments().get(1).getValue();
+            IAType type1 = (IAType) context.getType(le);
+            if (type0.getTypeTag().equals(ATypeTag.ANY)) {
+                type0 = DefaultOpenFieldType.NESTED_OPEN_RECORD_TYPE;
+            }
+            if (type1.getTypeTag().equals(ATypeTag.ANY)) {
+                type1 = DefaultOpenFieldType.NESTED_OPEN_AORDERED_LIST_TYPE;
+            }
+            ((RecordAddFieldsDescriptor) fd).reset(outType, type0, type1);
+        }
+
+        if (fd.getIdentifier().equals(AsterixBuiltinFunctions.REMOVE_FIELDS)) {
+            AbstractFunctionCallExpression f = (AbstractFunctionCallExpression) expr;
+            IAType outType = (IAType) context.getType(expr);
+            IAType type0 = (IAType) context.getType(f.getArguments().get(0).getValue());
+            ILogicalExpression le = f.getArguments().get(1).getValue();
+            IAType type1 = (IAType) context.getType(le);
+            if (type0.getTypeTag().equals(ATypeTag.ANY)) {
+                type0 = DefaultOpenFieldType.NESTED_OPEN_RECORD_TYPE;
+            }
+            if (type1.getTypeTag().equals(ATypeTag.ANY)) {
+                type1 = DefaultOpenFieldType.NESTED_OPEN_AORDERED_LIST_TYPE;
+            }
+            ((RecordRemoveFieldsDescriptor) fd).reset(outType, type0, type1);
         }
 
         if (fd.getIdentifier().equals(AsterixBuiltinFunctions.CAST_RECORD)) {
@@ -1027,6 +1075,67 @@ public class NonTaggedDataFormat implements IDataFormat {
                 throw new NotImplementedException("get-record-field-value for data of type " + t);
             }
         }
+
+    }
+
+    /**
+     *  A method necessary to extract a ordered list of paths from AQL expression
+     *  That is, it will convert ["foo", ["foo2", "bar"]] to a nested orderelist object
+     *
+     *
+     * @param expression
+     *      The expression, normally as {@link AbstractFunctionCallExpression}
+     * @param listType
+     *      The type the list input
+     * @param context
+     *      The current type environment context
+     * @return
+     *      {@link AOrderedList}
+     *
+     * @throws AlgebricksException
+     */
+    public AOrderedList computePathLists(ILogicalExpression expression, IAType listType, IVariableTypeEnvironment context)
+            throws AlgebricksException {
+        AOrderedList pathAList = null;
+
+        if (expression.getExpressionTag() == LogicalExpressionTag.CONSTANT) {
+            pathAList = (AOrderedList) (((AsterixConstantValue) ((ConstantExpression) expression).getValue()).getObject());
+        } else {
+            AbstractFunctionCallExpression funcExp = (AbstractFunctionCallExpression) expression;
+            List<Mutable<ILogicalExpression>> args = funcExp.getArguments();
+            pathAList = new AOrderedList((AOrderedListType) listType);
+            for (int i = 0; i < args.size(); i++) {
+                ILogicalExpression exp = args.get(i).getValue();
+                if (exp.getExpressionTag() == LogicalExpressionTag.CONSTANT) {
+                    ConstantExpression ce = (ConstantExpression) exp;
+
+                    if (!(ce.getValue() instanceof AsterixConstantValue)) {
+                        throw new AlgebricksException("Expecting a list of strings and found " + ce.getValue()
+                                + " instead.");
+                    }
+                    IAObject item = ((AsterixConstantValue) ce.getValue()).getObject();
+                    pathAList.add(item);
+                } else if (exp.getExpressionTag() == LogicalExpressionTag.FUNCTION_CALL) {
+                    List<Mutable<ILogicalExpression>> subFunctionArgs = ((AbstractFunctionCallExpression) exp)
+                            .getArguments();
+                    AOrderedList subPathOrderedList = new AOrderedList((AOrderedListType) context.getType(exp));
+                    for (int j = 0; j < subFunctionArgs.size(); j++) {
+                        ConstantExpression ce = (ConstantExpression) subFunctionArgs.get(j).getValue();
+                        if (!(ce.getValue() instanceof AsterixConstantValue)) {
+                            throw new AlgebricksException("Expecting a list of strings and found " + ce.getValue()
+                                    + " instead.");
+                        }
+                        IAObject item = ((AsterixConstantValue) ce.getValue()).getObject();
+                        subPathOrderedList.add(item);
+                    }
+                    pathAList.add(subPathOrderedList);
+
+                }
+
+            }
+        }
+
+        return pathAList;
     }
 
     private boolean[] computeOpenFields(AbstractFunctionCallExpression expr, ARecordType recType) {

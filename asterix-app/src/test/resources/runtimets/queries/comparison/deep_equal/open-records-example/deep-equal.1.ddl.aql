@@ -1,0 +1,26 @@
+create dataverse feeds if not exists;
+use dataverse feeds;
+
+drop dataset SourceInfo if exists
+drop type SourceType if exists
+create type SourceType as open {
+   id: int32
+}
+
+create dataset SourceInfo(SourceType)
+primary key id;
+
+drop dataset StreamDocuments if exists
+drop type StreamType if exists
+create type StreamType as open {
+        doc_id: string,
+        stream_id: string,
+        title_cleansed: string,
+        body_cleansed: string,
+        dir_name: string,
+        anchor_cleansed: string,
+        language: string,
+        schost: string
+}
+create dataset StreamDocuments(StreamType)
+primary key doc_id;
