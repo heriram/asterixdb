@@ -1,0 +1,11 @@
+/*
+* Description  : Testing record-remove-fields under different queries.
+* Expected Res : Success
+* Date         : 04 Aug 2015
+*/
+use dataverse TinySocial;
+
+for $r in dataset TweetMessages
+let $result := record-remove-fields($r, ["sender-location", ["user", "screen-name"]])
+order by $result
+return $result

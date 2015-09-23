@@ -17,13 +17,13 @@
  ! under the License.
  !-->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-	<modelVersion>4.0.0</modelVersion>
-	<parent>
-		<artifactId>asterix</artifactId>
-		<groupId>org.apache.asterix</groupId>
-		<version>0.8.7-SNAPSHOT</version>
-	</parent>
-	<artifactId>asterix-transactions</artifactId>
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <artifactId>asterix</artifactId>
+        <groupId>org.apache.asterix</groupId>
+        <version>0.8.7-SNAPSHOT</version>
+    </parent>
+    <artifactId>asterix-transactions</artifactId>
 
   <licenses>
     <license>
@@ -34,18 +34,18 @@
     </license>
   </licenses>
 
-	<build>
-		<plugins>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-compiler-plugin</artifactId>
-				<version>2.3.2</version>
-				<configuration>
-					<source>1.7</source>
-					<target>1.7</target>
-					<fork>true</fork>
-				</configuration>
-			</plugin>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>2.3.2</version>
+                <configuration>
+                    <source>1.7</source>
+                    <target>1.7</target>
+                    <fork>true</fork>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.apache.asterix</groupId>
                 <artifactId>record-manager-generator-maven-plugin</artifactId>
@@ -88,27 +88,64 @@
                     </execution>
                 </executions>
             </plugin>
-		</plugins>
+        </plugins>
 
-	</build>
+        <pluginManagement>
+            <plugins>
+                <!--This plugin's configuration is used to store Eclipse m2e settings only. It has no influence on the Maven build itself.-->
+                <plugin>
+                    <groupId>org.eclipse.m2e</groupId>
+                    <artifactId>lifecycle-mapping</artifactId>
+                    <version>1.0.0</version>
+                    <configuration>
+                        <lifecycleMappingMetadata>
+                            <pluginExecutions>
+                                <pluginExecution>
+                                    <pluginExecutionFilter>
+                                        <groupId>
+                                            edu.uci.ics.asterix
+                                        </groupId>
+                                        <artifactId>
+                                            record-manager-generator-maven-plugin
+                                        </artifactId>
+                                        <versionRange>
+                                            [0.8.7-SNAPSHOT,)
+                                        </versionRange>
+                                        <goals>
+                                            <goal>
+                                                generate-record-manager
+                                            </goal>
+                                        </goals>
+                                    </pluginExecutionFilter>
+                                    <action>
+                                        <ignore></ignore>
+                                    </action>
+                                </pluginExecution>
+                            </pluginExecutions>
+                        </lifecycleMappingMetadata>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
 
-	<dependencies>
-		<dependency>
-			<groupId>org.apache.hyracks</groupId>
-			<artifactId>hyracks-storage-am-common</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.hyracks</groupId>
-			<artifactId>hyracks-storage-am-lsm-btree</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.hyracks</groupId>
-			<artifactId>hyracks-storage-am-lsm-rtree</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.hyracks</groupId>
-			<artifactId>hyracks-storage-am-lsm-invertedindex</artifactId>
-		</dependency>
+    <dependencies>
+        <dependency>
+            <groupId>org.apache.hyracks</groupId>
+            <artifactId>hyracks-storage-am-common</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.hyracks</groupId>
+            <artifactId>hyracks-storage-am-lsm-btree</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.hyracks</groupId>
+            <artifactId>hyracks-storage-am-lsm-rtree</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.hyracks</groupId>
+            <artifactId>hyracks-storage-am-lsm-invertedindex</artifactId>
+        </dependency>
                 <dependency>
                         <groupId>org.apache.asterix</groupId>
                         <artifactId>asterix-common</artifactId>
@@ -116,6 +153,6 @@
                         <type>jar</type>
                         <scope>compile</scope>
                 </dependency>
-	</dependencies>
+    </dependencies>
 
 </project>
