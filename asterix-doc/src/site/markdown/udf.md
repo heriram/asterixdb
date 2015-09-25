@@ -192,6 +192,7 @@ At this stage, we shall compile the above two source files. To do so, we would n
 
     asterix-common-0.8.7-SNAPSHOT.jar
     asterix-external-data-0.8.7-SNAPSHOT.jar
+    asterix-om-0.8.7-SNAPSHOT.jar
 
 ## <a id="CreatingAnAsterixDBLibrary">Creating an AsterixDB Library</a> ###
 
