@@ -29,7 +29,7 @@ public class Datatypes {
             friends_count: int32,
             status_count: int32,
             name: string,
-            followers_count: string
+            followers_count: int32
         };
 
         create type Tweet if not exists as open{

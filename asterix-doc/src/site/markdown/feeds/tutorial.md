@@ -48,7 +48,7 @@ As a pre-requisite, we must define a Tweet using the AsterixDB Data Model (ADM) 
             friends_count: int32,
             status_count: int32,
             name: string,
-            followers_count: string
+            followers_count: int32
         };
         create type Tweet if not exists as open{
             id: string,
@@ -59,7 +59,7 @@ As a pre-requisite, we must define a Tweet using the AsterixDB Data Model (ADM) 
             message_text:string
         };
 
-	    create dataset Tweets (Tweet)
+        create dataset Tweets (Tweet)
         primary key id;
 
 We also create a dataset that we shall use to persist the tweets in AsterixDB. 
@@ -150,24 +150,24 @@ AsterixDB provides a built-in feed adaptor that allows retrieving data given a c
         use dataverse feeds;
 
         create type Rss if not exists as open {
-        	id: string,
-        	title: string,
-        	description: string,
-        	link: string
+            id: string,
+            title: string,
+            description: string,
+            link: string
         };
 
         create dataset RssDataset (Rss)
-		primary key id; 
+        primary key id; 
 
 Next, we define an RSS feed using our built-in adaptor "rss_feed". 
 
         use dataverse feeds;
 
         create feed my_feed using 
-	    rss_feed (
-	       ("type-name"="Rss"),
-	       ("url"="http://rss.cnn.com/rss/edition.rss")
-		);
+        rss_feed (
+           ("type-name"="Rss"),
+           ("url"="http://rss.cnn.com/rss/edition.rss")
+        );
 
 In the above definition, the configuration parameter "url" can be a comma-separated list that reflects a collection of RSS URLs, where each URL corresponds to an RSS endpoint or a RSS feed. 
 The "rss_adaptor" retrieves data from each of the specified RSS URLs (comma separated values) in parallel. 
@@ -221,7 +221,7 @@ appropriate value(s) for the policy parameter(s) from the table below.
 
 - *excess.records.spill*: Set to true if records that cannot be processed by an operator for lack of resources (referred to as excess records hereafter) should be persisted to the local disk for deferred processing. (Default: false)
 
-- *excess.records.discard*: Set to true if excess records should be discarded. (Default: false) 
+- *excess.records.discard*: Set to true if excess records should be discarded. (Default: false)
 
 - *excess.records.throttle*: Set to true if rate of arrival of records is required to be reduced in an adaptive manner to prevent having any excess records (Default: false) 
 
