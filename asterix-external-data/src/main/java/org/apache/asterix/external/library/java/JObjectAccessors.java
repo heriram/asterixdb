@@ -39,7 +39,6 @@ import org.apache.asterix.dataflow.data.nontagged.serde.ARectangleSerializerDese
 import org.apache.asterix.dataflow.data.nontagged.serde.AStringSerializerDeserializer;
 import org.apache.asterix.dataflow.data.nontagged.serde.ATimeSerializerDeserializer;
 import org.apache.asterix.external.library.TypeInfo;
-import org.apache.asterix.external.library.java.JObjects.ByteArrayAccessibleInputStream;
 import org.apache.asterix.external.library.java.JObjects.JBoolean;
 import org.apache.asterix.external.library.java.JObjects.JByte;
 import org.apache.asterix.external.library.java.JObjects.JCircle;
@@ -92,7 +91,6 @@ import java.util.List;
 
 public class JObjectAccessors {
     private static ByteArrayAccessibleOutputStream baaos = new ByteArrayAccessibleOutputStream();
-    private static ByteArrayAccessibleInputStream baais = new ByteArrayAccessibleInputStream(baaos.getByteArray(), 0, 0);
 
     public static IJObjectAccessor createFlatJObjectAccessor(ATypeTag aTypeTag) {
         IJObjectAccessor accessor = null;
