@@ -90,7 +90,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 
 public class JObjectAccessors {
-    private static ByteArrayAccessibleOutputStream baaos = new ByteArrayAccessibleOutputStream();
 
     public static IJObjectAccessor createFlatJObjectAccessor(ATypeTag aTypeTag) {
         IJObjectAccessor accessor = null;
@@ -227,6 +226,7 @@ public class JObjectAccessors {
     }
 
     public static class JStringAccessor implements IJObjectAccessor {
+        private final ByteArrayAccessibleOutputStream baaos = new ByteArrayAccessibleOutputStream();
 
         @Override
         public IJObject access(IVisitablePointable pointable, IObjectPool<IJObject, IAType> objectPool)

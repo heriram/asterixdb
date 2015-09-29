@@ -101,6 +101,8 @@ respective parent feed (TwitterFeed).
         create secondary feed ProcessedTwitterFeed from feed TwitterFeed
         apply function testlib#addHashTags;
 
+        connect feed ProcessedTwitterFeed to dataset ProcessedTweets;
+
 The `addHashTags` function is already provided in the release.
 Below we will explain how this function or other functions can be implemented and added to the system.
 
