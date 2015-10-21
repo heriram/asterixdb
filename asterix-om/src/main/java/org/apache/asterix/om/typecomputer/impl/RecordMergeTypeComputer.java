@@ -71,8 +71,8 @@ public class RecordMergeTypeComputer extends AbstractRecordManipulationTypeCompu
         ARecordType recType1 = extractRecordType(t1);
 
         if (recType0 == null || recType1 == null) {
-            throw new AlgebricksException("record-merge expects possibly NULL records as arguments, but got (" + t0
-                    + ", " + t1 + ")");
+            throw new AlgebricksException("record-merge expects possibly NULL records as "
+                    + "arguments, but got (" + t0 + ", " + t1 + ")");
         }
 
         List<String> resultFieldNames = new ArrayList<>();

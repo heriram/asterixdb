@@ -2480,13 +2480,28 @@
     </test-group> -->
     <test-group name="index-join">
         <test-case FilePath="index-join">
+            <compilation-unit name="btree-index-nested-loop-join">
+                <output-dir compare="Text">btree-index-nested-loop-join</output-dir>
+            </compilation-unit>
+        </test-case>
+        <test-case FilePath="index-join">
             <compilation-unit name="btree-primary-equi-join">
                 <output-dir compare="Text">btree-primary-equi-join</output-dir>
             </compilation-unit>
         </test-case>
         <test-case FilePath="index-join">
-            <compilation-unit name="btree-secondary-equi-join">
-                <output-dir compare="Text">btree-secondary-equi-join</output-dir>
+            <compilation-unit name="btree-secondary-equi-join_01">
+                <output-dir compare="Text">btree-secondary-equi-join_01</output-dir>
+            </compilation-unit>
+        </test-case>
+        <test-case FilePath="index-join">
+            <compilation-unit name="btree-secondary-equi-join_02">
+                <output-dir compare="Text">btree-secondary-equi-join_02</output-dir>
+            </compilation-unit>
+        </test-case>
+        <test-case FilePath="index-join">
+            <compilation-unit name="btree-secondary-equi-join_03">
+                <output-dir compare="Text">btree-secondary-equi-join_03</output-dir>
             </compilation-unit>
         </test-case>
         <test-case FilePath="index-join">
@@ -4422,6 +4437,16 @@
             </compilation-unit>
         </test-case>
         <test-case FilePath="scan">
+            <compilation-unit name="alltypes_01">
+                <output-dir compare="Lossless-JSON">alltypes_01-losslessjson</output-dir>
+            </compilation-unit>
+        </test-case>
+        <test-case FilePath="scan">
+            <compilation-unit name="alltypes_01">
+                <output-dir compare="Clean-JSON">alltypes_01-cleanjson</output-dir>
+            </compilation-unit>
+        </test-case>
+        <test-case FilePath="scan">
             <compilation-unit name="alltypes_02">
                 <output-dir compare="Text">alltypes_02</output-dir>
             </compilation-unit>
@@ -5332,7 +5357,7 @@
             </compilation-unit>
         </test-case>
         <test-case FilePath="tpch">
-            <compilation-unit name="q17_small_quantity_order_revenue">
+            <compilation-unit name="q17_squantity_order_revenue">
                 <output-dir compare="Text">q17_small_quantity_order_revenue</output-dir>
             </compilation-unit>
         </test-case>
@@ -6664,7 +6689,14 @@
     <test-group name="json">
         <test-case FilePath="json">
             <compilation-unit name="int01">
-                <output-dir compare="JSON">int01</output-dir>
+                <output-dir compare="Lossless-JSON">int01-losslessjson</output-dir>
+            </compilation-unit>
+        </test-case>
+    </test-group>
+    <test-group name="cleanjson">
+        <test-case FilePath="json">
+            <compilation-unit name="int01">
+                <output-dir compare="Clean-JSON">int01-cleanjson</output-dir>
             </compilation-unit>
         </test-case>
     </test-group>

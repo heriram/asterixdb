@@ -201,6 +201,9 @@ public class AsterixBuiltinFunctions {
     public final static FunctionIdentifier GET_RECORD_FIELD_VALUE = new FunctionIdentifier(
             FunctionConstants.ASTERIX_NS, "get-record-field-value", 2);
 
+    public final static FunctionIdentifier ADM_TO_BYTES = new FunctionIdentifier(
+            FunctionConstants.ASTERIX_NS, "adm-to-bytes", 2);
+
     // numeric
     public final static FunctionIdentifier NUMERIC_UNARY_MINUS = new FunctionIdentifier(FunctionConstants.ASTERIX_NS,
             "numeric-unary-minus", 1);
@@ -962,6 +965,7 @@ public class AsterixBuiltinFunctions {
         addPrivateFunction(FIELD_ACCESS_BY_NAME, NonTaggedFieldAccessByNameResultType.INSTANCE, true);
         addFunction(GET_RECORD_FIELDS, OrderedListOfAnyTypeComputer.INSTANCE, true);
         addFunction(GET_RECORD_FIELD_VALUE, FieldAccessNestedResultType.INSTANCE, true);
+        addFunction(ADM_TO_BYTES, AStringTypeComputer.INSTANCE, true);
 
         // temporal type accessors
         addFunction(ACCESSOR_TEMPORAL_YEAR, OptionalAInt64TypeComputer.INSTANCE, true);

@@ -73,7 +73,7 @@ public class DeepEqualityVisitor implements IVisitablePointableVisitor<Void, Pai
         return null;
     }
 
-    @Override public Void visit(AFlatValuePointable accessor,Pair<IVisitablePointable, Boolean> arg)
+    @Override public Void visit(AFlatValuePointable accessor, Pair<IVisitablePointable, Boolean> arg)
             throws AsterixException {
 
         ATypeTag tt1 = PointableUtils.getTypeTag(accessor);

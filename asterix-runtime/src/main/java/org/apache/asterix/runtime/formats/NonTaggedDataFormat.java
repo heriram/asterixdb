@@ -23,16 +23,17 @@ import org.apache.asterix.common.exceptions.AsterixRuntimeException;
 import org.apache.asterix.common.parse.IParseFileSplitsDecl;
 import org.apache.asterix.dataflow.data.nontagged.AqlNullWriterFactory;
 import org.apache.asterix.formats.base.IDataFormat;
+import org.apache.asterix.formats.nontagged.AqlADMPrinterFactoryProvider;
 import org.apache.asterix.formats.nontagged.AqlBinaryBooleanInspectorImpl;
 import org.apache.asterix.formats.nontagged.AqlBinaryComparatorFactoryProvider;
 import org.apache.asterix.formats.nontagged.AqlBinaryHashFunctionFactoryProvider;
 import org.apache.asterix.formats.nontagged.AqlBinaryHashFunctionFamilyProvider;
 import org.apache.asterix.formats.nontagged.AqlBinaryIntegerInspector;
 import org.apache.asterix.formats.nontagged.AqlCSVPrinterFactoryProvider;
-import org.apache.asterix.formats.nontagged.AqlJSONPrinterFactoryProvider;
+import org.apache.asterix.formats.nontagged.AqlCleanJSONPrinterFactoryProvider;
+import org.apache.asterix.formats.nontagged.AqlLosslessJSONPrinterFactoryProvider;
 import org.apache.asterix.formats.nontagged.AqlNormalizedKeyComputerFactoryProvider;
 import org.apache.asterix.formats.nontagged.AqlPredicateEvaluatorFactoryProvider;
-import org.apache.asterix.formats.nontagged.AqlPrinterFactoryProvider;
 import org.apache.asterix.formats.nontagged.AqlSerializerDeserializerProvider;
 import org.apache.asterix.formats.nontagged.AqlTypeTraitProvider;
 import org.apache.asterix.om.base.ABoolean;
@@ -262,6 +263,7 @@ import org.apache.asterix.runtime.evaluators.functions.records.GetRecordFieldsDe
 import org.apache.asterix.runtime.evaluators.functions.records.RecordAddFieldsDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.records.RecordMergeDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.records.RecordRemoveFieldsDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.records.RecordSerializationInfoDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.temporal.AdjustDateTimeForTimeZoneDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.temporal.AdjustTimeForTimeZoneDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.temporal.CalendarDuartionFromDateDescriptor;
@@ -620,6 +622,7 @@ public class NonTaggedDataFormat implements IDataFormat {
         temp.add(CastRecordDescriptor.FACTORY);
         temp.add(FlowRecordDescriptor.FACTORY);
         temp.add(NotNullDescriptor.FACTORY);
+        temp.add(RecordSerializationInfoDescriptor.FACTORY);
 
         // Spatial and temporal type accessors
         temp.add(TemporalYearAccessor.FACTORY);
@@ -972,6 +975,13 @@ public class NonTaggedDataFormat implements IDataFormat {
             ((RecordRemoveFieldsDescriptor) fd).reset(outType, type0, type1);
         }
 
+        if (fd.getIdentifier().equals(AsterixBuiltinFunctions.ADM_TO_BYTES)) {
+            AbstractFunctionCallExpression f = (AbstractFunctionCallExpression) expr;
+            IAType outType = (IAType) context.getType(expr);
+            IAType intype = (IAType) context.getType(f.getArguments().get(0).getValue());
+            ((RecordSerializationInfoDescriptor) fd).reset(intype);
+        }
+
         if (fd.getIdentifier().equals(AsterixBuiltinFunctions.CAST_RECORD)) {
             AbstractFunctionCallExpression funcExpr = (AbstractFunctionCallExpression) expr;
             ARecordType rt = (ARecordType) TypeComputerUtilities.getRequiredType(funcExpr);
@@ -1162,13 +1172,18 @@ public class NonTaggedDataFormat implements IDataFormat {
     }
 
     @Override
-    public IPrinterFactoryProvider getPrinterFactoryProvider() {
-        return AqlPrinterFactoryProvider.INSTANCE;
+    public IPrinterFactoryProvider getADMPrinterFactoryProvider() {
+        return AqlADMPrinterFactoryProvider.INSTANCE;
     }
 
     @Override
-    public IPrinterFactoryProvider getJSONPrinterFactoryProvider() {
-        return AqlJSONPrinterFactoryProvider.INSTANCE;
+    public IPrinterFactoryProvider getLosslessJSONPrinterFactoryProvider() {
+        return AqlLosslessJSONPrinterFactoryProvider.INSTANCE;
+    }
+
+    @Override
+    public IPrinterFactoryProvider getCleanJSONPrinterFactoryProvider() {
+        return AqlCleanJSONPrinterFactoryProvider.INSTANCE;
     }
 
     @Override
