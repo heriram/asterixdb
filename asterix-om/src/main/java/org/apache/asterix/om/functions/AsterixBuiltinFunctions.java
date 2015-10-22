@@ -34,6 +34,7 @@ import org.apache.asterix.om.typecomputer.impl.ARectangleTypeComputer;
 import org.apache.asterix.om.typecomputer.impl.AStringTypeComputer;
 import org.apache.asterix.om.typecomputer.impl.ATimeTypeComputer;
 import org.apache.asterix.om.typecomputer.impl.AUUIDTypeComputer;
+import org.apache.asterix.om.typecomputer.impl.AdmToBytesTypeComputer;
 import org.apache.asterix.om.typecomputer.impl.AnyTypeComputer;
 import org.apache.asterix.om.typecomputer.impl.BinaryBooleanOrNullFunctionTypeComputer;
 import org.apache.asterix.om.typecomputer.impl.BinaryStringBoolOrNullTypeComputer;
@@ -965,7 +966,7 @@ public class AsterixBuiltinFunctions {
         addPrivateFunction(FIELD_ACCESS_BY_NAME, NonTaggedFieldAccessByNameResultType.INSTANCE, true);
         addFunction(GET_RECORD_FIELDS, OrderedListOfAnyTypeComputer.INSTANCE, true);
         addFunction(GET_RECORD_FIELD_VALUE, FieldAccessNestedResultType.INSTANCE, true);
-        addFunction(ADM_TO_BYTES, AStringTypeComputer.INSTANCE, true);
+        addFunction(ADM_TO_BYTES, AdmToBytesTypeComputer.INSTANCE, true);
 
         // temporal type accessors
         addFunction(ACCESSOR_TEMPORAL_YEAR, OptionalAInt64TypeComputer.INSTANCE, true);

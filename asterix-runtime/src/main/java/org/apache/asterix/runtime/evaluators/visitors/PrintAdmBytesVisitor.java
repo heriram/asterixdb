@@ -25,6 +25,7 @@ import org.apache.asterix.om.pointables.AListVisitablePointable;
 import org.apache.asterix.om.pointables.ARecordVisitablePointable;
 import org.apache.asterix.om.pointables.base.IVisitablePointable;
 import org.apache.asterix.om.pointables.visitor.IVisitablePointableVisitor;
+import org.apache.asterix.runtime.evaluators.functions.PrintAdmBytesHelper;
 import org.apache.hyracks.algebricks.common.utils.Triple;
 import org.apache.hyracks.data.std.util.ArrayBackedValueStorage;
 

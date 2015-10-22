@@ -21,12 +21,13 @@ package org.apache.asterix.runtime.evaluators.functions;
 import org.apache.asterix.builders.OrderedListBuilder;
 import org.apache.asterix.builders.RecordBuilder;
 import org.apache.asterix.common.exceptions.AsterixException;
-import org.apache.asterix.dataflow.data.nontagged.serde.AInt16SerializerDeserializer;
 import org.apache.asterix.dataflow.data.nontagged.serde.AInt64SerializerDeserializer;
 import org.apache.asterix.dataflow.data.nontagged.serde.AStringSerializerDeserializer;
 import org.apache.asterix.formats.nontagged.AqlSerializerDeserializerProvider;
-import org.apache.asterix.om.base.AMutableInt16;
+import org.apache.asterix.om.base.AInt16;
 import org.apache.asterix.om.base.ANull;
+import org.apache.asterix.om.base.AOrderedList;
+import org.apache.asterix.om.base.IAObject;
 import org.apache.asterix.om.functions.AsterixBuiltinFunctions;
 import org.apache.asterix.om.pointables.ARecordVisitablePointable;
 import org.apache.asterix.om.pointables.PointableAllocator;
@@ -54,6 +55,7 @@ import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.util.ArrayList;
 
 /**
  *
@@ -103,6 +105,8 @@ public class AdmToBytesFactory implements ICopyEvaluatorFactory {
                 new ByteArrayInputStream(outputStream.getByteArray()));
 
         final ArrayBackedValueStorage tempBuffer = new ArrayBackedValueStorage();
+
+        final PrintAdmBytesHelper printHelper = PrintAdmBytesHelper.getInstance();
 
         return new ICopyEvaluator() {
             private DataOutput out = output.getDataOutput();
@@ -162,15 +166,16 @@ public class AdmToBytesFactory implements ICopyEvaluatorFactory {
                     // Return only an array of raw byte
                     if (level == 0) {
                         printRawBytes(vp0);
-                    }
+                    } else {
 
-                    RecordBuilder recBuilder = (RecordBuilder)builder;
-                    recBuilder.reset((ARecordType)outputType);
-                    Triple<IVisitablePointable, RecordBuilder, Long> arg =
-                            new Triple<IVisitablePointable, RecordBuilder, Long>(null, recBuilder, 1L);
-                    visitor.setMaxLevel(level);
-                    vp0.accept(visitor, arg);
-                    arg.second.write(out, true);
+                        RecordBuilder recBuilder = (RecordBuilder) builder;
+                        recBuilder.reset((ARecordType) outputType);
+                        Triple<IVisitablePointable, RecordBuilder, Long> arg = new Triple<IVisitablePointable, RecordBuilder, Long>(
+                                null, recBuilder, 1L);
+                        visitor.setMaxLevel(level);
+                        vp0.accept(visitor, arg);
+                        arg.second.write(out, true);
+                    }
                 } catch (HyracksDataException e) {
                     throw new AlgebricksException("Unable to display serilized value of " +
                             ((ARecordVisitablePointable) vp0).getInputRecordType());
@@ -205,18 +210,22 @@ public class AdmToBytesFactory implements ICopyEvaluatorFactory {
             }
 
 
-            private void printRawBytes(IValueReference valueReference) throws IOException {
-                OrderedListBuilder listBuilder = (OrderedListBuilder)builder;
-                listBuilder.reset((AOrderedListType)outputType);
-                AMutableInt16 int16 = new AMutableInt16((short)0);
-                byte[] bytes = valueReference.getByteArray();
-                for(int i=valueReference.getStartOffset(); i<valueReference.getLength(); i++) {
-                    tempBuffer.reset();
-                    int16.setValue((short)bytes[i]);
-                    AInt16SerializerDeserializer.INSTANCE.serialize(int16, tempBuffer.getDataOutput());
-                    listBuilder.addItem(tempBuffer);
+            private void printRawBytes(IValueReference vr) throws IOException {
+                String byteArrayString = printHelper.byteArrayToString(vr.getByteArray(),
+                        vr.getStartOffset(), vr.getLength());
+
+                ArrayList<IAObject> byteList = new ArrayList<>();
+                byte[] bytes = vr.getByteArray();
+                for(int i=vr.getStartOffset(), j=0; i<vr.getLength(); i++, j++) {
+                    byteList.add(new AInt16((short)(bytes[i])));
                 }
-                listBuilder.write(out, true);
+
+                AOrderedList byteAList = new AOrderedList((AOrderedListType) outputType, byteList);
+                ISerializerDeserializer listSerde = AqlSerializerDeserializerProvider.INSTANCE.
+                        getNonTaggedSerializerDeserializer((AOrderedListType) outputType);
+
+                out.write(ATypeTag.ORDEREDLIST.serialize());
+                listSerde.serialize(new AOrderedList((AOrderedListType) outputType, byteList), out);
             }
 
         };

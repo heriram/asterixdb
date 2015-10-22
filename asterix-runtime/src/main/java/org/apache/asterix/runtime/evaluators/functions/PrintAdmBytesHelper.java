@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.asterix.runtime.evaluators.visitors;
+package org.apache.asterix.runtime.evaluators.functions;
 
 import org.apache.asterix.builders.AbvsBuilderFactory;
 import org.apache.asterix.builders.IARecordBuilder;
@@ -55,6 +55,20 @@ public class PrintAdmBytesHelper {
 
     public void reset() {
         abvsBuilderPool.reset();
+    }
+
+    public String byteArrayToString(byte bytes[], int offset, int length) {
+        StringBuilder sb = new StringBuilder("[");
+        sb.append(bytes[offset] & 0xff);
+        int end = offset + length;
+        for (int i=offset+1; i<end; i++) {
+            sb.append(", ");
+            sb.append(bytes[i] & 0xff);
+
+        }
+        sb.append(']');
+
+        return sb.toString();
     }
 
     public ArrayBackedValueStorage getTempBuffer() {

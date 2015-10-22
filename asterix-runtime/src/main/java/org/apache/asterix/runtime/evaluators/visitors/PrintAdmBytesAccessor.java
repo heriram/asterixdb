@@ -22,9 +22,7 @@ package org.apache.asterix.runtime.evaluators.visitors;
 import org.apache.asterix.builders.OrderedListBuilder;
 import org.apache.asterix.builders.RecordBuilder;
 import org.apache.asterix.common.exceptions.AsterixException;
-import org.apache.asterix.dataflow.data.nontagged.serde.AInt16SerializerDeserializer;
 import org.apache.asterix.dataflow.data.nontagged.serde.AStringSerializerDeserializer;
-import org.apache.asterix.om.base.AMutableInt16;
 import org.apache.asterix.om.base.AMutableString;
 import org.apache.asterix.om.pointables.AFlatValuePointable;
 import org.apache.asterix.om.pointables.AListVisitablePointable;
@@ -33,11 +31,11 @@ import org.apache.asterix.om.pointables.base.IVisitablePointable;
 import org.apache.asterix.om.types.AOrderedListType;
 import org.apache.asterix.om.types.ARecordType;
 import org.apache.asterix.om.types.ATypeTag;
-import org.apache.asterix.om.types.AbstractCollectionType;
 import org.apache.asterix.om.types.BuiltinType;
 import org.apache.asterix.om.types.EnumDeserializer;
 import org.apache.asterix.om.types.IAType;
 import org.apache.asterix.runtime.evaluators.functions.PointableUtils;
+import org.apache.asterix.runtime.evaluators.functions.PrintAdmBytesHelper;
 import org.apache.hyracks.algebricks.common.utils.Triple;
 import org.apache.hyracks.api.exceptions.HyracksDataException;
 import org.apache.hyracks.data.std.api.IValueReference;
@@ -53,7 +51,7 @@ class PrintAdmBytesAccessor {
     private final OrderedListBuilder fieldListBuilder = new OrderedListBuilder();
     private ARecordType fieldRecordType;
 
-    private final int TAG_ID=0, LENGTH_ID=1, VALUE_ID=3;
+    private final int TAG_ID=0, LENGTH_ID=1, VALUE_ID=2;
     private final AMutableString byteArrayString = new AMutableString("");
 
     private final PrintAdmBytesHelper printHelper = PrintAdmBytesHelper.getInstance();
@@ -120,35 +118,25 @@ class PrintAdmBytesAccessor {
         int len = vp.getLength() - valueStartOffset + startOffset; // value length
 
         fieldRecordBuild.reset(fieldRecordType);
-        fieldRecordBuild.addField(TAG_ID, byteArrayToString(new byte[] { bytes[startOffset] }, 0, 1));
+        fieldRecordBuild.addField(TAG_ID, byteArrayToStringPointable(new byte[] { bytes[startOffset] }, 0, 1));
 
         IValueReference lengthVr = extractLengthString(bytes, startOffset+1, valueStartOffset);
         if (lengthVr != null)
             fieldRecordBuild.addField(LENGTH_ID, lengthVr);
-        fieldRecordBuild.addField(VALUE_ID, byteArrayToString(bytes, valueStartOffset, len));
+        fieldRecordBuild.addField(VALUE_ID, byteArrayToStringPointable(bytes, valueStartOffset, len));
 
         fieldRecordBuild.write(out, true);
     }
 
 
-    private IValueReference byteArrayToString(byte[] bytes, int offset, int length) throws HyracksDataException {
-        StringBuilder sb = new StringBuilder("[");
-        sb.append(bytes[offset] & 0xff);
-        int end = offset + length;
-        for (int i=offset+1; i<end; i++) {
-            sb.append(", ");
-            sb.append(bytes[i] & 0xff);
-
-        }
-        sb.append(']');
-
-        byteArrayString.setValue(sb.toString());
+    private IValueReference byteArrayToStringPointable(byte[] bytes, int offset, int length) throws HyracksDataException {
+        byteArrayString.setValue(printHelper.byteArrayToString(bytes, offset, length));
         ArrayBackedValueStorage tempBuffer = printHelper.getTempBuffer();
         AStringSerializerDeserializer.INSTANCE.serialize(byteArrayString, tempBuffer.getDataOutput());
         return tempBuffer;
     }
 
-    private IValueReference getByteArrayAsStringPointable(byte byteArray[], int offset, int length) throws IOException {
+   /* private IValueReference getByteArrayAsStringPointable(byte byteArray[], int offset, int length) throws IOException {
         fieldListBuilder.reset((AbstractCollectionType) BYTE_ARRAY_TYPE);
         AMutableInt16 int16 = new AMutableInt16((short)0);
 
@@ -162,13 +150,13 @@ class PrintAdmBytesAccessor {
         tempBuffer.reset();
         fieldListBuilder.write(tempBuffer.getDataOutput(), true);
         return tempBuffer;
-    }
+    }*/
 
 
     private IValueReference extractLengthString(byte[] vpBytes, int offset, int valueOffset)
             throws HyracksDataException {
         if (valueOffset>1) {
-            return byteArrayToString(vpBytes, offset, valueOffset - offset);
+            return byteArrayToStringPointable(vpBytes, offset, valueOffset - offset);
         }
         return null;
     }
