@@ -64,14 +64,14 @@ public class RecordAddFieldsTypeComputer extends AbstractRecordManipulationTypeC
         AbstractFunctionCallExpression funcExpr = (AbstractFunctionCallExpression) expression;
         IAType type0 = (IAType) env.getType(funcExpr.getArguments().get(0).getValue());
 
-        ARecordType inputRecordType = extractRecordType(type0);
+        ARecordType inputRecordType = TypeComputerUtils.extractRecordType(type0);
         if (inputRecordType == null) {
             return BuiltinType.ANY;
         }
 
         AbstractLogicalExpression arg1 = (AbstractLogicalExpression) funcExpr.getArguments().get(1).getValue();
         IAType type1 = (IAType) env.getType(arg1);
-        AOrderedListType inputOrderedListType = extractOrderedListType(type1);
+        AOrderedListType inputOrderedListType = TypeComputerUtils.extractOrderedListType(type1);
         if (inputOrderedListType == null) {
             return inputRecordType;
         }
@@ -106,7 +106,7 @@ public class RecordAddFieldsTypeComputer extends AbstractRecordManipulationTypeC
         // Iterating through the orderlist input
         for (Mutable<ILogicalExpression> arg: args) {
             AbstractFunctionCallExpression recConsExpr = (AbstractFunctionCallExpression) arg.getValue();
-            ARecordType rtype = extractRecordType((IAType) env.getType(recConsExpr));
+            ARecordType rtype = TypeComputerUtils.extractRecordType((IAType) env.getType(recConsExpr));
             if (rtype!= null) {
                 String[] fn = rtype.getFieldNames();
                 IAType[] ft = rtype.getFieldTypes();

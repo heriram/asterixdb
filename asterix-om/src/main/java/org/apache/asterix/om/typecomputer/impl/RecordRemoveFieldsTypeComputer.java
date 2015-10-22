@@ -141,7 +141,7 @@ public class RecordRemoveFieldsTypeComputer extends AbstractRecordManipulationTy
 
         AbstractLogicalExpression arg1 = (AbstractLogicalExpression) funcExpr.getArguments().get(1).getValue();
         IAType inputListType = (IAType) env.getType(arg1);
-        AOrderedListType inputOrderedListType = extractOrderedListType(inputListType);
+        AOrderedListType inputOrderedListType = TypeComputerUtils.extractOrderedListType(inputListType);
         if (inputOrderedListType == null) {
             throw new AlgebricksException(
                     "The function 'remove-fields' expects an ordered list as the second argument, but got "

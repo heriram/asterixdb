@@ -19,25 +19,22 @@
 
 package org.apache.asterix.om.typecomputer.impl;
 
-import  org.apache.asterix.common.exceptions.AsterixException;
-import  org.apache.asterix.om.base.AString;
-import  org.apache.asterix.om.base.IAObject;
-import  org.apache.asterix.om.constants.AsterixConstantValue;
-import  org.apache.asterix.om.typecomputer.base.IResultTypeComputer;
-import  org.apache.asterix.om.types.AOrderedListType;
-import  org.apache.asterix.om.types.ARecordType;
-import  org.apache.asterix.om.types.ATypeTag;
-import  org.apache.asterix.om.types.AUnionType;
-import  org.apache.asterix.om.types.AUnorderedListType;
-import  org.apache.asterix.om.types.IAType;
-import  org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
-import  org.apache.hyracks.algebricks.core.algebra.base.ILogicalExpression;
-import  org.apache.hyracks.algebricks.core.algebra.expressions.AbstractFunctionCallExpression;
-import  org.apache.hyracks.algebricks.core.algebra.expressions.ConstantExpression;
-import  org.apache.hyracks.algebricks.core.algebra.expressions.IVariableTypeEnvironment;
-import  org.apache.hyracks.algebricks.core.algebra.metadata.IMetadataProvider;
+import org.apache.asterix.common.exceptions.AsterixException;
+import org.apache.asterix.om.base.AString;
+import org.apache.asterix.om.base.IAObject;
+import org.apache.asterix.om.constants.AsterixConstantValue;
+import org.apache.asterix.om.typecomputer.base.IResultTypeComputer;
+import org.apache.asterix.om.types.ARecordType;
+import org.apache.asterix.om.types.ATypeTag;
+import org.apache.asterix.om.types.IAType;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.mutable.Mutable;
+import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
+import org.apache.hyracks.algebricks.core.algebra.base.ILogicalExpression;
+import org.apache.hyracks.algebricks.core.algebra.expressions.AbstractFunctionCallExpression;
+import org.apache.hyracks.algebricks.core.algebra.expressions.ConstantExpression;
+import org.apache.hyracks.algebricks.core.algebra.expressions.IVariableTypeEnvironment;
+import org.apache.hyracks.algebricks.core.algebra.metadata.IMetadataProvider;
 
 import java.io.IOException;
 import java.util.ArrayDeque;
@@ -84,51 +81,6 @@ abstract public class AbstractRecordManipulationTypeComputer implements IResultT
             list.clear();
         }
         aTypelistPool.add(list);
-    }
-
-    public static ARecordType extractRecordType(IAType t) {
-        if (t.getTypeTag() == ATypeTag.RECORD) {
-            return (ARecordType) t;
-        }
-
-        if (t.getTypeTag() == ATypeTag.UNION) {
-            IAType innerType = ((AUnionType) t).getUnionList().get(1);
-            if (innerType.getTypeTag() == ATypeTag.RECORD) {
-                return (ARecordType) innerType;
-            }
-        }
-
-        return null;
-    }
-    
-    public static AOrderedListType extractOrderedListType(IAType t) {
-        if (t.getTypeTag() == ATypeTag.ORDEREDLIST) {
-            return (AOrderedListType) t;
-        }
-
-        if (t.getTypeTag() == ATypeTag.UNION) {
-            IAType innerType = ((AUnionType) t).getUnionList().get(1);
-            if (innerType.getTypeTag() == ATypeTag.ORDEREDLIST) {
-                return (AOrderedListType) innerType;
-            }
-        }
-
-        return null;
-    }
-    
-    public static AUnorderedListType extractUnorderedListType(IAType t) {
-        if (t.getTypeTag() == ATypeTag.UNORDEREDLIST) {
-            return (AUnorderedListType) t;
-        }
-
-        if (t.getTypeTag() == ATypeTag.UNION) {
-            IAType innerType = ((AUnionType) t).getUnionList().get(1);
-            if (innerType.getTypeTag() == ATypeTag.UNORDEREDLIST) {
-                return (AUnorderedListType) innerType;
-            }
-        }
-
-        return null;
     }
 
     protected void addAdditionalFields(List<String> resultFieldNames, List<IAType> resultFieldTypes,

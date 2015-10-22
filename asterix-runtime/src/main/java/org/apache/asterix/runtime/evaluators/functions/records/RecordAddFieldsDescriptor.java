@@ -31,7 +31,7 @@ import org.apache.asterix.om.pointables.AListVisitablePointable;
 import org.apache.asterix.om.pointables.ARecordVisitablePointable;
 import org.apache.asterix.om.pointables.PointableAllocator;
 import org.apache.asterix.om.pointables.base.IVisitablePointable;
-import org.apache.asterix.om.typecomputer.impl.AbstractRecordManipulationTypeComputer;
+import org.apache.asterix.om.typecomputer.impl.TypeComputerUtils;
 import org.apache.asterix.om.types.AOrderedListType;
 import org.apache.asterix.om.types.ARecordType;
 import org.apache.asterix.om.types.ATypeTag;
@@ -68,9 +68,9 @@ public class RecordAddFieldsDescriptor  extends AbstractScalarFunctionDynamicDes
     private AOrderedListType inListType;
 
     public void reset(IAType outType, IAType inType0, IAType inType1) {
-        outRecType = AbstractRecordManipulationTypeComputer.extractRecordType(outType);
-        inRecType = AbstractRecordManipulationTypeComputer.extractRecordType(inType0);
-        inListType = AbstractRecordManipulationTypeComputer.extractOrderedListType(inType1);
+        outRecType = TypeComputerUtils.extractRecordType(outType);
+        inRecType = TypeComputerUtils.extractRecordType(inType0);
+        inListType = TypeComputerUtils.extractOrderedListType(inType1);
     }
 
 

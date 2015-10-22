@@ -18,6 +18,7 @@
  */
 package org.apache.asterix.runtime.evaluators.visitors;
 
+import org.apache.asterix.builders.RecordBuilder;
 import org.apache.asterix.common.exceptions.AsterixException;
 import org.apache.asterix.om.pointables.AFlatValuePointable;
 import org.apache.asterix.om.pointables.AListVisitablePointable;
@@ -25,40 +26,38 @@ import org.apache.asterix.om.pointables.ARecordVisitablePointable;
 import org.apache.asterix.om.pointables.base.IVisitablePointable;
 import org.apache.asterix.om.pointables.visitor.IVisitablePointableVisitor;
 import org.apache.hyracks.algebricks.common.utils.Triple;
+import org.apache.hyracks.data.std.util.ArrayBackedValueStorage;
 
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
-public class PrintSerializedRecordVisitor implements
-        IVisitablePointableVisitor<Void, Triple<IVisitablePointable, StringBuilder, Long>> {
+public class PrintAdmBytesVisitor implements
+        IVisitablePointableVisitor<Void, Triple<IVisitablePointable, RecordBuilder, Long>> {
 
-    private Triple<IVisitablePointable, StringBuilder, Long> arg;
+    private final Map<IVisitablePointable, PrintAdmBytesAccessor> raccessorToPrint =
+            new HashMap<IVisitablePointable, PrintAdmBytesAccessor>();
 
-    private final Map<IVisitablePointable, RecordPrintBytesAccessor> raccessorToPrint =
-            new HashMap<IVisitablePointable, RecordPrintBytesAccessor>();
-
-    private RecordPrintBytesAccessor recordPrintBytesAccessor;
+    private PrintAdmBytesAccessor printAdmBytesAccessor;
 
     private long maxLevel = 0;
 
-    @Override public Void visit(AListVisitablePointable accessor, Triple<IVisitablePointable, StringBuilder, Long> arg)
+    @Override public Void visit(AListVisitablePointable accessor, Triple<IVisitablePointable, RecordBuilder, Long> arg)
             throws AsterixException {
         visitNonRecord(accessor, arg);
         return null;
     }
 
-    @Override public Void visit(ARecordVisitablePointable accessor, Triple<IVisitablePointable, StringBuilder, Long> arg)
+    @Override public Void visit(ARecordVisitablePointable accessor, Triple<IVisitablePointable, RecordBuilder, Long> arg)
             throws AsterixException {
-        this.arg = arg;
-        recordPrintBytesAccessor = raccessorToPrint.get(accessor);
-        if(recordPrintBytesAccessor==null) {
-            recordPrintBytesAccessor = new RecordPrintBytesAccessor();
-            raccessorToPrint.put(accessor, recordPrintBytesAccessor);
+        printAdmBytesAccessor = raccessorToPrint.get(accessor);
+        if(printAdmBytesAccessor ==null) {
+            printAdmBytesAccessor = new PrintAdmBytesAccessor();
+            raccessorToPrint.put(accessor, printAdmBytesAccessor);
         }
 
         try {
-            recordPrintBytesAccessor.accessRecord(accessor, this, maxLevel, arg);
+            printAdmBytesAccessor.accessRecord(accessor, this, maxLevel, arg);
         } catch (IOException e) {
             new AsterixException("Error in trying accessing the record.");
         }
@@ -66,21 +65,24 @@ public class PrintSerializedRecordVisitor implements
         return null;
     }
 
-    @Override public Void visit(AFlatValuePointable accessor, Triple<IVisitablePointable, StringBuilder, Long> arg)
+    @Override public Void visit(AFlatValuePointable accessor, Triple<IVisitablePointable, RecordBuilder, Long> arg)
             throws AsterixException {
         visitNonRecord(accessor, arg);
         return null;
     }
 
-    private void visitNonRecord(IVisitablePointable accessor, Triple<IVisitablePointable, StringBuilder, Long> arg)
+    private void visitNonRecord(IVisitablePointable accessor, Triple<IVisitablePointable, RecordBuilder, Long> arg)
             throws AsterixException {
-        this.arg = arg;
-        try {
-            arg.second.append("\"" + recordPrintBytesAccessor.getFieldName(arg.first) + "\": ");
-        } catch (IOException e) {
-            throw new AsterixException("Unable to get the field name");
+        PrintAdmBytesHelper printHelper = printAdmBytesAccessor.getPrintHelper();
+        ArrayBackedValueStorage tabvs = printHelper.getTempBuffer();
+        if (arg.first!=null) {
+            try {
+                printAdmBytesAccessor.printAnnotatedBytes(accessor, tabvs.getDataOutput());
+                arg.second.addField(arg.first, tabvs);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
-        arg.second.append(recordPrintBytesAccessor.printAnnotatedBytes(accessor));
     }
 
     public void setMaxLevel(long maxLevel) {

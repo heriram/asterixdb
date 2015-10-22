@@ -29,7 +29,7 @@ import org.apache.asterix.om.functions.IFunctionDescriptorFactory;
 import org.apache.asterix.om.pointables.ARecordVisitablePointable;
 import org.apache.asterix.om.pointables.PointableAllocator;
 import org.apache.asterix.om.pointables.base.IVisitablePointable;
-import org.apache.asterix.om.typecomputer.impl.RecordMergeTypeComputer;
+import org.apache.asterix.om.typecomputer.impl.TypeComputerUtils;
 import org.apache.asterix.om.types.ARecordType;
 import org.apache.asterix.om.types.ATypeTag;
 import org.apache.asterix.om.types.BuiltinType;
@@ -81,9 +81,9 @@ public class RecordMergeDescriptor extends AbstractScalarFunctionDynamicDescript
     private ARecordType inRecType1;
 
     public void reset(IAType outType, IAType inType0, IAType inType1) {
-        outRecType = RecordMergeTypeComputer.extractRecordType(outType);
-        inRecType0 = RecordMergeTypeComputer.extractRecordType(inType0);
-        inRecType1 = RecordMergeTypeComputer.extractRecordType(inType1);
+        outRecType = TypeComputerUtils.extractRecordType(outType);
+        inRecType0 = TypeComputerUtils.extractRecordType(inType0);
+        inRecType1 = TypeComputerUtils.extractRecordType(inType1);
     }
 
     @Override

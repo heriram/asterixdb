@@ -45,21 +45,6 @@ public class RecordMergeTypeComputer extends AbstractRecordManipulationTypeCompu
     private RecordMergeTypeComputer() {
     }
 
-    public static ARecordType extractRecordType(IAType t) {
-        if (t.getTypeTag() == ATypeTag.RECORD) {
-            return (ARecordType) t;
-        }
-
-        if (t.getTypeTag() == ATypeTag.UNION) {
-            IAType innerType = ((AUnionType) t).getNullableType();
-            if (innerType.getTypeTag() == ATypeTag.RECORD) {
-                return (ARecordType) innerType;
-            }
-        }
-
-        return null;
-    }
-
     @Override
     public IAType computeType(ILogicalExpression expression, IVariableTypeEnvironment env,
             IMetadataProvider<?, ?> metadataProvider) throws AlgebricksException {
@@ -67,8 +52,8 @@ public class RecordMergeTypeComputer extends AbstractRecordManipulationTypeCompu
         IAType t0 = (IAType) env.getType(f.getArguments().get(0).getValue());
         IAType t1 = (IAType) env.getType(f.getArguments().get(1).getValue());
         boolean nullable = TypeHelper.canBeNull(t0) || TypeHelper.canBeNull(t1);
-        ARecordType recType0 = extractRecordType(t0);
-        ARecordType recType1 = extractRecordType(t1);
+        ARecordType recType0 = TypeComputerUtils.extractRecordType(t0);
+        ARecordType recType1 = TypeComputerUtils.extractRecordType(t1);
 
         if (recType0 == null || recType1 == null) {
             throw new AlgebricksException("record-merge expects possibly NULL records as "

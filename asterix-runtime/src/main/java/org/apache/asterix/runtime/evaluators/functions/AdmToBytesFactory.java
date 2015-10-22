@@ -16,23 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.asterix.runtime.evaluators.functions.records;
+package org.apache.asterix.runtime.evaluators.functions;
 
+import org.apache.asterix.builders.OrderedListBuilder;
+import org.apache.asterix.builders.RecordBuilder;
 import org.apache.asterix.common.exceptions.AsterixException;
+import org.apache.asterix.dataflow.data.nontagged.serde.AInt16SerializerDeserializer;
 import org.apache.asterix.dataflow.data.nontagged.serde.AInt64SerializerDeserializer;
 import org.apache.asterix.dataflow.data.nontagged.serde.AStringSerializerDeserializer;
 import org.apache.asterix.formats.nontagged.AqlSerializerDeserializerProvider;
+import org.apache.asterix.om.base.AMutableInt16;
 import org.apache.asterix.om.base.ANull;
-import org.apache.asterix.om.base.AString;
 import org.apache.asterix.om.functions.AsterixBuiltinFunctions;
 import org.apache.asterix.om.pointables.ARecordVisitablePointable;
 import org.apache.asterix.om.pointables.PointableAllocator;
 import org.apache.asterix.om.pointables.base.IVisitablePointable;
+import org.apache.asterix.om.types.AOrderedListType;
 import org.apache.asterix.om.types.ARecordType;
 import org.apache.asterix.om.types.ATypeTag;
 import org.apache.asterix.om.types.BuiltinType;
 import org.apache.asterix.om.types.EnumDeserializer;
-import org.apache.asterix.runtime.evaluators.visitors.PrintSerializedRecordVisitor;
+import org.apache.asterix.om.types.IAType;
+import org.apache.asterix.runtime.evaluators.visitors.PrintAdmBytesVisitor;
 import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
 import org.apache.hyracks.algebricks.common.utils.Triple;
 import org.apache.hyracks.algebricks.runtime.base.ICopyEvaluator;
@@ -55,34 +60,49 @@ import java.io.IOException;
  * Check each field in a record and prints out the serialized values of the fields
  *
  */
-public class RecordSerializationInfoFactory implements ICopyEvaluatorFactory {
+public class AdmToBytesFactory implements ICopyEvaluatorFactory {
 
     private static final long serialVersionUID = 1L;
 
     private ICopyEvaluatorFactory recordEvalFactory;
     private ICopyEvaluatorFactory integerEvalFactory;
-    private ARecordType inputRecType;
-
-
+    private IAType outputType;
+    private IAType inputArgType;
 
     private final byte SER_NULL_TYPE_TAG = ATypeTag.NULL.serialize();
     private static final byte SER_INT_TYPE_TAG = ATypeTag.INT64.serialize();
     private static final byte SER_STRING_TYPE_TAG = ATypeTag.STRING.serialize();
 
-    public RecordSerializationInfoFactory (ICopyEvaluatorFactory recordEvalFactory, ICopyEvaluatorFactory integerEvalFactory, ARecordType inputRecType) {
+    public AdmToBytesFactory(ICopyEvaluatorFactory recordEvalFactory, ICopyEvaluatorFactory integerEvalFactory,
+            IAType inputArgType, IAType outputType) {
         this.recordEvalFactory = recordEvalFactory;
-        this.inputRecType = inputRecType;
+        this.outputType = outputType;
+        this.inputArgType = inputArgType;
         this.integerEvalFactory = integerEvalFactory;
     }
 
 
     @Override public ICopyEvaluator createEvaluator(final IDataOutputProvider output) throws AlgebricksException {
         final PointableAllocator pa = new PointableAllocator();
-        final IVisitablePointable vp0 = pa.allocateRecordValue(inputRecType);
+        final IVisitablePointable vp0;
+        switch (inputArgType.getTypeTag()) {
+            case RECORD:
+                vp0 = pa.allocateRecordValue(inputArgType);
+                break;
+            case ORDEREDLIST:
+            case UNORDEREDLIST:
+                vp0 = pa.allocateListValue(inputArgType);
+                break;
+            default:
+                vp0 = pa.allocateFieldValue(inputArgType);
+        }
+
 
         final ByteArrayAccessibleOutputStream outputStream = new ByteArrayAccessibleOutputStream();
         final DataInputStream dis = new DataInputStream(
                 new ByteArrayInputStream(outputStream.getByteArray()));
+
+        final ArrayBackedValueStorage tempBuffer = new ArrayBackedValueStorage();
 
         return new ICopyEvaluator() {
             private DataOutput out = output.getDataOutput();
@@ -93,7 +113,10 @@ public class RecordSerializationInfoFactory implements ICopyEvaluatorFactory {
             private ArrayBackedValueStorage outInput1 = new ArrayBackedValueStorage();
             private ICopyEvaluator eval1 = integerEvalFactory.createEvaluator(outInput1);
 
-            private final PrintSerializedRecordVisitor visitor = new PrintSerializedRecordVisitor();
+            private final PrintAdmBytesVisitor visitor = new PrintAdmBytesVisitor();
+
+            private Object builder = (outputType.getTypeTag()==ATypeTag.ORDEREDLIST)? new OrderedListBuilder():
+                    new RecordBuilder();
 
             @SuppressWarnings("unchecked")
             private final ISerializerDeserializer<ANull> nullSerde = AqlSerializerDeserializerProvider.INSTANCE
@@ -117,26 +140,37 @@ public class RecordSerializationInfoFactory implements ICopyEvaluatorFactory {
                 byte inputBytes1[] = outInput1.getByteArray();
                 if (inputBytes1[0] != SER_INT_TYPE_TAG && inputBytes1[0] != SER_STRING_TYPE_TAG) {
                     throw new AlgebricksException(AsterixBuiltinFunctions.ADM_TO_BYTES.getName()
-                            + ": expects input type (RECORD, INT32|STRING) but got ("
+                            + ": expects input type (ADM object, INT32|STRING) but got ("
                             + EnumDeserializer.ATYPETAGDESERIALIZER.deserialize(outInput0.getByteArray()[0])
                             + ", "
                             + EnumDeserializer.ATYPETAGDESERIALIZER.deserialize(outInput1.getByteArray()[0])
                             + ")");
                 }
 
+
+
+
                 // Get the serialized values from an input
                 vp0.set(outInput0);
 
                 ATypeTag typeTag1 = EnumDeserializer.ATYPETAGDESERIALIZER.deserialize(inputBytes1[0]);
+
                 try {
-                    //out.write(ATypeTag.STRING.serialize());
-                    Triple<IVisitablePointable, StringBuilder, Long> arg =
-                            new Triple<IVisitablePointable, StringBuilder, Long>(null, new StringBuilder(), 0L);
-                    visitor.setMaxLevel(getLevel(outInput1, typeTag1));
+                    // Get the level
+                    long level = getLevel(outInput1, typeTag1);
+
+                    // Return only an array of raw byte
+                    if (level == 0) {
+                        printRawBytes(vp0);
+                    }
+
+                    RecordBuilder recBuilder = (RecordBuilder)builder;
+                    recBuilder.reset((ARecordType)outputType);
+                    Triple<IVisitablePointable, RecordBuilder, Long> arg =
+                            new Triple<IVisitablePointable, RecordBuilder, Long>(null, recBuilder, 1L);
+                    visitor.setMaxLevel(level);
                     vp0.accept(visitor, arg);
-                    AString aString = new AString(arg.second.toString());
-                    out.writeByte(ATypeTag.STRING.serialize());
-                    AStringSerializerDeserializer.INSTANCE.serialize(aString, out);
+                    arg.second.write(out, true);
                 } catch (HyracksDataException e) {
                     throw new AlgebricksException("Unable to display serilized value of " +
                             ((ARecordVisitablePointable) vp0).getInputRecordType());
@@ -168,6 +202,21 @@ public class RecordSerializationInfoFactory implements ICopyEvaluatorFactory {
                 }
 
                 return level;
+            }
+
+
+            private void printRawBytes(IValueReference valueReference) throws IOException {
+                OrderedListBuilder listBuilder = (OrderedListBuilder)builder;
+                listBuilder.reset((AOrderedListType)outputType);
+                AMutableInt16 int16 = new AMutableInt16((short)0);
+                byte[] bytes = valueReference.getByteArray();
+                for(int i=valueReference.getStartOffset(); i<valueReference.getLength(); i++) {
+                    tempBuffer.reset();
+                    int16.setValue((short)bytes[i]);
+                    AInt16SerializerDeserializer.INSTANCE.serialize(int16, tempBuffer.getDataOutput());
+                    listBuilder.addItem(tempBuffer);
+                }
+                listBuilder.write(out, true);
             }
 
         };

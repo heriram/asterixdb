@@ -263,7 +263,7 @@ import org.apache.asterix.runtime.evaluators.functions.records.GetRecordFieldsDe
 import org.apache.asterix.runtime.evaluators.functions.records.RecordAddFieldsDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.records.RecordMergeDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.records.RecordRemoveFieldsDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.records.RecordSerializationInfoDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.AdmToBytesDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.temporal.AdjustDateTimeForTimeZoneDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.temporal.AdjustTimeForTimeZoneDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.temporal.CalendarDuartionFromDateDescriptor;
@@ -622,7 +622,7 @@ public class NonTaggedDataFormat implements IDataFormat {
         temp.add(CastRecordDescriptor.FACTORY);
         temp.add(FlowRecordDescriptor.FACTORY);
         temp.add(NotNullDescriptor.FACTORY);
-        temp.add(RecordSerializationInfoDescriptor.FACTORY);
+        temp.add(AdmToBytesDescriptor.FACTORY);
 
         // Spatial and temporal type accessors
         temp.add(TemporalYearAccessor.FACTORY);
@@ -978,8 +978,9 @@ public class NonTaggedDataFormat implements IDataFormat {
         if (fd.getIdentifier().equals(AsterixBuiltinFunctions.ADM_TO_BYTES)) {
             AbstractFunctionCallExpression f = (AbstractFunctionCallExpression) expr;
             IAType outType = (IAType) context.getType(expr);
-            IAType intype = (IAType) context.getType(f.getArguments().get(0).getValue());
-            ((RecordSerializationInfoDescriptor) fd).reset(intype);
+            IAType intype0 = (IAType) context.getType(f.getArguments().get(0).getValue());
+            IAType intype1 = (IAType) context.getType(f.getArguments().get(1).getValue());
+            ((AdmToBytesDescriptor) fd).reset(intype0, intype1, outType);
         }
 
         if (fd.getIdentifier().equals(AsterixBuiltinFunctions.CAST_RECORD)) {

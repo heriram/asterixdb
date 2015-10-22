@@ -16,41 +16,44 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.asterix.runtime.evaluators.functions.records;
+package org.apache.asterix.runtime.evaluators.functions;
 
 import org.apache.asterix.om.functions.AsterixBuiltinFunctions;
 import org.apache.asterix.om.functions.IFunctionDescriptor;
 import org.apache.asterix.om.functions.IFunctionDescriptorFactory;
-import org.apache.asterix.om.types.ARecordType;
 import org.apache.asterix.om.types.IAType;
 import org.apache.asterix.runtime.evaluators.base.AbstractScalarFunctionDynamicDescriptor;
 import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
 import org.apache.hyracks.algebricks.core.algebra.functions.FunctionIdentifier;
 import org.apache.hyracks.algebricks.runtime.base.ICopyEvaluatorFactory;
 
-public class RecordSerializationInfoDescriptor   extends AbstractScalarFunctionDynamicDescriptor {
+public class AdmToBytesDescriptor extends AbstractScalarFunctionDynamicDescriptor {
     private static final long serialVersionUID = 1L;
 
-    private IAType inputRecType;
+    private IAType inputType0;
+    private IAType inputType1;
+    private IAType outputType;
 
     public static final IFunctionDescriptorFactory FACTORY = new IFunctionDescriptorFactory() {
         public IFunctionDescriptor createFunctionDescriptor() {
-            return new RecordSerializationInfoDescriptor();
+            return new AdmToBytesDescriptor();
         }
     };
 
 
-    public void reset(IAType inputType) {
-        this.inputRecType = inputType;
+    public void reset(IAType inputType0, IAType inputType1, IAType outputType) {
+        this.inputType0 = inputType0;
+        this.inputType1 = inputType1;
+        this.outputType = outputType;
     }
 
 
-    private RecordSerializationInfoDescriptor() {
+    private AdmToBytesDescriptor() {
 
     }
 
     public ICopyEvaluatorFactory createEvaluatorFactory(final ICopyEvaluatorFactory[] args) throws AlgebricksException {
-        return new RecordSerializationInfoFactory(args[0], args[1], (ARecordType) inputRecType);
+        return new AdmToBytesFactory(args[0], args[1], inputType0, outputType);
     }
 
     @Override public FunctionIdentifier getIdentifier() {
