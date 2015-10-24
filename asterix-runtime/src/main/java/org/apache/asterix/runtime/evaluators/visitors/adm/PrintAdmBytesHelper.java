@@ -16,100 +16,91 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.asterix.runtime.evaluators.visitors.adm;
 
-package org.apache.asterix.runtime.evaluators.visitors;
-
+import org.apache.asterix.builders.AbvsBuilderFactory;
+import org.apache.asterix.builders.IARecordBuilder;
+import org.apache.asterix.builders.IAsterixListBuilder;
+import org.apache.asterix.builders.ListBuilderFactory;
 import org.apache.asterix.builders.OrderedListBuilder;
 import org.apache.asterix.builders.RecordBuilder;
+import org.apache.asterix.builders.RecordBuilderFactory;
 import org.apache.asterix.common.exceptions.AsterixException;
 import org.apache.asterix.dataflow.data.nontagged.serde.AStringSerializerDeserializer;
 import org.apache.asterix.om.base.AMutableString;
-import org.apache.asterix.om.pointables.AFlatValuePointable;
-import org.apache.asterix.om.pointables.AListVisitablePointable;
-import org.apache.asterix.om.pointables.ARecordVisitablePointable;
 import org.apache.asterix.om.pointables.base.IVisitablePointable;
-import org.apache.asterix.om.types.AOrderedListType;
+import org.apache.asterix.om.pointables.nonvisitor.AListPointable;
+import org.apache.asterix.om.pointables.nonvisitor.ARecordPointable;
 import org.apache.asterix.om.types.ARecordType;
 import org.apache.asterix.om.types.ATypeTag;
 import org.apache.asterix.om.types.BuiltinType;
 import org.apache.asterix.om.types.EnumDeserializer;
 import org.apache.asterix.om.types.IAType;
-import org.apache.asterix.runtime.evaluators.functions.PointableUtils;
-import org.apache.asterix.runtime.evaluators.functions.PrintAdmBytesHelper;
-import org.apache.hyracks.algebricks.common.utils.Triple;
+import org.apache.asterix.om.util.container.IObjectPool;
+import org.apache.asterix.om.util.container.ListObjectPool;
 import org.apache.hyracks.api.exceptions.HyracksDataException;
+import org.apache.hyracks.data.std.api.IMutableValueStorage;
+import org.apache.hyracks.data.std.api.IPointable;
 import org.apache.hyracks.data.std.api.IValueReference;
 import org.apache.hyracks.data.std.util.ArrayBackedValueStorage;
 
 import java.io.DataOutput;
 import java.io.IOException;
-import java.util.List;
 
-class PrintAdmBytesAccessor {
-    private final IAType BYTE_ARRAY_TYPE = new AOrderedListType(BuiltinType.AINT16, null);
-    private final RecordBuilder fieldRecordBuild = new RecordBuilder();
-    private final OrderedListBuilder fieldListBuilder = new OrderedListBuilder();
+public class PrintAdmBytesHelper {
+    private IObjectPool<IARecordBuilder, ATypeTag> recordBuilderPool = new ListObjectPool<IARecordBuilder, ATypeTag>(
+            new RecordBuilderFactory());
+    private IObjectPool<IAsterixListBuilder, ATypeTag> listBuilderPool = new ListObjectPool<IAsterixListBuilder, ATypeTag>(
+            new ListBuilderFactory());
+    private IObjectPool<IMutableValueStorage, ATypeTag> abvsBuilderPool = new ListObjectPool<IMutableValueStorage, ATypeTag>(
+            new AbvsBuilderFactory());
+    private IObjectPool<IPointable, ATypeTag> recordPointablePool = new ListObjectPool<IPointable, ATypeTag>(
+            ARecordPointable.ALLOCATOR);
+    private IObjectPool<IPointable, ATypeTag> listPointablePool = new ListObjectPool<IPointable, ATypeTag>(
+            AListPointable.ALLOCATOR);
+
+    public static PrintAdmBytesHelper getInstance() {
+        return new PrintAdmBytesHelper();
+    }
+
+    private AMutableString valueString = new AMutableString("");
+    private final RecordBuilder recordBuilder = new RecordBuilder();
     private ARecordType fieldRecordType;
 
     private final int TAG_ID=0, LENGTH_ID=1, VALUE_ID=2;
-    private final AMutableString byteArrayString = new AMutableString("");
 
-    private final PrintAdmBytesHelper printHelper = PrintAdmBytesHelper.getInstance();
 
-    private PrintAdmBytesVisitor visitor;
-
-    public PrintAdmBytesAccessor() {
+    private PrintAdmBytesHelper(){
         String arfName[] = new String[]{"tag", "length", "value"};
-        IAType arfByteArray[] = new IAType[]{BuiltinType.ASTRING, BuiltinType.ASTRING, BuiltinType.ASTRING};
+        IAType arfByteArray[] = new IAType[]{ BuiltinType.ASTRING, BuiltinType.ASTRING, BuiltinType.ASTRING};
         try {
             fieldRecordType = new ARecordType("byteArrayfield", arfName, arfByteArray, true);
-        } catch (AsterixException| HyracksDataException e) {
+        } catch (AsterixException | HyracksDataException e) {
             e.printStackTrace();
         }
-
     }
 
-    public PrintAdmBytesHelper getPrintHelper() {
-        return printHelper;
+    public void reset() {
+        abvsBuilderPool.reset();
     }
 
-    public String accessRecord(IVisitablePointable recAccessor, PrintAdmBytesVisitor visitor, long maxLevel,
-            Triple<IVisitablePointable, RecordBuilder, Long> arg)
-            throws AsterixException, IOException {
+    public String byteArrayToString(byte bytes[], int offset, int length) {
+        StringBuilder sb = new StringBuilder("[");
+        sb.append(bytes[offset] & 0xff);
+        int end = offset + length;
+        for (int i=offset+1; i<end; i++) {
+            sb.append(", ");
+            sb.append(bytes[i] & 0xff);
 
-        ARecordVisitablePointable rec = ((ARecordVisitablePointable) recAccessor);
-        List<IVisitablePointable> fieldNames = rec.getFieldNames();
-        List<IVisitablePointable> fieldValues = rec.getFieldValues();
-        List<IVisitablePointable> fieldTypeTags = rec.getFieldTypeTags();
-
-        printHelper.reset();
-
-        ArrayBackedValueStorage tempBuffer = printHelper.getTempBuffer();
-        for (int i=0; i<fieldNames.size(); i++) {
-            ATypeTag typeTag = PointableUtils.getTypeTag(fieldTypeTags.get(i));
-            arg.first = fieldNames.get(i);
-            switch (typeTag){
-                case RECORD:
-                    arg.third++; // Increase the current level
-                    if (arg.third <= maxLevel) {
-                        ((ARecordVisitablePointable) fieldValues.get(i)).accept(visitor, arg);
-                    } else {
-                        printAnnotatedBytes(fieldValues.get(i), tempBuffer.getDataOutput());
-                        arg.second.addField(fieldNames.get(i), tempBuffer);
-                    }
-                    break;
-                case ORDEREDLIST:
-                case UNORDEREDLIST:
-                    ((AListVisitablePointable)fieldValues.get(i)).accept(visitor, arg);
-                    break;
-                default:
-                    ((AFlatValuePointable)fieldValues.get(i)).accept(visitor, arg);
-            }
         }
+        sb.append(']');
 
-        return arg.second.toString();
+        return sb.toString();
     }
 
+    public ARecordType getFieldRecordType() {
+        return fieldRecordType;
+    }
 
     public void printAnnotatedBytes(IVisitablePointable vp, DataOutput out) throws IOException, AsterixException {
         byte[] bytes = vp.getByteArray();
@@ -117,22 +108,25 @@ class PrintAdmBytesAccessor {
         int valueStartOffset = startOffset + getValueOffset(bytes[startOffset]);
         int len = vp.getLength() - valueStartOffset + startOffset; // value length
 
-        fieldRecordBuild.reset(fieldRecordType);
-        fieldRecordBuild.addField(TAG_ID, byteArrayToStringPointable(new byte[] { bytes[startOffset] }, 0, 1));
+        recordBuilder.init();
+        recordBuilder.reset(fieldRecordType);
+        recordBuilder.addField(TAG_ID, byteArrayToStringPointable(new byte[] { bytes[startOffset] }, 0, 1));
 
         IValueReference lengthVr = extractLengthString(bytes, startOffset+1, valueStartOffset);
         if (lengthVr != null)
-            fieldRecordBuild.addField(LENGTH_ID, lengthVr);
-        fieldRecordBuild.addField(VALUE_ID, byteArrayToStringPointable(bytes, valueStartOffset, len));
+            recordBuilder.addField(LENGTH_ID, lengthVr);
+        recordBuilder.addField(VALUE_ID, byteArrayToStringPointable(bytes, valueStartOffset, len));
 
-        fieldRecordBuild.write(out, true);
+        recordBuilder.write(out, true);
     }
 
-
     private IValueReference byteArrayToStringPointable(byte[] bytes, int offset, int length) throws HyracksDataException {
-        byteArrayString.setValue(printHelper.byteArrayToString(bytes, offset, length));
-        ArrayBackedValueStorage tempBuffer = printHelper.getTempBuffer();
-        AStringSerializerDeserializer.INSTANCE.serialize(byteArrayString, tempBuffer.getDataOutput());
+        //AString valueString = new AString(byteArrayToString(bytes, offset, length));
+        valueString.setValue(byteArrayToString(bytes, offset, length));
+        ArrayBackedValueStorage tempBuffer = getTempBuffer();
+        tempBuffer.reset();
+        AStringSerializerDeserializer.INSTANCE.serialize(valueString, tempBuffer.getDataOutput());
+
         return tempBuffer;
     }
 
@@ -160,7 +154,6 @@ class PrintAdmBytesAccessor {
         }
         return null;
     }
-
     // Get the relative value offset
     private int getValueOffset(byte typeByte) {
         int length=0;
@@ -179,5 +172,23 @@ class PrintAdmBytesAccessor {
         }
     }
 
+    public ArrayBackedValueStorage getTempBuffer() {
+        return (ArrayBackedValueStorage) abvsBuilderPool.allocate(ATypeTag.BINARY);
+    }
 
+    public ARecordPointable getRecordPointable() {
+        return (ARecordPointable) recordPointablePool.allocate(ATypeTag.RECORD);
+    }
+
+    public AListPointable getListPointable() {
+        return (AListPointable) listPointablePool.allocate(ATypeTag.ORDEREDLIST);
+    }
+
+    public IARecordBuilder getRecordBuilder() {
+        return recordBuilderPool.allocate(ATypeTag.RECORD);
+    }
+
+    public OrderedListBuilder getOrderedListBuilder() {
+        return (OrderedListBuilder) listBuilderPool.allocate(ATypeTag.ORDEREDLIST);
+    }
 }

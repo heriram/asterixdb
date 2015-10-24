@@ -18,6 +18,7 @@
  */
 package org.apache.asterix.om.typecomputer.impl;
 
+import org.apache.asterix.common.exceptions.AsterixException;
 import org.apache.asterix.om.base.AInt16;
 import org.apache.asterix.om.base.AInt32;
 import org.apache.asterix.om.base.AInt64;
@@ -27,6 +28,7 @@ import org.apache.asterix.om.constants.AsterixConstantValue;
 import org.apache.asterix.om.pointables.base.DefaultOpenFieldType;
 import org.apache.asterix.om.typecomputer.base.IResultTypeComputer;
 import org.apache.asterix.om.types.AOrderedListType;
+import org.apache.asterix.om.types.ARecordType;
 import org.apache.asterix.om.types.ATypeTag;
 import org.apache.asterix.om.types.BuiltinType;
 import org.apache.asterix.om.types.IAType;
@@ -37,13 +39,23 @@ import org.apache.hyracks.algebricks.core.algebra.expressions.AbstractFunctionCa
 import org.apache.hyracks.algebricks.core.algebra.expressions.ConstantExpression;
 import org.apache.hyracks.algebricks.core.algebra.expressions.IVariableTypeEnvironment;
 import org.apache.hyracks.algebricks.core.algebra.metadata.IMetadataProvider;
+import org.apache.hyracks.api.exceptions.HyracksDataException;
 
 public class AdmToBytesTypeComputer implements IResultTypeComputer {
     private static final long serialVersionUID = 1L;
 
     public static final AdmToBytesTypeComputer INSTANCE = new AdmToBytesTypeComputer();
 
+    private ARecordType fieldRecordType;
+
     private AdmToBytesTypeComputer() {
+        String arfName[] = new String[]{"tag", "length", "value"};
+        IAType arfByteArray[] = new IAType[]{ BuiltinType.ASTRING, BuiltinType.ASTRING, BuiltinType.ASTRING};
+        try {
+            fieldRecordType = new ARecordType("byteArrayfield", arfName, arfByteArray, true);
+        } catch (AsterixException | HyracksDataException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override public IAType computeType(ILogicalExpression expression, IVariableTypeEnvironment env,
@@ -89,10 +101,19 @@ public class AdmToBytesTypeComputer implements IResultTypeComputer {
 
         if (inputNumber == 0) { // We want to print out an array of bytes
             return new AOrderedListType(BuiltinType.AINT16, null);
+        } else {
+            IAType arg0Type = (IAType) env.getType(f.getArguments().get(0).getValue());
+            // Input type argument that can be simple or complex object
+            switch (arg0Type.getTypeTag()) {
+                case RECORD:
+                    return DefaultOpenFieldType.NESTED_OPEN_RECORD_TYPE;
+                case UNORDEREDLIST:
+                case ORDEREDLIST:
+                    return DefaultOpenFieldType.NESTED_OPEN_AORDERED_LIST_TYPE;
+                default:
+                    return fieldRecordType;
+            }
         }
-
-        // Input type argument that can be simple or complex object
-        return DefaultOpenFieldType.NESTED_OPEN_RECORD_TYPE;
     }
 
     private long getNumberValue (ConstantExpression expr) throws AlgebricksException {

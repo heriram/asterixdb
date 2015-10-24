@@ -29,6 +29,7 @@ import org.apache.asterix.om.base.ANull;
 import org.apache.asterix.om.base.AOrderedList;
 import org.apache.asterix.om.base.IAObject;
 import org.apache.asterix.om.functions.AsterixBuiltinFunctions;
+import org.apache.asterix.om.pointables.AListVisitablePointable;
 import org.apache.asterix.om.pointables.ARecordVisitablePointable;
 import org.apache.asterix.om.pointables.PointableAllocator;
 import org.apache.asterix.om.pointables.base.IVisitablePointable;
@@ -38,7 +39,8 @@ import org.apache.asterix.om.types.ATypeTag;
 import org.apache.asterix.om.types.BuiltinType;
 import org.apache.asterix.om.types.EnumDeserializer;
 import org.apache.asterix.om.types.IAType;
-import org.apache.asterix.runtime.evaluators.visitors.PrintAdmBytesVisitor;
+import org.apache.asterix.runtime.evaluators.visitors.adm.PrintAdmBytesHelper;
+import org.apache.asterix.runtime.evaluators.visitors.adm.PrintAdmBytesVisitor;
 import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
 import org.apache.hyracks.algebricks.common.utils.Triple;
 import org.apache.hyracks.algebricks.runtime.base.ICopyEvaluator;
@@ -75,6 +77,9 @@ public class AdmToBytesFactory implements ICopyEvaluatorFactory {
     private static final byte SER_INT_TYPE_TAG = ATypeTag.INT64.serialize();
     private static final byte SER_STRING_TYPE_TAG = ATypeTag.STRING.serialize();
 
+    //private final PrintAdmBytesHelper printHelper = PrintAdmBytesHelper.getInstance();
+
+
     public AdmToBytesFactory(ICopyEvaluatorFactory recordEvalFactory, ICopyEvaluatorFactory integerEvalFactory,
             IAType inputArgType, IAType outputType) {
         this.recordEvalFactory = recordEvalFactory;
@@ -103,10 +108,6 @@ public class AdmToBytesFactory implements ICopyEvaluatorFactory {
         final ByteArrayAccessibleOutputStream outputStream = new ByteArrayAccessibleOutputStream();
         final DataInputStream dis = new DataInputStream(
                 new ByteArrayInputStream(outputStream.getByteArray()));
-
-        final ArrayBackedValueStorage tempBuffer = new ArrayBackedValueStorage();
-
-        final PrintAdmBytesHelper printHelper = PrintAdmBytesHelper.getInstance();
 
         return new ICopyEvaluator() {
             private DataOutput out = output.getDataOutput();
@@ -151,14 +152,12 @@ public class AdmToBytesFactory implements ICopyEvaluatorFactory {
                             + ")");
                 }
 
-
-
-
                 // Get the serialized values from an input
                 vp0.set(outInput0);
 
-                ATypeTag typeTag1 = EnumDeserializer.ATYPETAGDESERIALIZER.deserialize(inputBytes1[0]);
+                visitor.resetPrintHelper();
 
+                ATypeTag typeTag1 = EnumDeserializer.ATYPETAGDESERIALIZER.deserialize(inputBytes1[0]);
                 try {
                     // Get the level
                     long level = getLevel(outInput1, typeTag1);
@@ -166,15 +165,34 @@ public class AdmToBytesFactory implements ICopyEvaluatorFactory {
                     // Return only an array of raw byte
                     if (level == 0) {
                         printRawBytes(vp0);
+                    } else if (level == 1){
+                        // only one level
+                        PrintAdmBytesHelper printHelper = visitor.getPrintHelper();
+                        printHelper.printAnnotatedBytes(vp0, out);
                     } else {
-
-                        RecordBuilder recBuilder = (RecordBuilder) builder;
-                        recBuilder.reset((ARecordType) outputType);
-                        Triple<IVisitablePointable, RecordBuilder, Long> arg = new Triple<IVisitablePointable, RecordBuilder, Long>(
-                                null, recBuilder, 1L);
-                        visitor.setMaxLevel(level);
-                        vp0.accept(visitor, arg);
-                        arg.second.write(out, true);
+                        Triple<ATypeTag, Object, Long> arg;
+                        switch (inputArgType.getTypeTag()) {
+                            case RECORD:
+                                RecordBuilder recBuilder = (RecordBuilder) builder;
+                                recBuilder.reset((ARecordType) outputType);
+                                arg = new Triple<ATypeTag, Object, Long>(inputArgType.getTypeTag(), recBuilder, 1L);
+                                visitor.setMaxLevel(level);
+                                ((ARecordVisitablePointable)vp0).accept(visitor, arg);
+                                ((RecordBuilder)arg.second).write(out, true);
+                                break;
+                            case ORDEREDLIST:
+                            case UNORDEREDLIST:
+                                OrderedListBuilder listBuilder = (OrderedListBuilder) builder;
+                                listBuilder.reset((AOrderedListType)outputType);
+                                arg = new Triple<ATypeTag, Object, Long>(inputArgType.getTypeTag(), listBuilder, 1L);
+                                visitor.setMaxLevel(level);
+                                ((AListVisitablePointable)vp0).accept(visitor, arg);
+                                ((OrderedListBuilder)arg.second).write(out, true);
+                                break;
+                            default: // only one level
+                                PrintAdmBytesHelper printHelper = visitor.getPrintHelper();
+                                printHelper.printAnnotatedBytes(vp0, out);
+                        }
                     }
                 } catch (HyracksDataException e) {
                     throw new AlgebricksException("Unable to display serilized value of " +
@@ -211,8 +229,8 @@ public class AdmToBytesFactory implements ICopyEvaluatorFactory {
 
 
             private void printRawBytes(IValueReference vr) throws IOException {
-                String byteArrayString = printHelper.byteArrayToString(vr.getByteArray(),
-                        vr.getStartOffset(), vr.getLength());
+                //String byteArrayString = printHelper.byteArrayToString(vr.getByteArray(),
+                //        vr.getStartOffset(), vr.getLength());
 
                 ArrayList<IAObject> byteList = new ArrayList<>();
                 byte[] bytes = vr.getByteArray();

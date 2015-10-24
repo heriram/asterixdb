@@ -55,8 +55,8 @@ import java.io.IOException;
 
 public class PointableUtils {
 
-    static final ByteArrayAccessibleOutputStream outputStream = new ByteArrayAccessibleOutputStream();
-    static final DataInputStream dis = new DataInputStream(
+    private final ByteArrayAccessibleOutputStream outputStream = new ByteArrayAccessibleOutputStream();
+    private final DataInputStream dis = new DataInputStream(
             new ByteArrayInputStream(outputStream.getByteArray()));
 
     private static final byte SER_NULL_TYPE_TAG = ATypeTag.NULL.serialize();
@@ -180,5 +180,9 @@ public class PointableUtils {
             throw new AlgebricksException("Could not serialize " + str);
         }
         fnp.set(vs);
+    }
+
+    public static boolean isAList(ATypeTag typeTag) {
+        return (typeTag == ATypeTag.UNORDEREDLIST || typeTag == ATypeTag.ORDEREDLIST);
     }
 }
