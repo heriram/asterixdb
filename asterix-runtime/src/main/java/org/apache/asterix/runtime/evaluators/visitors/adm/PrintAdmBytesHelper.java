@@ -23,11 +23,11 @@ import org.apache.asterix.builders.IARecordBuilder;
 import org.apache.asterix.builders.IAsterixListBuilder;
 import org.apache.asterix.builders.ListBuilderFactory;
 import org.apache.asterix.builders.OrderedListBuilder;
-import org.apache.asterix.builders.RecordBuilder;
 import org.apache.asterix.builders.RecordBuilderFactory;
 import org.apache.asterix.common.exceptions.AsterixException;
-import org.apache.asterix.dataflow.data.nontagged.serde.AStringSerializerDeserializer;
-import org.apache.asterix.om.base.AMutableString;
+import org.apache.asterix.formats.nontagged.AqlSerializerDeserializerProvider;
+import org.apache.asterix.om.base.AString;
+import org.apache.asterix.om.pointables.PointableAllocator;
 import org.apache.asterix.om.pointables.base.IVisitablePointable;
 import org.apache.asterix.om.pointables.nonvisitor.AListPointable;
 import org.apache.asterix.om.pointables.nonvisitor.ARecordPointable;
@@ -38,10 +38,12 @@ import org.apache.asterix.om.types.EnumDeserializer;
 import org.apache.asterix.om.types.IAType;
 import org.apache.asterix.om.util.container.IObjectPool;
 import org.apache.asterix.om.util.container.ListObjectPool;
+import org.apache.asterix.runtime.evaluators.functions.PointableUtils;
+import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
+import org.apache.hyracks.api.dataflow.value.ISerializerDeserializer;
 import org.apache.hyracks.api.exceptions.HyracksDataException;
 import org.apache.hyracks.data.std.api.IMutableValueStorage;
 import org.apache.hyracks.data.std.api.IPointable;
-import org.apache.hyracks.data.std.api.IValueReference;
 import org.apache.hyracks.data.std.util.ArrayBackedValueStorage;
 
 import java.io.DataOutput;
@@ -59,38 +61,47 @@ public class PrintAdmBytesHelper {
     private IObjectPool<IPointable, ATypeTag> listPointablePool = new ListObjectPool<IPointable, ATypeTag>(
             AListPointable.ALLOCATOR);
 
+    private final static ISerializerDeserializer<AString> stringSerde = AqlSerializerDeserializerProvider.INSTANCE
+            .getSerializerDeserializer(BuiltinType.ASTRING);
+
     public static PrintAdmBytesHelper getInstance() {
         return new PrintAdmBytesHelper();
     }
 
-    private AMutableString valueString = new AMutableString("");
-    private final RecordBuilder recordBuilder = new RecordBuilder();
-    private ARecordType fieldRecordType;
+    private final PointableAllocator pa = new PointableAllocator();
+    private final ArrayBackedValueStorage tempBuffer = new ArrayBackedValueStorage();
 
     private final int TAG_ID=0, LENGTH_ID=1, VALUE_ID=2;
-
-
-    private PrintAdmBytesHelper(){
-        String arfName[] = new String[]{"tag", "length", "value"};
-        IAType arfByteArray[] = new IAType[]{ BuiltinType.ASTRING, BuiltinType.ASTRING, BuiltinType.ASTRING};
+    public static final String PRINT_FIELD_NAMES[] = {"tag", "length", "value"};
+    public static final IAType PRINT_BYTE_ARRAY[] = { BuiltinType.ASTRING, BuiltinType.ASTRING, BuiltinType.ASTRING};
+    public static ARecordType fieldRecordType;
+    static {
         try {
-            fieldRecordType = new ARecordType("byteArrayfield", arfName, arfByteArray, true);
-        } catch (AsterixException | HyracksDataException e) {
+            fieldRecordType = new ARecordType("byteArrayfield", PRINT_FIELD_NAMES, PRINT_BYTE_ARRAY, true);
+        } catch (AsterixException e) {
+            e.printStackTrace();
+        } catch (HyracksDataException e) {
             e.printStackTrace();
         }
+    }
+
+    private PrintAdmBytesHelper(){
     }
 
     public void reset() {
         abvsBuilderPool.reset();
     }
 
-    public String byteArrayToString(byte bytes[], int offset, int length) {
+    public String byteArrayToString(byte bytes[], int offset, int length, boolean unsigned) {
         StringBuilder sb = new StringBuilder("[");
-        sb.append(bytes[offset] & 0xff);
+
+        int b = unsigned?(bytes[offset] & 0xff):bytes[offset];
+        sb.append(b);
         int end = offset + length;
         for (int i=offset+1; i<end; i++) {
             sb.append(", ");
-            sb.append(bytes[i] & 0xff);
+            b = unsigned?(bytes[i] & 0xff):bytes[i];
+            sb.append(b);
 
         }
         sb.append(']');
@@ -102,60 +113,60 @@ public class PrintAdmBytesHelper {
         return fieldRecordType;
     }
 
-    public void printAnnotatedBytes(IVisitablePointable vp, DataOutput out) throws IOException, AsterixException {
+    /**
+     * Print annotated byte array as a record: {"tag":"[13]", "length": "[,...,]", "value":"[,..,]" }
+     *
+     * @param vp
+     * @param out
+     * @throws IOException
+     * @throws AsterixException
+     * @throws AlgebricksException
+     */
+    public void printAnnotatedBytes(IVisitablePointable vp, DataOutput out)
+            throws IOException, AsterixException {
         byte[] bytes = vp.getByteArray();
         int startOffset = vp.getStartOffset();
         int valueStartOffset = startOffset + getValueOffset(bytes[startOffset]);
         int len = vp.getLength() - valueStartOffset + startOffset; // value length
 
+        IARecordBuilder recordBuilder = getRecordBuilder();
         recordBuilder.init();
         recordBuilder.reset(fieldRecordType);
-        recordBuilder.addField(TAG_ID, byteArrayToStringPointable(new byte[] { bytes[startOffset] }, 0, 1));
 
-        IValueReference lengthVr = extractLengthString(bytes, startOffset+1, valueStartOffset);
-        if (lengthVr != null)
-            recordBuilder.addField(LENGTH_ID, lengthVr);
-        recordBuilder.addField(VALUE_ID, byteArrayToStringPointable(bytes, valueStartOffset, len));
+        try {
+            IVisitablePointable idFieldValue = pa.allocateFieldValue(BuiltinType.ASTRING);
 
-        recordBuilder.write(out, true);
-    }
+            byteArrayToStringPointable(new byte[] { bytes[startOffset] }, 0, 1, idFieldValue);
 
-    private IValueReference byteArrayToStringPointable(byte[] bytes, int offset, int length) throws HyracksDataException {
-        //AString valueString = new AString(byteArrayToString(bytes, offset, length));
-        valueString.setValue(byteArrayToString(bytes, offset, length));
-        ArrayBackedValueStorage tempBuffer = getTempBuffer();
-        tempBuffer.reset();
-        AStringSerializerDeserializer.INSTANCE.serialize(valueString, tempBuffer.getDataOutput());
+            recordBuilder.addField(TAG_ID, idFieldValue);
 
-        return tempBuffer;
-    }
+            if (valueStartOffset > 1) {
+                IVisitablePointable lenFieldValue = pa.allocateFieldValue(BuiltinType.ASTRING);
+                int vlen = valueStartOffset - startOffset - 1;
+                byteArrayToStringPointable(bytes, startOffset + 1, vlen, lenFieldValue);
+                recordBuilder.addField(LENGTH_ID, lenFieldValue);
+            }
 
-   /* private IValueReference getByteArrayAsStringPointable(byte byteArray[], int offset, int length) throws IOException {
-        fieldListBuilder.reset((AbstractCollectionType) BYTE_ARRAY_TYPE);
-        AMutableInt16 int16 = new AMutableInt16((short)0);
+            IVisitablePointable valueFieldValue = pa.allocateFieldValue(BuiltinType.ASTRING);
+            byteArrayToStringPointable(bytes, valueStartOffset, len, valueFieldValue);
+            recordBuilder.addField(VALUE_ID, valueFieldValue);
 
-        ArrayBackedValueStorage tempBuffer = printHelper.getTempBuffer();
-        for(int i=offset; i<length; i++) {
-            tempBuffer.reset();
-            int16.setValue((short)byteArray[i]);
-            AInt16SerializerDeserializer.INSTANCE.serialize(int16, tempBuffer.getDataOutput());
-            fieldListBuilder.addItem(tempBuffer);
+            recordBuilder.write(out, true);
+
+        } catch (AlgebricksException e) {
+            new AsterixException("Error generating annotated bytes");
         }
-        tempBuffer.reset();
-        fieldListBuilder.write(tempBuffer.getDataOutput(), true);
-        return tempBuffer;
-    }*/
-
-
-    private IValueReference extractLengthString(byte[] vpBytes, int offset, int valueOffset)
-            throws HyracksDataException {
-        if (valueOffset>1) {
-            return byteArrayToStringPointable(vpBytes, offset, valueOffset - offset);
-        }
-        return null;
     }
+
+    private void byteArrayToStringPointable(byte bytes[], int offset, int length, IVisitablePointable vp)
+            throws HyracksDataException, AlgebricksException {
+        //ArrayBackedValueStorage tempBuffer = getTempBuffer();
+        tempBuffer.reset();
+        PointableUtils.serializeString(byteArrayToString(bytes, offset, length, false), tempBuffer, vp);
+    }
+
     // Get the relative value offset
-    private int getValueOffset(byte typeByte) {
+    public static int getValueOffset(byte typeByte) {
         int length=0;
         switch (EnumDeserializer.ATYPETAGDESERIALIZER.deserialize(typeByte)) {
             case STRING:

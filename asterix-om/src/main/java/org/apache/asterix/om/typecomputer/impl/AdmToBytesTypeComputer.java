@@ -46,22 +46,28 @@ public class AdmToBytesTypeComputer implements IResultTypeComputer {
 
     public static final AdmToBytesTypeComputer INSTANCE = new AdmToBytesTypeComputer();
 
-    private ARecordType fieldRecordType;
-
-    private AdmToBytesTypeComputer() {
-        String arfName[] = new String[]{"tag", "length", "value"};
-        IAType arfByteArray[] = new IAType[]{ BuiltinType.ASTRING, BuiltinType.ASTRING, BuiltinType.ASTRING};
+    public static final String PRINT_FIELD_NAMES[] = {"tag", "length", "value"};
+    public static final IAType PRINT_BYTE_ARRAY[] = { BuiltinType.ASTRING, BuiltinType.ASTRING, BuiltinType.ASTRING};
+    public static ARecordType fieldRecordType;
+    static {
         try {
-            fieldRecordType = new ARecordType("byteArrayfield", arfName, arfByteArray, true);
-        } catch (AsterixException | HyracksDataException e) {
+            fieldRecordType = new ARecordType("byteArrayfield", PRINT_FIELD_NAMES, PRINT_BYTE_ARRAY, true);
+        } catch (AsterixException e) {
+            e.printStackTrace();
+        } catch (HyracksDataException e) {
             e.printStackTrace();
         }
+    }
+
+
+    private AdmToBytesTypeComputer() {
     }
 
     @Override public IAType computeType(ILogicalExpression expression, IVariableTypeEnvironment env,
             IMetadataProvider<?, ?> metadataProvider) throws AlgebricksException {
 
         AbstractFunctionCallExpression f = (AbstractFunctionCallExpression) expression;
+        IAType arg0Type = (IAType) env.getType(f.getArguments().get(0).getValue());
 
         // Check Input argument specifying the level
         long inputNumber = 0L;
@@ -101,8 +107,9 @@ public class AdmToBytesTypeComputer implements IResultTypeComputer {
 
         if (inputNumber == 0) { // We want to print out an array of bytes
             return new AOrderedListType(BuiltinType.AINT16, null);
+        } else if (inputNumber == 1) {
+            return DefaultOpenFieldType.NESTED_OPEN_RECORD_TYPE; //fieldRecordType;
         } else {
-            IAType arg0Type = (IAType) env.getType(f.getArguments().get(0).getValue());
             // Input type argument that can be simple or complex object
             switch (arg0Type.getTypeTag()) {
                 case RECORD:

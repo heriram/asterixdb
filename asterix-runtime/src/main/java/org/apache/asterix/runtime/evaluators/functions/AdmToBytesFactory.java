@@ -27,6 +27,7 @@ import org.apache.asterix.formats.nontagged.AqlSerializerDeserializerProvider;
 import org.apache.asterix.om.base.AInt16;
 import org.apache.asterix.om.base.ANull;
 import org.apache.asterix.om.base.AOrderedList;
+import org.apache.asterix.om.base.AString;
 import org.apache.asterix.om.base.IAObject;
 import org.apache.asterix.om.functions.AsterixBuiltinFunctions;
 import org.apache.asterix.om.pointables.AListVisitablePointable;
@@ -73,11 +74,18 @@ public class AdmToBytesFactory implements ICopyEvaluatorFactory {
     private IAType outputType;
     private IAType inputArgType;
 
-    private final byte SER_NULL_TYPE_TAG = ATypeTag.NULL.serialize();
+    private static final byte SER_NULL_TYPE_TAG = ATypeTag.NULL.serialize();
     private static final byte SER_INT_TYPE_TAG = ATypeTag.INT64.serialize();
     private static final byte SER_STRING_TYPE_TAG = ATypeTag.STRING.serialize();
 
-    //private final PrintAdmBytesHelper printHelper = PrintAdmBytesHelper.getInstance();
+    private final static ISerializerDeserializer<AString> stringSerde = AqlSerializerDeserializerProvider.INSTANCE
+            .getSerializerDeserializer(BuiltinType.ASTRING);
+
+    private final static AString tagName = new AString("tag");
+    private final static AString lengthName = new AString("length");
+    private final static AString valueName = new AString("value");
+
+    private PrintAdmBytesHelper printHelper;
 
 
     public AdmToBytesFactory(ICopyEvaluatorFactory recordEvalFactory, ICopyEvaluatorFactory integerEvalFactory,
@@ -111,7 +119,6 @@ public class AdmToBytesFactory implements ICopyEvaluatorFactory {
 
         return new ICopyEvaluator() {
             private DataOutput out = output.getDataOutput();
-            private ByteArrayAccessibleOutputStream subRecordTmpStream = new ByteArrayAccessibleOutputStream();
 
             private ArrayBackedValueStorage outInput0 = new ArrayBackedValueStorage();
             private ICopyEvaluator eval0 = recordEvalFactory.createEvaluator(outInput0);
@@ -156,6 +163,7 @@ public class AdmToBytesFactory implements ICopyEvaluatorFactory {
                 vp0.set(outInput0);
 
                 visitor.resetPrintHelper();
+                printHelper = visitor.getPrintHelper();
 
                 ATypeTag typeTag1 = EnumDeserializer.ATYPETAGDESERIALIZER.deserialize(inputBytes1[0]);
                 try {
@@ -167,13 +175,15 @@ public class AdmToBytesFactory implements ICopyEvaluatorFactory {
                         printRawBytes(vp0);
                     } else if (level == 1){
                         // only one level
-                        PrintAdmBytesHelper printHelper = visitor.getPrintHelper();
-                        printHelper.printAnnotatedBytes(vp0, out);
+                        /*PrintAdmBytesHelper printHelper = visitor.getPrintHelper();
+                        printHelper.printAnnotatedBytes(vp0, out);*/
+                        printAnnotatedBytes(vp0);
                     } else {
                         Triple<ATypeTag, Object, Long> arg;
                         switch (inputArgType.getTypeTag()) {
                             case RECORD:
                                 RecordBuilder recBuilder = (RecordBuilder) builder;
+                                recBuilder.init();
                                 recBuilder.reset((ARecordType) outputType);
                                 arg = new Triple<ATypeTag, Object, Long>(inputArgType.getTypeTag(), recBuilder, 1L);
                                 visitor.setMaxLevel(level);
@@ -209,8 +219,8 @@ public class AdmToBytesFactory implements ICopyEvaluatorFactory {
             private long getLevel(IValueReference valueReference, ATypeTag typeTag) throws IOException {
                 long level = 0;
                 outputStream.reset();
-                outputStream.write(valueReference.getByteArray(),
-                        valueReference.getStartOffset() + 1, valueReference.getLength());
+                outputStream.write(valueReference.getByteArray(), valueReference.getStartOffset() + 1,
+                        valueReference.getLength());
                 dis.reset();
 
                 if (typeTag == ATypeTag.STRING) {
@@ -229,9 +239,6 @@ public class AdmToBytesFactory implements ICopyEvaluatorFactory {
 
 
             private void printRawBytes(IValueReference vr) throws IOException {
-                //String byteArrayString = printHelper.byteArrayToString(vr.getByteArray(),
-                //        vr.getStartOffset(), vr.getLength());
-
                 ArrayList<IAObject> byteList = new ArrayList<>();
                 byte[] bytes = vr.getByteArray();
                 for(int i=vr.getStartOffset(), j=0; i<vr.getLength(); i++, j++) {
@@ -244,6 +251,51 @@ public class AdmToBytesFactory implements ICopyEvaluatorFactory {
 
                 out.write(ATypeTag.ORDEREDLIST.serialize());
                 listSerde.serialize(new AOrderedList((AOrderedListType) outputType, byteList), out);
+            }
+
+            private void printAnnotatedBytes(IValueReference vr) throws IOException, AsterixException {
+                byte[] bytes = vr.getByteArray();
+                int offset = vr.getStartOffset();
+                //int length = vr.getLength(); // total byte array length
+                int valueOffset = offset + PrintAdmBytesHelper.getValueOffset(bytes[offset]);
+                int valueLength = vr.getLength() - valueOffset + offset; // value length
+                int lengthBytesLength = valueOffset - offset - 1; // value length
+
+                AString tagByteValue = new AString(printHelper.byteArrayToString(bytes, 0, 1, false));
+                AString lengthBytesValue = new AString(printHelper.byteArrayToString(bytes, offset+1,
+                        lengthBytesLength, false));
+                AString valueBytesValue = new AString(printHelper.byteArrayToString(bytes, valueOffset,
+                        valueLength, false));
+
+                RecordBuilder recordBuilder = new RecordBuilder();
+                recordBuilder.init();
+                recordBuilder.reset((ARecordType) outputType);
+                addField(tagName, tagByteValue, recordBuilder);
+                addField(lengthName, lengthBytesValue, recordBuilder);
+                addField(valueName, valueBytesValue, recordBuilder);
+
+                recordBuilder.write(out, true);
+
+
+            }
+
+            private void addField(AString fname, AString fvalue, RecordBuilder recordBuilder)
+                    throws HyracksDataException, AsterixException {
+                ArrayBackedValueStorage fieldAbvs = new ArrayBackedValueStorage();
+                ArrayBackedValueStorage valueAbvs = new ArrayBackedValueStorage();
+                IVisitablePointable fieldPointableValue = pa.allocateFieldValue(BuiltinType.ASTRING);
+                IVisitablePointable valuePointableValue = pa.allocateFieldValue(BuiltinType.ASTRING);
+
+                fieldAbvs.reset();
+                valueAbvs.reset();
+                stringSerde.serialize(fname, fieldAbvs.getDataOutput());
+                stringSerde.serialize(fvalue, valueAbvs.getDataOutput());
+
+                fieldPointableValue.set(fieldAbvs);
+                valuePointableValue.set(valueAbvs);
+
+                recordBuilder.addField(fieldPointableValue, valuePointableValue);
+
             }
 
         };
