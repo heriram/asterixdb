@@ -21,109 +21,99 @@ package org.apache.asterix.runtime.evaluators.visitors.adm;
 
 import org.apache.asterix.builders.RecordBuilder;
 import org.apache.asterix.common.exceptions.AsterixException;
-import org.apache.asterix.om.pointables.AFlatValuePointable;
-import org.apache.asterix.om.pointables.AListVisitablePointable;
+import org.apache.asterix.dataflow.data.nontagged.printers.adm.ARecordPrinterFactory;
 import org.apache.asterix.om.pointables.ARecordVisitablePointable;
-import org.apache.asterix.om.pointables.base.DefaultOpenFieldType;
+import org.apache.asterix.om.pointables.PointableAllocator;
 import org.apache.asterix.om.pointables.base.IVisitablePointable;
 import org.apache.asterix.om.types.ARecordType;
 import org.apache.asterix.om.types.ATypeTag;
+import org.apache.asterix.om.types.IAType;
 import org.apache.asterix.runtime.evaluators.functions.PointableUtils;
+import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
 import org.apache.hyracks.algebricks.common.utils.Triple;
-import org.apache.hyracks.data.std.api.IValueReference;
+import org.apache.hyracks.algebricks.data.IPrinter;
 import org.apache.hyracks.data.std.util.ArrayBackedValueStorage;
+import org.apache.hyracks.data.std.util.ByteArrayAccessibleOutputStream;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.util.List;
 
 class PrintBytesRecordAccessor {
-    private Triple<ATypeTag, Object, Long> arg;
+    private final ByteArrayAccessibleOutputStream outputBos = new ByteArrayAccessibleOutputStream();
+    private final DataOutputStream outputDos = new DataOutputStream(outputBos);
+    private final PrintStream ps = new PrintStream(outputBos);
+
+    private long maxLevel;
+
+    // pointable allocator
+    private final PointableAllocator allocator = new PointableAllocator();
+    private final IVisitablePointable fieldTempReference = allocator.allocateEmpty();
+    private final Triple<IVisitablePointable, IAType, Long> nestedVisitorArg =
+            new Triple<IVisitablePointable, IAType, Long>(fieldTempReference, null, 0L);
+
     private PrintAdmBytesHelper printHelper;
 
     public PrintBytesRecordAccessor() {
     }
 
-    public IValueReference accessRecord(ARecordVisitablePointable accessor, PrintAdmBytesVisitor visitor, long maxLevel,
-            Triple<ATypeTag, Object, Long> arg)
-            throws AsterixException, IOException {
-
-        this.arg = arg;
+    public void accessRecord(ARecordVisitablePointable accessor, PrintAdmBytesVisitor visitor, long maxLevel,
+            ARecordType requiredType, long level, IVisitablePointable resultAccessor)
+            throws AsterixException, IOException, AlgebricksException {
         printHelper = visitor.getPrintHelper();
+        this.maxLevel = maxLevel;
+        outputBos.reset();
 
+        ARecordPrinterFactory recordPrinter = new ARecordPrinterFactory(requiredType);
+        IPrinter rp = recordPrinter.createPrinter();
 
-        List<IVisitablePointable> fieldNames = accessor.getFieldNames();
-        List<IVisitablePointable> fieldValues = accessor.getFieldValues();
-        List<IVisitablePointable> fieldTypeTags = accessor.getFieldTypeTags();
+        if (level<=1 || level==maxLevel) {
+            ArrayBackedValueStorage tabvs = new ArrayBackedValueStorage();
+            tabvs.reset();
 
-        RecordBuilder recordBuilder = (RecordBuilder)arg.second;
-        if(PointableUtils.isAList(arg.first)) {
-            recordBuilder = new RecordBuilder();
-            ARecordType recordType = accessor.getInputRecordType();
-            if (recordType==null)
-                recordType = DefaultOpenFieldType.NESTED_OPEN_RECORD_TYPE;
-            recordBuilder.reset(recordType);
-        }
-
-
-        for (int i = 0; i < fieldNames.size(); i++) {
-            IValueReference printedValue = printFieldValue(visitor, fieldNames, fieldValues, fieldTypeTags, i, maxLevel);
-            String fieldName = PointableUtils.INSTANCE.getFieldName(fieldNames.get(i));
-            int pos = recordBuilder.getFieldId(fieldName);
-            if (pos>-1) {
-                recordBuilder.addField(pos, printedValue);
-            } else {
-                recordBuilder.addField(fieldNames.get(i), printedValue);
-            }
-        }
-
-        if(PointableUtils.isAList(arg.first)) {
-            ArrayBackedValueStorage tempBuffer = printHelper.getTempBuffer();
-            tempBuffer.reset();
-            recordBuilder.write(tempBuffer.getDataOutput(), true);
-            return tempBuffer;
+            printHelper.printAnnotatedBytes(accessor, tabvs.getDataOutput());
+            rp.print(tabvs.getByteArray(),tabvs.getStartOffset(), tabvs.getLength(), ps);
+            String recprint = outputBos.toString("UTF8");
         } else {
-            // No return needed  (arg.second)
-            return null;
+
+            List<IVisitablePointable> fieldNames = accessor.getFieldNames();
+            List<IVisitablePointable> fieldTypes = accessor.getFieldTypeTags();
+            List<IVisitablePointable> fieldValues = accessor.getFieldValues();
+
+            RecordBuilder recordBuilder = new RecordBuilder(); //printHelper.getRecordBuilder();
+            recordBuilder.init();
+            recordBuilder.reset(requiredType);
+
+            for (int i = 0; i < fieldNames.size(); i++) {
+                IVisitablePointable fieldValue = fieldValues.get(i);
+                IVisitablePointable fieldName = fieldNames.get(i);
+                String fname = PointableUtils.INSTANCE.getFieldName(fieldName);
+
+                if (PointableUtils.isType(ATypeTag.RECORD, fieldTypes.get(i))) {
+                    nestedVisitorArg.second = printHelper
+                            .loadRequireType(((ARecordVisitablePointable) fieldValue).getInputRecordType(), level + 1,
+                                    maxLevel);
+                }
+                nestedVisitorArg.third = level + 1;
+                fieldValue.accept(visitor, nestedVisitorArg);
+                fieldTempReference.set(nestedVisitorArg.first);
+
+                int pos = recordBuilder.getFieldId(fname);
+                if (pos > -1) {
+                    recordBuilder.addField(pos, fieldTempReference);
+                } else {
+                    recordBuilder.addField(fieldNames.get(i), fieldTempReference);
+                }
+            }
+            //ArrayBackedValueStorage tempBuffer = printHelper.getTempBuffer();
+            //tempBuffer.reset();
+            recordBuilder.write(outputDos, true);
+            rp.print(outputBos.getByteArray(), 0, outputBos.size(), ps);
+            String recprint = outputBos.toString("UTF8");
         }
 
-
-    }
-
-    private IValueReference printFieldValue(PrintAdmBytesVisitor visitor, List<IVisitablePointable> fieldNames,
-            List<IVisitablePointable> fieldValues, List<IVisitablePointable> fieldTags, int i, long maxLevel)
-            throws AsterixException, IOException {
-
-        IVisitablePointable value = fieldValues.get(i);
-        ATypeTag typeTag = PointableUtils.getTypeTag(fieldTags.get(i));
-        IValueReference printedValue = null;
-
-        switch (typeTag) {
-            case RECORD:
-                if (arg.third <= maxLevel) {
-                    printedValue = ((ARecordVisitablePointable) value).accept(visitor, arg);
-                    arg.third++; // Increase the current level
-                } else {
-                    printedValue = printHelper.getTempBuffer();
-                    ((ArrayBackedValueStorage) printedValue).reset();
-                    printHelper.printAnnotatedBytes(value, ((ArrayBackedValueStorage) printedValue).getDataOutput());
-                }
-                break;
-            case ORDEREDLIST:
-            case UNORDEREDLIST:
-                if (arg.third <= maxLevel) {
-                    printedValue = ((AListVisitablePointable) value).accept(visitor, arg);
-                    arg.third++; // Increase the current level
-                } else {
-                    printedValue = printHelper.getTempBuffer();
-                    ((ArrayBackedValueStorage) printedValue).reset();
-                    printHelper.printAnnotatedBytes(value, ((ArrayBackedValueStorage) printedValue).getDataOutput());
-                }
-                break;
-            default:
-                printedValue = ((AFlatValuePointable) value).accept(visitor, arg);
-        }
-
-        return printedValue;
+        resultAccessor.set(outputBos.getByteArray(), 0, outputBos.size());
     }
 
 }

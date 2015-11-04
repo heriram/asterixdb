@@ -19,8 +19,6 @@
 package org.apache.asterix.om.typecomputer.impl;
 
 import org.apache.asterix.common.exceptions.AsterixException;
-import org.apache.asterix.om.base.AInt16;
-import org.apache.asterix.om.base.AInt32;
 import org.apache.asterix.om.base.AInt64;
 import org.apache.asterix.om.base.AString;
 import org.apache.asterix.om.base.IAObject;
@@ -30,113 +28,148 @@ import org.apache.asterix.om.typecomputer.base.IResultTypeComputer;
 import org.apache.asterix.om.types.AOrderedListType;
 import org.apache.asterix.om.types.ARecordType;
 import org.apache.asterix.om.types.ATypeTag;
+import org.apache.asterix.om.types.AUnorderedListType;
+import org.apache.asterix.om.types.AbstractCollectionType;
 import org.apache.asterix.om.types.BuiltinType;
 import org.apache.asterix.om.types.IAType;
 import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
 import org.apache.hyracks.algebricks.core.algebra.base.ILogicalExpression;
 import org.apache.hyracks.algebricks.core.algebra.base.LogicalExpressionTag;
 import org.apache.hyracks.algebricks.core.algebra.expressions.AbstractFunctionCallExpression;
+import org.apache.hyracks.algebricks.core.algebra.expressions.AbstractLogicalExpression;
 import org.apache.hyracks.algebricks.core.algebra.expressions.ConstantExpression;
 import org.apache.hyracks.algebricks.core.algebra.expressions.IVariableTypeEnvironment;
 import org.apache.hyracks.algebricks.core.algebra.metadata.IMetadataProvider;
 import org.apache.hyracks.api.exceptions.HyracksDataException;
+import org.apache.hyracks.api.exceptions.HyracksException;
 
 public class AdmToBytesTypeComputer implements IResultTypeComputer {
     private static final long serialVersionUID = 1L;
 
     public static final AdmToBytesTypeComputer INSTANCE = new AdmToBytesTypeComputer();
 
-    public static final String PRINT_FIELD_NAMES[] = {"tag", "length", "value"};
-    public static final IAType PRINT_BYTE_ARRAY[] = { BuiltinType.ASTRING, BuiltinType.ASTRING, BuiltinType.ASTRING};
-    public static ARecordType fieldRecordType;
-    static {
-        try {
-            fieldRecordType = new ARecordType("byteArrayfield", PRINT_FIELD_NAMES, PRINT_BYTE_ARRAY, true);
-        } catch (AsterixException e) {
-            e.printStackTrace();
-        } catch (HyracksDataException e) {
-            e.printStackTrace();
-        }
-    }
-
+    private long maxLevel = 0;
 
     private AdmToBytesTypeComputer() {
     }
 
-    @Override public IAType computeType(ILogicalExpression expression, IVariableTypeEnvironment env,
+    @Override
+    public IAType computeType(ILogicalExpression expression, IVariableTypeEnvironment env,
             IMetadataProvider<?, ?> metadataProvider) throws AlgebricksException {
+        AbstractFunctionCallExpression funcExpr = (AbstractFunctionCallExpression) expression;
+        maxLevel = getLevel(env, funcExpr.getArguments().get(1).getValue());
+        IAType intputType = (IAType) env.getType((AbstractLogicalExpression)funcExpr.getArguments().get(0).getValue());
 
-        AbstractFunctionCallExpression f = (AbstractFunctionCallExpression) expression;
-        IAType arg0Type = (IAType) env.getType(f.getArguments().get(0).getValue());
-
-        // Check Input argument specifying the level
-        long inputNumber = 0L;
-        ILogicalExpression arg1Expr = f.getArguments().get(1).getValue();
-        if (arg1Expr.getExpressionTag()== LogicalExpressionTag.CONSTANT) {
-            IAType arg1Type = (IAType) env.getType(arg1Expr);
-            switch(arg1Type.getTypeTag()) {
-                case INT32:
-                case INT64:
-                case INT16:
-                    inputNumber = getNumberValue ((ConstantExpression) arg1Expr);
-                    if (inputNumber<0) { // Accepting only positive numbers
-                        throw new AlgebricksException("Invalid number. Expected argument is a number from 0 "
-                                + "to INF, where INF is infinity");
-                    }
-                    break;
-                case STRING:
-                    AString as = (AString) ((AsterixConstantValue) ((ConstantExpression) arg1Expr).getValue()).getObject();
-                    if (as.getStringValue().equals("INF")) { // Check if infinity
-                        inputNumber = Long.MAX_VALUE;
-                    } else { // We accept also numbers expressed as string
-                        String sv = as.getStringValue();
-                        for(int i=0;i<sv.length();i++)
-                        {
-                            if( !Character.isDigit(sv.charAt(i)) ) {
-                                throw new AlgebricksException("Invalid number. Expected argument is a number from 0 "
-                                        + "to INF, where INF is infinity");
-                            }
-                        }
-                        inputNumber = Long.parseLong(sv);
-                    }
-            }
-        } else {
-            throw new AlgebricksException("Invalid argument. Expected a number or INF (where INF is infinity), but got "
-                    + arg1Expr);
-        }
-
-        if (inputNumber == 0) { // We want to print out an array of bytes
+        if (maxLevel==0) { // Output type is an array of byte (raw byte dump
             return new AOrderedListType(BuiltinType.AINT16, null);
-        } else if (inputNumber == 1) {
-            return DefaultOpenFieldType.NESTED_OPEN_RECORD_TYPE; //fieldRecordType;
         } else {
-            // Input type argument that can be simple or complex object
-            switch (arg0Type.getTypeTag()) {
-                case RECORD:
-                    return DefaultOpenFieldType.NESTED_OPEN_RECORD_TYPE;
-                case UNORDEREDLIST:
-                case ORDEREDLIST:
-                    return DefaultOpenFieldType.NESTED_OPEN_AORDERED_LIST_TYPE;
-                default:
-                    return fieldRecordType;
+            if (intputType.getTypeTag().equals(ATypeTag.RECORD))
+                return getResultRecordType(intputType);
+            else {
+                return getAnnotatedBytesRecordType();
             }
         }
     }
 
-    private long getNumberValue (ConstantExpression expr) throws AlgebricksException {
-        IAObject aInteger = ((AsterixConstantValue) expr.getValue()).getObject();
-        ATypeTag tt = aInteger.getType().getTypeTag();
-        switch (tt) {
-            case INT16:
-                return ((AInt16)aInteger).getShortValue();
-            case INT32:
-                return ((AInt32)aInteger).getIntegerValue();
-            case INT64:
-                return ((AInt64)aInteger).getLongValue();
-            default:
-                throw new AlgebricksException("Invalid number. Expected argument is a number from 0 "
-                        + "to INF, where INF is infinity");
+
+    private IAType getResultRecordType(IAType type) throws AlgebricksException {
+        ARecordType inputRecordType = TypeComputerUtils.extractRecordType(type);
+        if (inputRecordType == null) {
+            return DefaultOpenFieldType.NESTED_OPEN_RECORD_TYPE;
+        }
+        return getNestedRecordFields(inputRecordType, 0);
+    }
+
+    private ARecordType getNestedRecordFields(ARecordType inputType, long level) throws AlgebricksException {
+        String fieldNames[] = inputType.getFieldNames();
+        IAType fieldTypes[] = inputType.getFieldTypes();
+
+        IAType[] newTypes = new IAType[fieldNames.length];
+        for (int i = 0; i < fieldTypes.length; i++) {
+            if (fieldTypes[i].getTypeTag() == ATypeTag.RECORD && (level>1 && level<maxLevel)) {
+                newTypes[i] = getNestedRecordFields((ARecordType) fieldTypes[i], level + 1);
+            } else {
+                newTypes[i] = getAnnotatedBytesRecordType();
+            }
+        }
+        try {
+            String typeName = "annotated(" + inputType.getTypeName() + ")";
+            return new ARecordType(typeName, fieldNames, newTypes, inputType.isOpen());
+        } catch (AsterixException | HyracksException e) {
+            throw new AlgebricksException(e);
         }
     }
 
+    private AbstractCollectionType getNestedList(IAType type)
+            throws AlgebricksException {
+        AbstractCollectionType inputListType = extractListType(type);
+        AbstractCollectionType resultListType;
+        IAType resultItemType;
+        ATypeTag inputItemType = inputListType.getItemType().getTypeTag();
+
+        // We have a complex object
+        if (inputItemType.isDerivedType() || inputListType == null) {
+            resultListType = DefaultOpenFieldType.NESTED_OPEN_AORDERED_LIST_TYPE;
+            if(type.getTypeTag() == ATypeTag.UNORDEREDLIST) {
+                resultListType = DefaultOpenFieldType.NESTED_OPEN_AUNORDERED_LIST_TYPE;
+            }
+            resultListType.setTypeName("annotated-bytes");
+        } else {
+            resultItemType = getAnnotatedBytesRecordType();
+            resultListType = new AOrderedListType(resultItemType, resultItemType.getTypeName());
+            if (type.getTypeTag()==ATypeTag.UNORDEREDLIST) {
+                resultListType = new AUnorderedListType(resultItemType, resultItemType.getTypeName());
+            }
+        }
+        return resultListType;
+    }
+
+
+    private ARecordType getAnnotatedBytesRecordType() throws AlgebricksException {
+        String fieldNames[] = {"tag", "length", "value"};
+        IAType fieldTypes[] = { BuiltinType.ASTRING, BuiltinType.ASTRING, BuiltinType.ASTRING};
+        try {
+            return new ARecordType("ByteArrayfields", fieldNames, fieldTypes, true);
+        } catch (HyracksDataException | AsterixException e) {
+            throw new AlgebricksException("Cannot create annotated record type instance.");
+        }
+    }
+
+    private static long getLevel(IVariableTypeEnvironment env, ILogicalExpression expr) throws AlgebricksException {
+        if (expr.getExpressionTag() != LogicalExpressionTag.CONSTANT)
+            throw new AlgebricksException("Expected a constant either an integer or a string (INF)"
+                    + " but got a " + expr.getExpressionTag());
+
+        IAType type1 = (IAType) env.getType(expr); // For max level
+        ConstantExpression constExpr = (ConstantExpression) expr;
+        IAObject value = ((AsterixConstantValue) constExpr.getValue()).getObject();
+
+        switch (type1.getTypeTag()) {
+            case INT64:
+                return ((AInt64)value).getLongValue();
+            case STRING:
+                String valStr = ((AString)value).getStringValue();
+                if (valStr.equals("INF")) { // Check if infinity
+                    return Long.MAX_VALUE;
+                } else { // We accept also numbers expressed as string
+                    for(int i=0;i<valStr.length();i++)
+                    {
+                        if( !Character.isDigit(valStr.charAt(i)) ) {
+                            throw new AlgebricksException("Invalid number. Expected argument is a number from 0 "
+                                    + "to INF, where INF is infinity");
+                        }
+                    }
+                    return Long.parseLong(valStr);
+                }
+            default:
+                throw new AlgebricksException("Invalid argument. Expected a number from 0 "
+                        + "to INF, where INF is infinity, but got " + type1);
+        }
+    }
+
+    public static AbstractCollectionType extractListType (IAType type) {
+        if(type.getTypeTag()==ATypeTag.UNORDEREDLIST)
+            return TypeComputerUtils.extractUnorderedListType(type);
+        else return TypeComputerUtils.extractOrderedListType(type);
+    }
 }

@@ -21,19 +21,15 @@ package org.apache.asterix.runtime.evaluators.functions;
 import org.apache.asterix.builders.OrderedListBuilder;
 import org.apache.asterix.builders.RecordBuilder;
 import org.apache.asterix.common.exceptions.AsterixException;
-import org.apache.asterix.dataflow.data.nontagged.serde.AInt64SerializerDeserializer;
-import org.apache.asterix.dataflow.data.nontagged.serde.AStringSerializerDeserializer;
 import org.apache.asterix.formats.nontagged.AqlSerializerDeserializerProvider;
 import org.apache.asterix.om.base.AInt16;
+import org.apache.asterix.om.base.AMutableInt16;
 import org.apache.asterix.om.base.ANull;
-import org.apache.asterix.om.base.AOrderedList;
-import org.apache.asterix.om.base.AString;
-import org.apache.asterix.om.base.IAObject;
 import org.apache.asterix.om.functions.AsterixBuiltinFunctions;
-import org.apache.asterix.om.pointables.AListVisitablePointable;
 import org.apache.asterix.om.pointables.ARecordVisitablePointable;
 import org.apache.asterix.om.pointables.PointableAllocator;
 import org.apache.asterix.om.pointables.base.IVisitablePointable;
+import org.apache.asterix.om.typecomputer.impl.AnnotatedBytesTypeComputer;
 import org.apache.asterix.om.types.AOrderedListType;
 import org.apache.asterix.om.types.ARecordType;
 import org.apache.asterix.om.types.ATypeTag;
@@ -58,7 +54,7 @@ import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.DataOutput;
 import java.io.IOException;
-import java.util.ArrayList;
+import java.util.List;
 
 /**
  *
@@ -69,66 +65,57 @@ public class AdmToBytesFactory implements ICopyEvaluatorFactory {
 
     private static final long serialVersionUID = 1L;
 
-    private ICopyEvaluatorFactory recordEvalFactory;
-    private ICopyEvaluatorFactory integerEvalFactory;
+    private ICopyEvaluatorFactory inputEvalFactory;
+    private ICopyEvaluatorFactory levelEvalFactory;
     private IAType outputType;
     private IAType inputArgType;
 
     private static final byte SER_NULL_TYPE_TAG = ATypeTag.NULL.serialize();
-    private static final byte SER_INT_TYPE_TAG = ATypeTag.INT64.serialize();
-    private static final byte SER_STRING_TYPE_TAG = ATypeTag.STRING.serialize();
 
-    private final static ISerializerDeserializer<AString> stringSerde = AqlSerializerDeserializerProvider.INSTANCE
-            .getSerializerDeserializer(BuiltinType.ASTRING);
-
-    private final static AString tagName = new AString("tag");
-    private final static AString lengthName = new AString("length");
-    private final static AString valueName = new AString("value");
-
-    private PrintAdmBytesHelper printHelper;
-
-
-    public AdmToBytesFactory(ICopyEvaluatorFactory recordEvalFactory, ICopyEvaluatorFactory integerEvalFactory,
+    public AdmToBytesFactory(ICopyEvaluatorFactory inputEvalFactory, ICopyEvaluatorFactory levelEvalFactory,
             IAType inputArgType, IAType outputType) {
-        this.recordEvalFactory = recordEvalFactory;
+        this.levelEvalFactory = levelEvalFactory;
+        this.inputEvalFactory = inputEvalFactory;
         this.outputType = outputType;
         this.inputArgType = inputArgType;
-        this.integerEvalFactory = integerEvalFactory;
     }
 
 
     @Override public ICopyEvaluator createEvaluator(final IDataOutputProvider output) throws AlgebricksException {
-        final PointableAllocator pa = new PointableAllocator();
-        final IVisitablePointable vp0;
-        switch (inputArgType.getTypeTag()) {
-            case RECORD:
-                vp0 = pa.allocateRecordValue(inputArgType);
-                break;
-            case ORDEREDLIST:
-            case UNORDEREDLIST:
-                vp0 = pa.allocateListValue(inputArgType);
-                break;
-            default:
-                vp0 = pa.allocateFieldValue(inputArgType);
+        final ARecordType requiredRecType;
+        try {
+            requiredRecType = new ARecordType(outputType.getTypeName(), ((ARecordType)outputType).getFieldNames(),
+                    ((ARecordType)outputType).getFieldTypes(),  ((ARecordType)outputType).isOpen());
+        } catch (AsterixException | HyracksDataException e) {
+            throw new IllegalStateException();
         }
-
 
         final ByteArrayAccessibleOutputStream outputStream = new ByteArrayAccessibleOutputStream();
         final DataInputStream dis = new DataInputStream(
                 new ByteArrayInputStream(outputStream.getByteArray()));
 
+        final AMutableInt16 byteIntValue = new AMutableInt16((short) 0);
+        final ISerializerDeserializer<AInt16> intSerde =
+                AqlSerializerDeserializerProvider.INSTANCE.getSerializerDeserializer(BuiltinType.AINT16);
+
         return new ICopyEvaluator() {
             private DataOutput out = output.getDataOutput();
 
-            private ArrayBackedValueStorage outInput0 = new ArrayBackedValueStorage();
-            private ICopyEvaluator eval0 = recordEvalFactory.createEvaluator(outInput0);
-            private ArrayBackedValueStorage outInput1 = new ArrayBackedValueStorage();
-            private ICopyEvaluator eval1 = integerEvalFactory.createEvaluator(outInput1);
+            private final PointableUtils pointableUtils = PointableUtils.INSTANCE;
+
+
+            private PointableAllocator pa = new PointableAllocator();
+            private final IVisitablePointable levelAccessor = pa.allocateEmpty();
+            private final IVisitablePointable inputAccessor = PointableUtils.allocatePointable(pa, inputArgType);
+            private final IVisitablePointable resultAccessor = pa.allocateEmpty();
+
+            private final ArrayBackedValueStorage outInput0 = new ArrayBackedValueStorage();
+            private final ICopyEvaluator eval0 = inputEvalFactory.createEvaluator(outInput0);
+            private final ArrayBackedValueStorage buffer = new ArrayBackedValueStorage();
+            private final ICopyEvaluator eval1 = levelEvalFactory.createEvaluator(buffer);
+
 
             private final PrintAdmBytesVisitor visitor = new PrintAdmBytesVisitor();
-
-            private Object builder = (outputType.getTypeTag()==ATypeTag.ORDEREDLIST)? new OrderedListBuilder():
-                    new RecordBuilder();
 
             @SuppressWarnings("unchecked")
             private final ISerializerDeserializer<ANull> nullSerde = AqlSerializerDeserializerProvider.INSTANCE
@@ -137,7 +124,7 @@ public class AdmToBytesFactory implements ICopyEvaluatorFactory {
             @Override public void evaluate(IFrameTupleReference tuple) throws AlgebricksException {
                 outInput0.reset();
                 eval0.evaluate(tuple);
-                outInput1.reset();
+                buffer.reset();
                 eval1.evaluate(tuple);
 
                 if (outInput0.getByteArray()[0] == SER_NULL_TYPE_TAG) {
@@ -147,157 +134,103 @@ public class AdmToBytesFactory implements ICopyEvaluatorFactory {
                         throw new AlgebricksException(e);
                     }
                 }
-
-                // Input arg type check
-                byte inputBytes1[] = outInput1.getByteArray();
-                if (inputBytes1[0] != SER_INT_TYPE_TAG && inputBytes1[0] != SER_STRING_TYPE_TAG) {
-                    throw new AlgebricksException(AsterixBuiltinFunctions.ADM_TO_BYTES.getName()
-                            + ": expects input type (ADM object, INT32|STRING) but got ("
-                            + EnumDeserializer.ATYPETAGDESERIALIZER.deserialize(outInput0.getByteArray()[0])
-                            + ", "
-                            + EnumDeserializer.ATYPETAGDESERIALIZER.deserialize(outInput1.getByteArray()[0])
-                            + ")");
-                }
-
                 // Get the serialized values from an input
-                vp0.set(outInput0);
-
+                inputAccessor.set(outInput0);
                 visitor.resetPrintHelper();
-                printHelper = visitor.getPrintHelper();
 
-                ATypeTag typeTag1 = EnumDeserializer.ATYPETAGDESERIALIZER.deserialize(inputBytes1[0]);
                 try {
                     // Get the level
-                    long level = getLevel(outInput1, typeTag1);
-
+                    long level = getMaxLevel();
                     // Return only an array of raw byte
                     if (level == 0) {
-                        printRawBytes(vp0);
-                    } else if (level == 1){
-                        // only one level
-                        /*PrintAdmBytesHelper printHelper = visitor.getPrintHelper();
-                        printHelper.printAnnotatedBytes(vp0, out);*/
-                        printAnnotatedBytes(vp0);
+                        printRawBytes(inputAccessor);
                     } else {
-                        Triple<ATypeTag, Object, Long> arg;
-                        switch (inputArgType.getTypeTag()) {
-                            case RECORD:
-                                RecordBuilder recBuilder = (RecordBuilder) builder;
-                                recBuilder.init();
-                                recBuilder.reset((ARecordType) outputType);
-                                arg = new Triple<ATypeTag, Object, Long>(inputArgType.getTypeTag(), recBuilder, 1L);
-                                visitor.setMaxLevel(level);
-                                ((ARecordVisitablePointable)vp0).accept(visitor, arg);
-                                ((RecordBuilder)arg.second).write(out, true);
-                                break;
-                            case ORDEREDLIST:
-                            case UNORDEREDLIST:
-                                OrderedListBuilder listBuilder = (OrderedListBuilder) builder;
-                                listBuilder.reset((AOrderedListType)outputType);
-                                arg = new Triple<ATypeTag, Object, Long>(inputArgType.getTypeTag(), listBuilder, 1L);
-                                visitor.setMaxLevel(level);
-                                ((AListVisitablePointable)vp0).accept(visitor, arg);
-                                ((OrderedListBuilder)arg.second).write(out, true);
-                                break;
-                            default: // only one level
-                                PrintAdmBytesHelper printHelper = visitor.getPrintHelper();
-                                printHelper.printAnnotatedBytes(vp0, out);
-                        }
+                       if (PointableUtils.isType(ATypeTag.RECORD, inputAccessor)) {
+                            printAnnotated((ARecordVisitablePointable) inputAccessor, level);
+                        } else {
+                            visitor.setMaxLevel(level);
+                            Triple<IVisitablePointable, IAType, Long> arg = new Triple<IVisitablePointable, IAType, Long>(
+                                    resultAccessor, requiredRecType, 0L);
+                            inputAccessor.accept(visitor, arg);
+                            out.write(resultAccessor.getByteArray(), resultAccessor.getStartOffset(), resultAccessor.getLength());
+                       }
                     }
-                } catch (HyracksDataException e) {
+                } catch (AsterixException | HyracksDataException e) {
                     throw new AlgebricksException("Unable to display serilized value of " +
-                            ((ARecordVisitablePointable) vp0).getInputRecordType());
-                } catch (AsterixException e) {
-                    throw new AlgebricksException("Unable to display serilized value of " +
-                            ((ARecordVisitablePointable) vp0).getInputRecordType());
+                            ((ARecordVisitablePointable) inputAccessor).getInputRecordType());
                 } catch (IOException e) {
                     new AlgebricksException("Error parsing input argument #2.");
                 }
 
             }
 
-            private long getLevel(IValueReference valueReference, ATypeTag typeTag) throws IOException {
-                long level = 0;
-                outputStream.reset();
-                outputStream.write(valueReference.getByteArray(), valueReference.getStartOffset() + 1,
-                        valueReference.getLength());
-                dis.reset();
+            private long getMaxLevel() throws IOException, AlgebricksException {
+                if(buffer.getByteArray()[0] == SER_NULL_TYPE_TAG)
+                    return 0;
 
-                if (typeTag == ATypeTag.STRING) {
-                    String s = AStringSerializerDeserializer.INSTANCE.deserialize(dis).getStringValue();
-                    if (s.equals("INF")) {
-                        level = Long.MAX_VALUE;
-                    } else {
-                        level = Integer.parseInt(s);
-                    }
-                } else {
-                    level = AInt64SerializerDeserializer.INSTANCE.deserialize(dis).getLongValue();
+                // Level input arg type check
+                levelAccessor.set(buffer);
+                ATypeTag tag = PointableUtils.getTypeTag(levelAccessor);
+                if (tag != ATypeTag.INT64 && tag != ATypeTag.STRING) {
+                    throw new AlgebricksException(AsterixBuiltinFunctions.ADM_TO_BYTES.getName()
+                            + ": expects input type (ADM object, INT32|STRING) but got ("
+                            + EnumDeserializer.ATYPETAGDESERIALIZER.deserialize(outInput0.getByteArray()[0])
+                            + ", " + tag + ")");
                 }
 
-                return level;
+                if (tag == ATypeTag.STRING) {
+                    String s = pointableUtils.deserializeString(levelAccessor);
+                    if (s.equals("INF")) {
+                        return Long.MAX_VALUE;
+                    } else {
+                        return Integer.parseInt(s);
+                    }
+                } else {
+                    return pointableUtils.deserializeInt(levelAccessor);
+                }
             }
 
 
             private void printRawBytes(IValueReference vr) throws IOException {
-                ArrayList<IAObject> byteList = new ArrayList<>();
+                OrderedListBuilder listBuilder = new OrderedListBuilder();
+                AOrderedListType reqListType = new AOrderedListType((AOrderedListType) outputType.getType(),
+                        outputType.getTypeName());
+                listBuilder.reset(reqListType);
                 byte[] bytes = vr.getByteArray();
-                for(int i=vr.getStartOffset(), j=0; i<vr.getLength(); i++, j++) {
-                    byteList.add(new AInt16((short)(bytes[i])));
+
+                for(int i=vr.getStartOffset(); i<vr.getLength(); i++) {
+                    byteIntValue.setValue(bytes[i]);
+                    buffer.reset();
+                    intSerde.serialize(byteIntValue, buffer.getDataOutput());
+                    listBuilder.addItem(buffer);
                 }
 
-                AOrderedList byteAList = new AOrderedList((AOrderedListType) outputType, byteList);
-                ISerializerDeserializer listSerde = AqlSerializerDeserializerProvider.INSTANCE.
-                        getNonTaggedSerializerDeserializer((AOrderedListType) outputType);
-
-                out.write(ATypeTag.ORDEREDLIST.serialize());
-                listSerde.serialize(new AOrderedList((AOrderedListType) outputType, byteList), out);
+                listBuilder.write(out, true);
             }
 
-            private void printAnnotatedBytes(IValueReference vr) throws IOException, AsterixException {
-                byte[] bytes = vr.getByteArray();
-                int offset = vr.getStartOffset();
-                //int length = vr.getLength(); // total byte array length
-                int valueOffset = offset + PrintAdmBytesHelper.getValueOffset(bytes[offset]);
-                int valueLength = vr.getLength() - valueOffset + offset; // value length
-                int lengthBytesLength = valueOffset - offset - 1; // value length
+            private void printAnnotated(ARecordVisitablePointable recordVisitablePointable, long maxLevel)
+                    throws AlgebricksException {
+                try {
+                    PrintAdmBytesHelper ph = visitor.getPrintHelper();
+                    RecordBuilder recordBuilder = new RecordBuilder();
+                    recordBuilder.init();
+                    recordBuilder.reset(requiredRecType);
 
-                AString tagByteValue = new AString(printHelper.byteArrayToString(bytes, 0, 1, false));
-                AString lengthBytesValue = new AString(printHelper.byteArrayToString(bytes, offset+1,
-                        lengthBytesLength, false));
-                AString valueBytesValue = new AString(printHelper.byteArrayToString(bytes, valueOffset,
-                        valueLength, false));
+                    List<IVisitablePointable> fnames = recordVisitablePointable.getFieldNames();
+                    List<IVisitablePointable> fvalues = recordVisitablePointable.getFieldValues();
 
-                RecordBuilder recordBuilder = new RecordBuilder();
-                recordBuilder.init();
-                recordBuilder.reset((ARecordType) outputType);
-                addField(tagName, tagByteValue, recordBuilder);
-                addField(lengthName, lengthBytesValue, recordBuilder);
-                addField(valueName, valueBytesValue, recordBuilder);
+                    IVisitablePointable valuePointable = pa.allocateRecordValue(AnnotatedBytesTypeComputer.annotatedBytesType);
+                    for (int i = 0; i < fnames.size(); i++) {
+                        ph.printAnnotatedBytes(fvalues.get(i), valuePointable);
+                        pointableUtils.addField(recordBuilder, fnames.get(i), valuePointable);
+                    }
+                    recordBuilder.write(out, true);
 
-                recordBuilder.write(out, true);
-
+                } catch(IOException | AsterixException e) {
+                    throw new AlgebricksException("Error in building output record");
+                }
 
             }
-
-            private void addField(AString fname, AString fvalue, RecordBuilder recordBuilder)
-                    throws HyracksDataException, AsterixException {
-                ArrayBackedValueStorage fieldAbvs = new ArrayBackedValueStorage();
-                ArrayBackedValueStorage valueAbvs = new ArrayBackedValueStorage();
-                IVisitablePointable fieldPointableValue = pa.allocateFieldValue(BuiltinType.ASTRING);
-                IVisitablePointable valuePointableValue = pa.allocateFieldValue(BuiltinType.ASTRING);
-
-                fieldAbvs.reset();
-                valueAbvs.reset();
-                stringSerde.serialize(fname, fieldAbvs.getDataOutput());
-                stringSerde.serialize(fvalue, valueAbvs.getDataOutput());
-
-                fieldPointableValue.set(fieldAbvs);
-                valuePointableValue.set(valueAbvs);
-
-                recordBuilder.addField(fieldPointableValue, valuePointableValue);
-
-            }
-
         };
     }
 }

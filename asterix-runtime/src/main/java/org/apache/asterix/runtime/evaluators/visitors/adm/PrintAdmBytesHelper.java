@@ -18,19 +18,20 @@
  */
 package org.apache.asterix.runtime.evaluators.visitors.adm;
 
+import org.apache.asterix.builders.AbstractListBuilder;
 import org.apache.asterix.builders.AbvsBuilderFactory;
 import org.apache.asterix.builders.IARecordBuilder;
 import org.apache.asterix.builders.IAsterixListBuilder;
 import org.apache.asterix.builders.ListBuilderFactory;
 import org.apache.asterix.builders.OrderedListBuilder;
 import org.apache.asterix.builders.RecordBuilderFactory;
+import org.apache.asterix.builders.UnorderedListBuilder;
 import org.apache.asterix.common.exceptions.AsterixException;
 import org.apache.asterix.formats.nontagged.AqlSerializerDeserializerProvider;
 import org.apache.asterix.om.base.AString;
 import org.apache.asterix.om.pointables.PointableAllocator;
 import org.apache.asterix.om.pointables.base.IVisitablePointable;
-import org.apache.asterix.om.pointables.nonvisitor.AListPointable;
-import org.apache.asterix.om.pointables.nonvisitor.ARecordPointable;
+import org.apache.asterix.om.typecomputer.impl.AnnotatedBytesTypeComputer;
 import org.apache.asterix.om.types.ARecordType;
 import org.apache.asterix.om.types.ATypeTag;
 import org.apache.asterix.om.types.BuiltinType;
@@ -42,12 +43,15 @@ import org.apache.asterix.runtime.evaluators.functions.PointableUtils;
 import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
 import org.apache.hyracks.api.dataflow.value.ISerializerDeserializer;
 import org.apache.hyracks.api.exceptions.HyracksDataException;
+import org.apache.hyracks.api.exceptions.HyracksException;
 import org.apache.hyracks.data.std.api.IMutableValueStorage;
-import org.apache.hyracks.data.std.api.IPointable;
+import org.apache.hyracks.data.std.api.IValueReference;
 import org.apache.hyracks.data.std.util.ArrayBackedValueStorage;
 
 import java.io.DataOutput;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 public class PrintAdmBytesHelper {
     private IObjectPool<IARecordBuilder, ATypeTag> recordBuilderPool = new ListObjectPool<IARecordBuilder, ATypeTag>(
@@ -56,10 +60,6 @@ public class PrintAdmBytesHelper {
             new ListBuilderFactory());
     private IObjectPool<IMutableValueStorage, ATypeTag> abvsBuilderPool = new ListObjectPool<IMutableValueStorage, ATypeTag>(
             new AbvsBuilderFactory());
-    private IObjectPool<IPointable, ATypeTag> recordPointablePool = new ListObjectPool<IPointable, ATypeTag>(
-            ARecordPointable.ALLOCATOR);
-    private IObjectPool<IPointable, ATypeTag> listPointablePool = new ListObjectPool<IPointable, ATypeTag>(
-            AListPointable.ALLOCATOR);
 
     private final static ISerializerDeserializer<AString> stringSerde = AqlSerializerDeserializerProvider.INSTANCE
             .getSerializerDeserializer(BuiltinType.ASTRING);
@@ -67,29 +67,35 @@ public class PrintAdmBytesHelper {
     public static PrintAdmBytesHelper getInstance() {
         return new PrintAdmBytesHelper();
     }
+    public static PrintAdmBytesHelper INSTANCE = new PrintAdmBytesHelper();
+
 
     private final PointableAllocator pa = new PointableAllocator();
     private final ArrayBackedValueStorage tempBuffer = new ArrayBackedValueStorage();
 
-    private final int TAG_ID=0, LENGTH_ID=1, VALUE_ID=2;
-    public static final String PRINT_FIELD_NAMES[] = {"tag", "length", "value"};
+    private final ArrayBackedValueStorage tempBuffer0 = new ArrayBackedValueStorage();
+    private final ArrayBackedValueStorage tempBuffer1 = new ArrayBackedValueStorage();
+
+    private static final String TAG = "tag";
+    private static final String LENGTH = "length";
+    private static final String VALUE = "value";
+    private static final Map<String, Integer> annotationRecordFields = new HashMap<String, Integer>();
+    private final static AString tagName = new AString(TAG);
+    private final static AString lengthName = new AString(LENGTH);
+    private final static AString valueName = new AString(VALUE);
+    public static final String PRINT_FIELD_NAMES[] = {TAG, LENGTH, VALUE};
     public static final IAType PRINT_BYTE_ARRAY[] = { BuiltinType.ASTRING, BuiltinType.ASTRING, BuiltinType.ASTRING};
-    public static ARecordType fieldRecordType;
-    static {
-        try {
-            fieldRecordType = new ARecordType("byteArrayfield", PRINT_FIELD_NAMES, PRINT_BYTE_ARRAY, true);
-        } catch (AsterixException e) {
-            e.printStackTrace();
-        } catch (HyracksDataException e) {
-            e.printStackTrace();
-        }
-    }
+
+    private final ARecordType fieldRecordType = AnnotatedBytesTypeComputer.annotatedBytesType;
+
 
     private PrintAdmBytesHelper(){
     }
 
     public void reset() {
         abvsBuilderPool.reset();
+        recordBuilderPool.reset();
+        listBuilderPool.reset();
     }
 
     public String byteArrayToString(byte bytes[], int offset, int length, boolean unsigned) {
@@ -113,48 +119,141 @@ public class PrintAdmBytesHelper {
         return fieldRecordType;
     }
 
+    public ARecordType loadRequireType(ARecordType inputRecordType, long level, long maxLevel) throws AlgebricksException {
+        if (level<=1 || level==maxLevel) {
+            return getFieldRecordType();
+        }
+
+        String fieldNames[] = inputRecordType.getFieldNames();
+        IAType fieldTypes[] = inputRecordType.getFieldTypes();
+
+        IAType[] newTypes = new IAType[fieldNames.length];
+        for (int i = 0; i < fieldTypes.length; i++) {
+            if (fieldTypes[i].getTypeTag() == ATypeTag.RECORD) {
+                newTypes[i] = loadRequireType((ARecordType) fieldTypes[i], level + 1, maxLevel);
+            } else {
+                newTypes[i] = getFieldRecordType();
+            }
+        }
+        try {
+            String typeName = "annotated(" + inputRecordType.getTypeName() + ")";
+            return new ARecordType(typeName, fieldNames, newTypes, inputRecordType.isOpen());
+        } catch (AsterixException | HyracksException e) {
+            throw new AlgebricksException(e);
+        }
+    }
+
     /**
      * Print annotated byte array as a record: {"tag":"[13]", "length": "[,...,]", "value":"[,..,]" }
      *
-     * @param vp
+     * //@param outputType
+     * @param vr
      * @param out
      * @throws IOException
      * @throws AsterixException
      * @throws AlgebricksException
      */
-    public void printAnnotatedBytes(IVisitablePointable vp, DataOutput out)
+    public void printAnnotatedBytes(IValueReference vr, DataOutput out)
             throws IOException, AsterixException {
-        byte[] bytes = vp.getByteArray();
-        int startOffset = vp.getStartOffset();
-        int valueStartOffset = startOffset + getValueOffset(bytes[startOffset]);
-        int len = vp.getLength() - valueStartOffset + startOffset; // value length
+        byte[] bytes = vr.getByteArray();
+        int offset = vr.getStartOffset();
+        int valueOffset = offset + PrintAdmBytesHelper.getValueOffset(bytes[offset]);
+        int valueLength = vr.getLength() - valueOffset + offset; // value length
+        int lengthBytesLength = valueOffset - offset - 1; // value length
+
+        AString tagByteValue = new AString(byteArrayToString(bytes, 0, 1, false));
+        AString lengthBytesValue = new AString(byteArrayToString(bytes, offset + 1, lengthBytesLength, false));
+        AString valueBytesValue = new AString(byteArrayToString(bytes, valueOffset, valueLength, false));
 
         IARecordBuilder recordBuilder = getRecordBuilder();
         recordBuilder.init();
         recordBuilder.reset(fieldRecordType);
 
+        addField(tagName, tagByteValue, recordBuilder);
+        addField(lengthName, lengthBytesValue, recordBuilder);
+        addField(valueName, valueBytesValue, recordBuilder);
+
+        recordBuilder.write(out, true);
+    }
+
+    public void printAdmBytes(IValueReference vr, DataOutput output)
+            throws AlgebricksException {
+        IARecordBuilder recordBuilder = getRecordBuilder();
+        recordBuilder.init();
+        recordBuilder.reset(fieldRecordType);
+
+        printAdmBytes(vr, recordBuilder);
         try {
-            IVisitablePointable idFieldValue = pa.allocateFieldValue(BuiltinType.ASTRING);
+            recordBuilder.write(output, true);
+        } catch (IOException | AsterixException e) {
+            throw new AlgebricksException("Error generating field value (annotated)");
+        }
+    }
 
-            byteArrayToStringPointable(new byte[] { bytes[startOffset] }, 0, 1, idFieldValue);
+    public void printAdmBytes(IValueReference vr, IARecordBuilder recordBuilder)
+            throws AlgebricksException {
 
-            recordBuilder.addField(TAG_ID, idFieldValue);
+        byte[] bytes = vr.getByteArray();
+        int offset = vr.getStartOffset();
+        int valueOffset = offset + PrintAdmBytesHelper.getValueOffset(bytes[offset]);
+        int valueLength = vr.getLength() - valueOffset + offset; // value length
+        int lengthBytesLength = valueOffset - offset - 1; // value length
 
-            if (valueStartOffset > 1) {
-                IVisitablePointable lenFieldValue = pa.allocateFieldValue(BuiltinType.ASTRING);
-                int vlen = valueStartOffset - startOffset - 1;
-                byteArrayToStringPointable(bytes, startOffset + 1, vlen, lenFieldValue);
-                recordBuilder.addField(LENGTH_ID, lenFieldValue);
-            }
+        try {
+            recordBuilder.init();
+            recordBuilder.reset(fieldRecordType);
 
-            IVisitablePointable valueFieldValue = pa.allocateFieldValue(BuiltinType.ASTRING);
-            byteArrayToStringPointable(bytes, valueStartOffset, len, valueFieldValue);
-            recordBuilder.addField(VALUE_ID, valueFieldValue);
+            addAnnotatedField(recordBuilder, TAG, bytes, 0, 1);
+            addAnnotatedField(recordBuilder, LENGTH, bytes, offset + 1, lengthBytesLength);
+            addAnnotatedField(recordBuilder, VALUE, bytes, valueOffset, valueLength);
 
-            recordBuilder.write(out, true);
+        } catch (IOException e) {
+            throw new AlgebricksException("Error generating field value (annotated)");
+        }
 
-        } catch (AlgebricksException e) {
-            new AsterixException("Error generating annotated bytes");
+    }
+
+    private void addAnnotatedField(IARecordBuilder recordBuilder, String fieldName,
+            byte byteArray[], int offset, int length) throws HyracksDataException {
+        tempBuffer1.reset();
+        stringSerde.serialize(new AString(byteArrayToString(byteArray, offset, length, false)),
+                tempBuffer1.getDataOutput());
+        int pos = recordBuilder.getFieldId(fieldName);
+        recordBuilder.addField(pos, tempBuffer1);
+    }
+
+
+    public void printAnnotatedBytes(IVisitablePointable inputVp, IVisitablePointable outputVp)
+            throws AlgebricksException {
+        tempBuffer.reset();
+        try {
+            printAnnotatedBytes(inputVp, tempBuffer.getDataOutput());
+            outputVp.set(tempBuffer.getByteArray(), tempBuffer.getStartOffset(), tempBuffer.getLength());
+        } catch (IOException | AsterixException e) {
+           throw new AlgebricksException("Could not print annotated bytes");
+        }
+
+    }
+
+    public void addField(AString fname, AString fvalue, IARecordBuilder recordBuilder)
+            throws HyracksDataException, AsterixException {
+
+        ArrayBackedValueStorage valueAbvs = new ArrayBackedValueStorage();
+        IVisitablePointable valuePointableValue = pa.allocateFieldValue(BuiltinType.ASTRING);
+        valueAbvs.reset();
+        stringSerde.serialize(fvalue, valueAbvs.getDataOutput());
+        valuePointableValue.set(valueAbvs);
+
+        int pos = recordBuilder.getFieldId(fname.getStringValue());
+        if (pos>-1) {
+            recordBuilder.addField(pos, valuePointableValue);
+        } else {
+            ArrayBackedValueStorage fieldAbvs = new ArrayBackedValueStorage();
+            fieldAbvs.reset();
+            IVisitablePointable fieldPointableValue = pa.allocateFieldValue(BuiltinType.ASTRING);
+            stringSerde.serialize(fname, fieldAbvs.getDataOutput());
+            fieldPointableValue.set(fieldAbvs);
+            recordBuilder.addField(fieldPointableValue, valuePointableValue);
         }
     }
 
@@ -183,23 +282,19 @@ public class PrintAdmBytesHelper {
         }
     }
 
+
     public ArrayBackedValueStorage getTempBuffer() {
         return (ArrayBackedValueStorage) abvsBuilderPool.allocate(ATypeTag.BINARY);
-    }
-
-    public ARecordPointable getRecordPointable() {
-        return (ARecordPointable) recordPointablePool.allocate(ATypeTag.RECORD);
-    }
-
-    public AListPointable getListPointable() {
-        return (AListPointable) listPointablePool.allocate(ATypeTag.ORDEREDLIST);
     }
 
     public IARecordBuilder getRecordBuilder() {
         return recordBuilderPool.allocate(ATypeTag.RECORD);
     }
 
-    public OrderedListBuilder getOrderedListBuilder() {
-        return (OrderedListBuilder) listBuilderPool.allocate(ATypeTag.ORDEREDLIST);
+    public AbstractListBuilder getListBuilder(ATypeTag listType) {
+        if (listType==ATypeTag.UNORDEREDLIST)
+            return (UnorderedListBuilder) listBuilderPool.allocate(ATypeTag.UNORDEREDLIST);
+        else
+            return (OrderedListBuilder) listBuilderPool.allocate(ATypeTag.ORDEREDLIST);
     }
 }
