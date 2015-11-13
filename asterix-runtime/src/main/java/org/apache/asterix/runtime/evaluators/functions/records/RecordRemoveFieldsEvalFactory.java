@@ -43,7 +43,6 @@ import org.apache.hyracks.data.std.api.IDataOutputProvider;
 import org.apache.hyracks.data.std.util.ArrayBackedValueStorage;
 import org.apache.hyracks.dataflow.common.data.accessors.IFrameTupleReference;
 
-import java.io.DataOutput;
 import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -102,10 +101,10 @@ class RecordRemoveFieldsEvalFactory implements ICopyEvaluatorFactory {
         final ICopyEvaluator eval0 = inputRecordEvalFactory.createEvaluator(outInput0);
         final ICopyEvaluator eval1 = removeFieldPathsFactory.createEvaluator(outInput1);
 
-        final DataOutput out = output.getDataOutput();
-
         final List<RecordBuilder> rbStack = new ArrayList<>();
         final ArrayBackedValueStorage tabvs = new ArrayBackedValueStorage();
+
+        final PointableUtils pu = new PointableUtils();
 
         return new ICopyEvaluator() {
 
@@ -189,7 +188,7 @@ class RecordRemoveFieldsEvalFactory implements ICopyEvaluatorFactory {
                     AListVisitablePointable inputList, int nestedLevel)
                     throws IOException, AsterixException, AlgebricksException {
 
-                String fieldName = PointableUtils.INSTANCE.getFieldName(fieldNamePointable);
+                String fieldName = pu.getFieldName(fieldNamePointable);
 
                 ARecordType resType = subRecordType != null ? subRecordType :
                         DefaultOpenFieldType.NESTED_OPEN_RECORD_TYPE;

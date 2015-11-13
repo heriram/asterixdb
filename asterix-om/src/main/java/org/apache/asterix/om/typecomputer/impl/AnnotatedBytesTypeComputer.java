@@ -29,6 +29,7 @@ import org.apache.asterix.om.types.ARecordType;
 import org.apache.asterix.om.types.ATypeTag;
 import org.apache.asterix.om.types.BuiltinType;
 import org.apache.asterix.om.types.IAType;
+import org.apache.asterix.om.util.admdebugger.FieldTypeComputerUtils;
 import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
 import org.apache.hyracks.algebricks.core.algebra.base.ILogicalExpression;
 import org.apache.hyracks.algebricks.core.algebra.base.LogicalExpressionTag;
@@ -49,8 +50,6 @@ public class AnnotatedBytesTypeComputer implements IResultTypeComputer {
 
     private final long NESTED_LEVEL_OFFSET = 2;
 
-    public static final ARecordType annotatedBytesType = getAnnotatedBytesRecordType();
-
     private AnnotatedBytesTypeComputer() {
     }
 
@@ -58,14 +57,33 @@ public class AnnotatedBytesTypeComputer implements IResultTypeComputer {
     public IAType computeType(ILogicalExpression expression, IVariableTypeEnvironment env,
             IMetadataProvider<?, ?> metadataProvider) throws AlgebricksException {
         AbstractFunctionCallExpression funcExpr = (AbstractFunctionCallExpression) expression;
+
         outputLevel = getLevel(env, funcExpr.getArguments().get(1).getValue());
 
-        IAType intputType = (IAType) env.getType((AbstractLogicalExpression)funcExpr.getArguments().get(0).getValue());
 
-        if (intputType.getTypeTag().equals(ATypeTag.RECORD) && outputLevel > 1) {
-            return getResultRecordType(intputType);
+        // If level is unknown at translation time (input is a variable)
+        if (outputLevel == -1) {
+            return DefaultOpenFieldType.NESTED_OPEN_RECORD_TYPE;
+        }
+
+        // If we want to print out the raw bytes
+        if (outputLevel == 0){
+            try {
+                return new ARecordType("RawBytes", new String[]{"RawBytes"}, new IAType[]{BuiltinType.ASTRING}, false);
+            } catch (HyracksDataException | AsterixException e) {
+                throw new AlgebricksException(e);
+            }
+        }
+
+        IAType intputType = (IAType) env.getType((AbstractLogicalExpression)funcExpr.getArguments().get(0).getValue());
+        ATypeTag typeTag = intputType.getTypeTag();
+
+        // If the input type is not a record or level = 1 we print out
+        // the annotated byte with no nesting level processing
+        if (outputLevel == 1 || typeTag != ATypeTag.RECORD) {
+            return FieldTypeComputerUtils.getAnnotatedBytesRecordType(typeTag);
         } else {
-            return annotatedBytesType;
+            return getResultRecordType(intputType);
         }
     }
 
@@ -88,7 +106,7 @@ public class AnnotatedBytesTypeComputer implements IResultTypeComputer {
                 if (fieldTypes[i].getTypeTag() == ATypeTag.RECORD && outputLevel > NESTED_LEVEL_OFFSET && level<outputLevel) {
                     newTypes[i] = getNestedRecordFields((ARecordType) fieldTypes[i], level + 1);
                 } else {
-                    newTypes[i] = annotatedBytesType;
+                    newTypes[i] = FieldTypeComputerUtils.getAnnotatedBytesRecordType(fieldTypes[i].getTypeTag());//DefaultOpenFieldType.NESTED_OPEN_RECORD_TYPE;
                 }
             }
             StringBuilder typeName = new StringBuilder("annotated");
@@ -102,24 +120,23 @@ public class AnnotatedBytesTypeComputer implements IResultTypeComputer {
     }
 
 
-    private static ARecordType getAnnotatedBytesRecordType() {
-        String fieldNames[] = {"tag", "length", "value"};
-        IAType fieldTypes[] = { BuiltinType.ASTRING, BuiltinType.ASTRING, BuiltinType.ASTRING};
-        try {
-            return new ARecordType("ByteArrayfields", fieldNames, fieldTypes, false);
-        } catch (HyracksDataException | AsterixException e) {
-            e.printStackTrace();
+    public static long getLevel(IVariableTypeEnvironment env, ILogicalExpression expr) throws AlgebricksException {
+        IAType type1 = (IAType) env.getType(expr);
+
+        // Treat null as a level = 0
+        if (type1.getTypeTag() == ATypeTag.NULL) {
+            return 0;
         }
 
-        return null;
-    }
+        // If input level is a variable
+        if ( expr.getExpressionTag() == LogicalExpressionTag.VARIABLE) {
+            return -1;
+        }
 
-    public static long getLevel(IVariableTypeEnvironment env, ILogicalExpression expr) throws AlgebricksException {
         if (expr.getExpressionTag() != LogicalExpressionTag.CONSTANT)
-            throw new AlgebricksException("Expected a constant either an integer or a string (INF)"
+            throw new AlgebricksException("Expected a variable or either an integer or a string (INF) constant"
                     + " but got a " + expr.getExpressionTag());
 
-        IAType type1 = (IAType) env.getType(expr); // For max level
         ConstantExpression constExpr = (ConstantExpression) expr;
         IAObject value = ((AsterixConstantValue) constExpr.getValue()).getObject();
 

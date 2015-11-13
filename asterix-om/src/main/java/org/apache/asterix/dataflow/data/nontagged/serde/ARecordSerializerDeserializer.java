@@ -19,10 +19,6 @@
 
 package org.apache.asterix.dataflow.data.nontagged.serde;
 
-import java.io.DataInput;
-import java.io.DataOutput;
-import java.io.IOException;
-
 import org.apache.asterix.builders.IARecordBuilder;
 import org.apache.asterix.builders.RecordBuilder;
 import org.apache.asterix.common.exceptions.AsterixException;
@@ -31,10 +27,12 @@ import org.apache.asterix.formats.nontagged.AqlBinaryHashFunctionFactoryProvider
 import org.apache.asterix.formats.nontagged.AqlSerializerDeserializerProvider;
 import org.apache.asterix.om.base.ANull;
 import org.apache.asterix.om.base.ARecord;
+import org.apache.asterix.om.base.AString;
 import org.apache.asterix.om.base.IAObject;
 import org.apache.asterix.om.types.ARecordType;
 import org.apache.asterix.om.types.ATypeTag;
 import org.apache.asterix.om.types.AUnionType;
+import org.apache.asterix.om.types.BuiltinType;
 import org.apache.asterix.om.types.IAType;
 import org.apache.asterix.om.util.NonTaggedFormatUtil;
 import org.apache.hyracks.algebricks.common.exceptions.NotImplementedException;
@@ -45,10 +43,22 @@ import org.apache.hyracks.api.exceptions.HyracksDataException;
 import org.apache.hyracks.data.std.primitive.UTF8StringPointable;
 import org.apache.hyracks.data.std.util.ArrayBackedValueStorage;
 
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.IOException;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Map.Entry;
+
 public class ARecordSerializerDeserializer implements ISerializerDeserializer<ARecord> {
     private static final long serialVersionUID = 1L;
 
     public static final ARecordSerializerDeserializer SCHEMALESS_INSTANCE = new ARecordSerializerDeserializer();
+
+    private final ISerializerDeserializer<AString> stringSerde = AqlSerializerDeserializerProvider.INSTANCE
+            .getSerializerDeserializer(BuiltinType.ASTRING);
+
+    private final AqlSerializerDeserializerProvider aqlSerDe = AqlSerializerDeserializerProvider.INSTANCE;
 
     private ARecordType recordType;
     private int numberOfSchemaFields = 0;
@@ -218,6 +228,53 @@ public class ARecordSerializerDeserializer implements ISerializerDeserializer<AR
             }
         } else {
             throw new NotImplementedException("Serializer for schemaless records is not implemented.");
+        }
+    }
+
+    public void serialize(ARecord instance, Map<String,IAObject> openFields,
+            DataOutput out, boolean writeTypeTag) throws HyracksDataException {
+        IARecordBuilder recordBuilder = new RecordBuilder();
+        ArrayBackedValueStorage fieldValue = new ArrayBackedValueStorage();
+        ArrayBackedValueStorage fieldName = new ArrayBackedValueStorage();
+
+        recordBuilder.reset(recordType);
+        recordBuilder.init();
+
+        try {
+            if (recordType == null && openFields == null) {
+                ISerializerDeserializer nullSerDe = aqlSerDe.getSerializerDeserializer(BuiltinType.ANULL);
+                nullSerDe.serialize(ANull.NULL, out);
+            }
+
+            // Processing the closed part
+            if (recordType != null) {
+                for (int i = 0; i < recordType.getFieldNames().length; i++) {
+                    fieldValue.reset();
+                    serializers[i].serialize(instance.getValueByPos(i), fieldValue.getDataOutput());
+                    recordBuilder.addField(i, fieldValue);
+                }
+            }
+
+            if (openFields != null) {
+                // Processing the open part
+                Iterator<Entry<String, IAObject>> it = openFields.entrySet().iterator();
+
+                while (it.hasNext()) {
+                    Entry<String, IAObject> e = it.next();
+                    fieldName.reset();
+                    stringSerde.serialize(new AString(e.getKey()), fieldName.getDataOutput());
+                    fieldValue.reset();
+                    IAObject value = e.getValue();
+                    ISerializerDeserializer serde = aqlSerDe.getSerializerDeserializer(value.getType());
+                    serde.serialize(value, fieldValue.getDataOutput());
+                    recordBuilder.addField(fieldName, fieldValue);
+                }
+            }
+
+            recordBuilder.write(out, writeTypeTag);
+
+        } catch (IOException | AsterixException e) {
+            throw new HyracksDataException(e);
         }
     }
 

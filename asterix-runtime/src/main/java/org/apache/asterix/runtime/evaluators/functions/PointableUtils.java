@@ -18,7 +18,15 @@
  */
 package org.apache.asterix.runtime.evaluators.functions;
 
+import org.apache.asterix.builders.AbstractListBuilder;
+import org.apache.asterix.builders.AbvsBuilderFactory;
+import org.apache.asterix.builders.IARecordBuilder;
+import org.apache.asterix.builders.IAsterixListBuilder;
+import org.apache.asterix.builders.ListBuilderFactory;
+import org.apache.asterix.builders.OrderedListBuilder;
 import org.apache.asterix.builders.RecordBuilder;
+import org.apache.asterix.builders.RecordBuilderFactory;
+import org.apache.asterix.builders.UnorderedListBuilder;
 import org.apache.asterix.common.exceptions.AsterixException;
 import org.apache.asterix.dataflow.data.nontagged.serde.AInt16SerializerDeserializer;
 import org.apache.asterix.dataflow.data.nontagged.serde.AInt32SerializerDeserializer;
@@ -33,6 +41,8 @@ import org.apache.asterix.om.types.ATypeTag;
 import org.apache.asterix.om.types.BuiltinType;
 import org.apache.asterix.om.types.EnumDeserializer;
 import org.apache.asterix.om.types.IAType;
+import org.apache.asterix.om.util.container.IObjectPool;
+import org.apache.asterix.om.util.container.ListObjectPool;
 import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
 import org.apache.hyracks.api.dataflow.value.IBinaryComparator;
 import org.apache.hyracks.api.dataflow.value.ISerializerDeserializer;
@@ -42,6 +52,7 @@ import org.apache.hyracks.data.std.api.IMutableValueStorage;
 import org.apache.hyracks.data.std.api.IPointable;
 import org.apache.hyracks.data.std.api.IValueReference;
 import org.apache.hyracks.data.std.primitive.UTF8StringPointable;
+import org.apache.hyracks.data.std.util.ArrayBackedValueStorage;
 import org.apache.hyracks.data.std.util.ByteArrayAccessibleOutputStream;
 import org.apache.hyracks.dataflow.common.data.marshalling.UTF8StringSerializerDeserializer;
 
@@ -61,6 +72,13 @@ import java.io.IOException;
  */
 
 public class PointableUtils {
+    private IObjectPool<IARecordBuilder, ATypeTag> recordBuilderPool = new ListObjectPool<IARecordBuilder, ATypeTag>(
+            new RecordBuilderFactory());
+    private IObjectPool<IAsterixListBuilder, ATypeTag> listBuilderPool = new ListObjectPool<IAsterixListBuilder, ATypeTag>(
+            new ListBuilderFactory());
+    private IObjectPool<IMutableValueStorage, ATypeTag> abvsBuilderPool = new ListObjectPool<IMutableValueStorage, ATypeTag>(
+            new AbvsBuilderFactory());
+
 
     private final ByteArrayAccessibleOutputStream outputStream = new ByteArrayAccessibleOutputStream();
     private final DataInputStream dis = new DataInputStream(
@@ -77,9 +95,7 @@ public class PointableUtils {
 
     private final PointableAllocator allocator = new PointableAllocator();
 
-    public static final PointableUtils INSTANCE = new PointableUtils();
-
-    private PointableUtils(){
+    public PointableUtils(){
     }
 
     public static int compareStringBinValues(IValueReference a, IValueReference b) throws HyracksDataException {
@@ -273,5 +289,26 @@ public class PointableUtils {
             throw new AsterixException("Couldn't add field to the recordbuilder.");
         }
 
+    }
+
+    public void resetObjectPools() {
+        abvsBuilderPool.reset();
+        recordBuilderPool.reset();
+        listBuilderPool.reset();
+    }
+
+    public ArrayBackedValueStorage getTempBuffer() {
+        return (ArrayBackedValueStorage) abvsBuilderPool.allocate(ATypeTag.BINARY);
+    }
+
+    public IARecordBuilder getRecordBuilder() {
+        return recordBuilderPool.allocate(ATypeTag.RECORD);
+    }
+
+    public AbstractListBuilder getListBuilder(ATypeTag listType) {
+        if (listType==ATypeTag.UNORDEREDLIST)
+            return (UnorderedListBuilder) listBuilderPool.allocate(ATypeTag.UNORDEREDLIST);
+        else
+            return (OrderedListBuilder) listBuilderPool.allocate(ATypeTag.ORDEREDLIST);
     }
 }

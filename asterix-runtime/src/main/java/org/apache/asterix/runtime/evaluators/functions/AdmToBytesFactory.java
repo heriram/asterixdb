@@ -18,26 +18,22 @@
  */
 package org.apache.asterix.runtime.evaluators.functions;
 
-import org.apache.asterix.builders.OrderedListBuilder;
-import org.apache.asterix.builders.RecordBuilder;
+import org.apache.asterix.builders.IARecordBuilder;
 import org.apache.asterix.common.exceptions.AsterixException;
+import org.apache.asterix.dataflow.data.nontagged.serde.AStringSerializerDeserializer;
 import org.apache.asterix.formats.nontagged.AqlSerializerDeserializerProvider;
-import org.apache.asterix.om.base.AInt16;
-import org.apache.asterix.om.base.AMutableInt16;
 import org.apache.asterix.om.base.ANull;
+import org.apache.asterix.om.base.AString;
 import org.apache.asterix.om.functions.AsterixBuiltinFunctions;
 import org.apache.asterix.om.pointables.ARecordVisitablePointable;
 import org.apache.asterix.om.pointables.PointableAllocator;
 import org.apache.asterix.om.pointables.base.IVisitablePointable;
-import org.apache.asterix.om.typecomputer.impl.AnnotatedBytesTypeComputer;
-import org.apache.asterix.om.types.AOrderedListType;
 import org.apache.asterix.om.types.ARecordType;
 import org.apache.asterix.om.types.ATypeTag;
 import org.apache.asterix.om.types.BuiltinType;
 import org.apache.asterix.om.types.EnumDeserializer;
 import org.apache.asterix.om.types.IAType;
-import org.apache.asterix.runtime.evaluators.visitors.adm.PrintAdmBytesHelper;
-import org.apache.asterix.runtime.evaluators.visitors.adm.PrintAdmBytesVisitor;
+import org.apache.asterix.runtime.evaluators.visitors.admdebugging.PrintAdmBytesVisitor;
 import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
 import org.apache.hyracks.algebricks.common.utils.Triple;
 import org.apache.hyracks.algebricks.runtime.base.ICopyEvaluator;
@@ -47,14 +43,10 @@ import org.apache.hyracks.api.exceptions.HyracksDataException;
 import org.apache.hyracks.data.std.api.IDataOutputProvider;
 import org.apache.hyracks.data.std.api.IValueReference;
 import org.apache.hyracks.data.std.util.ArrayBackedValueStorage;
-import org.apache.hyracks.data.std.util.ByteArrayAccessibleOutputStream;
 import org.apache.hyracks.dataflow.common.data.accessors.IFrameTupleReference;
 
-import java.io.ByteArrayInputStream;
-import java.io.DataInputStream;
 import java.io.DataOutput;
 import java.io.IOException;
-import java.util.List;
 
 /**
  *
@@ -67,16 +59,16 @@ public class AdmToBytesFactory implements ICopyEvaluatorFactory {
 
     private ICopyEvaluatorFactory inputEvalFactory;
     private ICopyEvaluatorFactory levelEvalFactory;
-    private IAType outputType;
+    private IAType outputRecType;
     private IAType inputArgType;
 
     private static final byte SER_NULL_TYPE_TAG = ATypeTag.NULL.serialize();
 
     public AdmToBytesFactory(ICopyEvaluatorFactory inputEvalFactory, ICopyEvaluatorFactory levelEvalFactory,
-            IAType inputArgType, IAType outputType) {
+            IAType inputArgType, IAType outputRecType) {
         this.levelEvalFactory = levelEvalFactory;
         this.inputEvalFactory = inputEvalFactory;
-        this.outputType = outputType;
+        this.outputRecType = outputRecType;
         this.inputArgType = inputArgType;
     }
 
@@ -84,30 +76,33 @@ public class AdmToBytesFactory implements ICopyEvaluatorFactory {
     @Override public ICopyEvaluator createEvaluator(final IDataOutputProvider output) throws AlgebricksException {
         final ARecordType requiredRecType;
         try {
-            requiredRecType = new ARecordType(outputType.getTypeName(), ((ARecordType)outputType).getFieldNames(),
-                    ((ARecordType)outputType).getFieldTypes(),  ((ARecordType)outputType).isOpen());
+            // Clone to avoid racing conditions
+            requiredRecType = new ARecordType(outputRecType.getTypeName(), ((ARecordType)outputRecType).getFieldNames(),
+                    ((ARecordType)outputRecType).getFieldTypes(),  ((ARecordType)outputRecType).isOpen());
         } catch (AsterixException | HyracksDataException e) {
             throw new IllegalStateException();
         }
 
-        final ByteArrayAccessibleOutputStream outputStream = new ByteArrayAccessibleOutputStream();
-        final DataInputStream dis = new DataInputStream(
-                new ByteArrayInputStream(outputStream.getByteArray()));
-
-        final AMutableInt16 byteIntValue = new AMutableInt16((short) 0);
-        final ISerializerDeserializer<AInt16> intSerde =
-                AqlSerializerDeserializerProvider.INSTANCE.getSerializerDeserializer(BuiltinType.AINT16);
+        final PointableUtils pu = new PointableUtils();
+        final ArrayBackedValueStorage  rawBytesFieldNameBuffer = pu.getTempBuffer();
+        final String RAW_BYTES_FIELD_NAME = "RawBytes";
+        rawBytesFieldNameBuffer.reset();
+        try {
+            AStringSerializerDeserializer.INSTANCE.serialize(new AString(RAW_BYTES_FIELD_NAME),
+                    rawBytesFieldNameBuffer.getDataOutput());
+        } catch (HyracksDataException e) {
+            throw new AlgebricksException(e);
+        }
 
         return new ICopyEvaluator() {
             private DataOutput out = output.getDataOutput();
-
-            private final PointableUtils pointableUtils = PointableUtils.INSTANCE;
+            private PointableValueDecoder pvd = new PointableValueDecoder(pu);
 
 
             private PointableAllocator pa = new PointableAllocator();
             private final IVisitablePointable levelAccessor = pa.allocateEmpty();
             private final IVisitablePointable inputAccessor = PointableUtils.allocatePointable(pa, inputArgType);
-            private final IVisitablePointable resultAccessor = pa.allocateEmpty();
+            private final IVisitablePointable resultAccessor = pa.allocateRecordValue(requiredRecType);
 
             private final ArrayBackedValueStorage outInput0 = new ArrayBackedValueStorage();
             private final ICopyEvaluator eval0 = inputEvalFactory.createEvaluator(outInput0);
@@ -115,7 +110,7 @@ public class AdmToBytesFactory implements ICopyEvaluatorFactory {
             private final ICopyEvaluator eval1 = levelEvalFactory.createEvaluator(buffer);
 
 
-            private final PrintAdmBytesVisitor visitor = new PrintAdmBytesVisitor();
+            private PrintAdmBytesVisitor visitor;
 
             @SuppressWarnings("unchecked")
             private final ISerializerDeserializer<ANull> nullSerde = AqlSerializerDeserializerProvider.INSTANCE
@@ -127,6 +122,8 @@ public class AdmToBytesFactory implements ICopyEvaluatorFactory {
                 buffer.reset();
                 eval1.evaluate(tuple);
 
+                pu.resetObjectPools();
+
                 if (outInput0.getByteArray()[0] == SER_NULL_TYPE_TAG) {
                     try {
                         nullSerde.serialize(ANull.NULL, out);
@@ -136,24 +133,20 @@ public class AdmToBytesFactory implements ICopyEvaluatorFactory {
                 }
                 // Get the serialized values from an input
                 inputAccessor.set(outInput0);
-                visitor.resetPrintHelper();
 
                 try {
                     // Get the level
                     long level = getMaxLevel();
+                    visitor = new PrintAdmBytesVisitor(pvd, pu, level);
                     // Return only an array of raw byte
-                    if (level == 0) {
+                    if (level < 1) {
                         printRawBytes(inputAccessor);
                     } else {
-                       if (PointableUtils.isType(ATypeTag.RECORD, inputAccessor)) {
-                            printAnnotated((ARecordVisitablePointable) inputAccessor, level);
-                        } else {
-                            visitor.setMaxLevel(level);
-                            Triple<IVisitablePointable, IAType, Long> arg = new Triple<IVisitablePointable, IAType, Long>(
-                                    resultAccessor, requiredRecType, 0L);
+                            Triple<IVisitablePointable, IAType, Long> arg =
+                                    new Triple<IVisitablePointable, IAType, Long>(resultAccessor, requiredRecType, 1L);
                             inputAccessor.accept(visitor, arg);
-                            out.write(resultAccessor.getByteArray(), resultAccessor.getStartOffset(), resultAccessor.getLength());
-                       }
+                            out.write(resultAccessor.getByteArray(), resultAccessor.getStartOffset(),
+                                    resultAccessor.getLength());
                     }
                 } catch (AsterixException | HyracksDataException e) {
                     throw new AlgebricksException("Unable to display serilized value of " +
@@ -179,57 +172,42 @@ public class AdmToBytesFactory implements ICopyEvaluatorFactory {
                 }
 
                 if (tag == ATypeTag.STRING) {
-                    String s = pointableUtils.deserializeString(levelAccessor);
+                    String s = pu.deserializeString(levelAccessor);
                     if (s.equals("INF")) {
                         return Long.MAX_VALUE;
                     } else {
                         return Integer.parseInt(s);
                     }
                 } else {
-                    return pointableUtils.deserializeInt(levelAccessor);
+                    return pu.deserializeInt(levelAccessor);
                 }
             }
 
-
-            private void printRawBytes(IValueReference vr) throws IOException {
-                OrderedListBuilder listBuilder = new OrderedListBuilder();
-                AOrderedListType reqListType = new AOrderedListType((AOrderedListType) outputType.getType(),
-                        outputType.getTypeName());
-                listBuilder.reset(reqListType);
-                byte[] bytes = vr.getByteArray();
-
-                for(int i=vr.getStartOffset(); i<vr.getLength(); i++) {
-                    byteIntValue.setValue(bytes[i]);
-                    buffer.reset();
-                    intSerde.serialize(byteIntValue, buffer.getDataOutput());
-                    listBuilder.addItem(buffer);
-                }
-
-                listBuilder.write(out, true);
-            }
-
-            private void printAnnotated(ARecordVisitablePointable recordVisitablePointable, long maxLevel)
+            // Print a raw byte array
+            private void printRawBytes(IValueReference vr)
                     throws AlgebricksException {
                 try {
-                    PrintAdmBytesHelper ph = visitor.getPrintHelper();
-                    RecordBuilder recordBuilder = new RecordBuilder();
-                    recordBuilder.init();
+                    byte[] b = vr.getByteArray();
+                    int offset = vr.getStartOffset();
+                    int length = vr.getLength();
+
+                    IARecordBuilder recordBuilder = pu.getRecordBuilder();
                     recordBuilder.reset(requiredRecType);
+                    recordBuilder.init();
 
-                    List<IVisitablePointable> fnames = recordVisitablePointable.getFieldNames();
-                    List<IVisitablePointable> fvalues = recordVisitablePointable.getFieldValues();
+                    IVisitablePointable byteArrayBuffer = pa.allocateFieldValue(BuiltinType.ASTRING);
+                    pvd.setByteArrayPointableValue(b, offset, length, byteArrayBuffer);
 
-                    IVisitablePointable valuePointable = pa.allocateRecordValue(AnnotatedBytesTypeComputer.annotatedBytesType);
-                    for (int i = 0; i < fnames.size(); i++) {
-                        ph.printAnnotatedBytes(fvalues.get(i), valuePointable);
-                        pointableUtils.addField(recordBuilder, fnames.get(i), valuePointable);
+                    int pos = -1;
+                    if ((pos = requiredRecType.findFieldPosition(RAW_BYTES_FIELD_NAME))>=0) {
+                        recordBuilder.addField(pos, byteArrayBuffer);
+                    } else {
+                        recordBuilder.addField(rawBytesFieldNameBuffer, byteArrayBuffer);
                     }
                     recordBuilder.write(out, true);
-
-                } catch(IOException | AsterixException e) {
-                    throw new AlgebricksException("Error in building output record");
+                } catch (AsterixException | IOException e) {
+                    throw new AlgebricksException(e);
                 }
-
             }
         };
     }

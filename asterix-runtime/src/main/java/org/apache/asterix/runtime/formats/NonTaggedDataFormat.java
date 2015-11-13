@@ -1003,7 +1003,7 @@ public class NonTaggedDataFormat implements IDataFormat {
             }
         });
 
-        /*functionTypeInferers.put(AsterixBuiltinFunctions.ADM_TO_BYTES, new FunctionTypeInferer() {
+        functionTypeInferers.put(AsterixBuiltinFunctions.ADM_TO_BYTEARRAY, new FunctionTypeInferer() {
 
             @Override public void infer(ILogicalExpression expr, IFunctionDescriptor fd,
                     IVariableTypeEnvironment context) throws AlgebricksException {
@@ -1011,9 +1011,9 @@ public class NonTaggedDataFormat implements IDataFormat {
                 IAType outType = (IAType) context.getType(expr);
                 IAType intype0 = (IAType) context.getType(f.getArguments().get(0).getValue());
                 IAType intype1 = (IAType) context.getType(f.getArguments().get(1).getValue());
-                ((AdmToBytesDescriptor) fd).reset(intype0, intype1, outType);
+                ((AdmToBytesDescriptor) fd).reset(outType, intype0, intype1);
             }
-        });*/
+        });
 
         functionTypeInferers.put(AsterixBuiltinFunctions.ADM_TO_BYTES, new FunctionTypeInferer() {
 

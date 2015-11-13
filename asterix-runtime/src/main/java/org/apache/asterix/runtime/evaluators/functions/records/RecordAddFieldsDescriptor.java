@@ -108,6 +108,7 @@ public class RecordAddFieldsDescriptor  extends AbstractScalarFunctionDynamicDes
 
                 final DataOutput out = output.getDataOutput();
 
+                final PointableUtils pu = new PointableUtils();
 
                 final ISerializerDeserializer<AString> stringSerde = AqlSerializerDeserializerProvider.INSTANCE
                         .getSerializerDeserializer(BuiltinType.ASTRING);
@@ -138,8 +139,7 @@ public class RecordAddFieldsDescriptor  extends AbstractScalarFunctionDynamicDes
                         eval0.evaluate(tuple);
                         eval1.evaluate(tuple);
 
-                        if (PointableUtils.INSTANCE.isNullRecord(abvs0, out) ||
-                                PointableUtils.INSTANCE.isNullRecord(abvs1, out)) {
+                        if (pu.isNullRecord(abvs0, out) || pu.isNullRecord(abvs1, out)) {
                             return;
                         }
 
@@ -160,7 +160,7 @@ public class RecordAddFieldsDescriptor  extends AbstractScalarFunctionDynamicDes
 
                     private void addField(IVisitablePointable fieldNamePointable,
                             IVisitablePointable fieldValuePointable) throws IOException, AsterixException {
-                        String fieldName = PointableUtils.INSTANCE.getFieldName(fieldNamePointable);
+                        String fieldName = pu.getFieldName(fieldNamePointable);
                         if (recType.isClosedField(fieldName)) {
                             int position = recType.findFieldPosition(fieldName);
                             recordBuilder.addField(position, fieldValuePointable);

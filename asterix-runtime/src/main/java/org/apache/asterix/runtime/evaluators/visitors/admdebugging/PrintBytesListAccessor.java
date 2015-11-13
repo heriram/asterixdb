@@ -16,13 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.asterix.runtime.evaluators.visitors.adm;
+package org.apache.asterix.runtime.evaluators.visitors.admdebugging;
 
-import org.apache.asterix.builders.AbstractListBuilder;
 import org.apache.asterix.common.exceptions.AsterixException;
 import org.apache.asterix.om.pointables.AListVisitablePointable;
 import org.apache.asterix.om.pointables.PointableAllocator;
-import org.apache.asterix.om.pointables.base.DefaultOpenFieldType;
 import org.apache.asterix.om.pointables.base.IVisitablePointable;
 import org.apache.asterix.om.types.AbstractCollectionType;
 import org.apache.asterix.om.types.IAType;
@@ -32,7 +30,6 @@ import org.apache.hyracks.data.std.util.ByteArrayAccessibleOutputStream;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.util.List;
 
 public class PrintBytesListAccessor {
 
@@ -56,38 +53,13 @@ public class PrintBytesListAccessor {
              Triple<IVisitablePointable, IAType, Long> arg)
             throws AsterixException, IOException {
 
-        this.printHelper = visitor.getPrintHelper();
-        List<IVisitablePointable> items =  accessor.getItems();
+        if (maxLevel==1 || arg.third == (maxLevel-2)) {
+            // No need to go further than printing out the annotated bytes
+            visitor.writeAnnotatedBytes(accessor, arg.second, arg.first);
 
-        requiredType = (AbstractCollectionType)arg.second;
-        if(requiredType==null) {
-            requiredType = (accessor.ordered() ? DefaultOpenFieldType.NESTED_OPEN_AORDERED_LIST_TYPE :
-                    DefaultOpenFieldType.NESTED_OPEN_AUNORDERED_LIST_TYPE);
-        }
-        AbstractListBuilder listBuilder = printHelper.getListBuilder(requiredType.getTypeTag());
-        listBuilder.reset(requiredType);
-
-        long level = arg.third + 1;
-        // If we are printing from a list as the complex object
-        for (int i = 0; i < items.size(); i++) {
-            printItemValue(visitor, items.get(i), level, i, maxLevel);
-            listBuilder.addItem(fieldTempReference);
-        }
-        listBuilder.write(outputDos, true);
-        arg.first.set(outputBos.getByteArray(), 0, outputBos.size());
-    }
-
-    private void printItemValue(PrintAdmBytesVisitor visitor, IVisitablePointable item, long level, int i, long maxLevel)
-            throws AsterixException, IOException {
-
-
-        if (level<=maxLevel) {
-            nestedVisitorArg.third = level;
-            item.accept(visitor, nestedVisitorArg);
         } else {
-            printHelper.printAnnotatedBytes(item, tempBuffer.getDataOutput());
-            fieldTempReference.set(tempBuffer);
+         // TODO Add a way to deal with nested list
+            visitor.writeAnnotatedBytes(accessor, arg.second, arg.first);
         }
     }
-
 }

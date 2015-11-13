@@ -21,6 +21,8 @@ package org.apache.asterix.runtime.evaluators.functions;
 import org.apache.asterix.om.functions.AsterixBuiltinFunctions;
 import org.apache.asterix.om.functions.IFunctionDescriptor;
 import org.apache.asterix.om.functions.IFunctionDescriptorFactory;
+import org.apache.asterix.om.typecomputer.impl.TypeComputerUtils;
+import org.apache.asterix.om.types.ARecordType;
 import org.apache.asterix.om.types.IAType;
 import org.apache.asterix.runtime.evaluators.base.AbstractScalarFunctionDynamicDescriptor;
 import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
@@ -30,9 +32,8 @@ import org.apache.hyracks.algebricks.runtime.base.ICopyEvaluatorFactory;
 public class AdmToBytesDescriptor extends AbstractScalarFunctionDynamicDescriptor {
     private static final long serialVersionUID = 1L;
 
-    private IAType inputType0;
-    private IAType inputType1;
-    private IAType outputType;
+    private ARecordType outRecType;
+    private IAType inputType;
 
     public static final IFunctionDescriptorFactory FACTORY = new IFunctionDescriptorFactory() {
         public IFunctionDescriptor createFunctionDescriptor() {
@@ -41,10 +42,22 @@ public class AdmToBytesDescriptor extends AbstractScalarFunctionDynamicDescripto
     };
 
 
-    public void reset(IAType inputType0, IAType inputType1, IAType outputType) {
-        this.inputType0 = inputType0;
-        this.inputType1 = inputType1;
-        this.outputType = outputType;
+    public void reset(IAType outType, IAType inType, IAType inputLevelType) {
+        outRecType = TypeComputerUtils.extractRecordType(outType);
+
+        switch (inType.getTypeTag()) {
+            case RECORD:
+                this.inputType = TypeComputerUtils.extractRecordType(inType);
+                break;
+            case UNORDEREDLIST:
+                this.inputType = TypeComputerUtils.extractUnorderedListType(inType);
+                break;
+            case ORDEREDLIST:
+                this.inputType = TypeComputerUtils.extractOrderedListType(inType);
+                break;
+            default:
+                this.inputType = inType;
+        }
     }
 
 
@@ -53,10 +66,10 @@ public class AdmToBytesDescriptor extends AbstractScalarFunctionDynamicDescripto
     }
 
     public ICopyEvaluatorFactory createEvaluatorFactory(final ICopyEvaluatorFactory[] args) throws AlgebricksException {
-        return new AdmToBytesFactory(args[0], args[1], inputType0, outputType);
+        return new AdmToBytesFactory(args[0], args[1], inputType, outRecType);
     }
 
     @Override public FunctionIdentifier getIdentifier() {
-        return AsterixBuiltinFunctions.ADM_TO_BYTES;
+        return AsterixBuiltinFunctions.ADM_TO_BYTEARRAY;
     }
 }

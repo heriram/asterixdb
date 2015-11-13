@@ -204,6 +204,9 @@ public class AsterixBuiltinFunctions {
 
     public final static FunctionIdentifier ADM_TO_BYTES = new FunctionIdentifier(
             FunctionConstants.ASTERIX_NS, "adm-to-bytes", 2);
+    public final static FunctionIdentifier ADM_TO_BYTEARRAY = new FunctionIdentifier(
+            FunctionConstants.ASTERIX_NS, "adm-to-bytearray", 2);
+
 
     // numeric
     public final static FunctionIdentifier NUMERIC_UNARY_MINUS = new FunctionIdentifier(FunctionConstants.ASTERIX_NS,
@@ -966,7 +969,9 @@ public class AsterixBuiltinFunctions {
         addPrivateFunction(FIELD_ACCESS_BY_NAME, NonTaggedFieldAccessByNameResultType.INSTANCE, true);
         addFunction(GET_RECORD_FIELDS, OrderedListOfAnyTypeComputer.INSTANCE, true);
         addFunction(GET_RECORD_FIELD_VALUE, FieldAccessNestedResultType.INSTANCE, true);
-        //addFunction(ADM_TO_BYTES, AdmToBytesTypeComputer.INSTANCE, true);
+
+        // Debugging functions
+        addFunction(ADM_TO_BYTEARRAY, AnnotatedBytesTypeComputer.INSTANCE, true);
         addFunction(ADM_TO_BYTES, AnnotatedBytesTypeComputer.INSTANCE, true);
 
         // temporal type accessors

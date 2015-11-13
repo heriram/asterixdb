@@ -116,6 +116,8 @@ public class RecordMergeDescriptor extends AbstractScalarFunctionDynamicDescript
 
                 final ArrayBackedValueStorage tabvs = new ArrayBackedValueStorage();
 
+                final PointableUtils pu = new PointableUtils();
+
                 return new ICopyEvaluator() {
 
                     @Override
@@ -185,8 +187,6 @@ public class RecordMergeDescriptor extends AbstractScalarFunctionDynamicDescript
                                         throw new AlgebricksException("Duplicate field found");
                                     }
                                 }
-
-
                             }
                             if (!foundMatch) {
                                 addFieldToSubRecord(combinedType, leftName, leftValue, null, openFromParent,
@@ -225,7 +225,7 @@ public class RecordMergeDescriptor extends AbstractScalarFunctionDynamicDescript
                             IVisitablePointable leftValue, IVisitablePointable rightValue, boolean openFromParent,
                             int nestedLevel) throws IOException, AsterixException, AlgebricksException {
 
-                        String fieldName = PointableUtils.INSTANCE.getFieldName(fieldNamePointable);
+                        String fieldName =pu.getFieldName(fieldNamePointable);
 
                         //Add the merged field
                         if (combinedType != null && combinedType.isClosedField(fieldName)) {
