@@ -326,6 +326,6 @@ public class AnnotatedBytesDescriptor extends AbstractScalarFunctionDynamicDescr
 
     @Override
     public FunctionIdentifier getIdentifier() {
-        return AsterixBuiltinFunctions.ADM_TO_BYTES;
+        return AsterixBuiltinFunctions.ADM_TO_BYTEARRAY;
     }
 }

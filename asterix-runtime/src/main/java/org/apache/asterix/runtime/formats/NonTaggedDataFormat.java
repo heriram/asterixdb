@@ -1003,7 +1003,7 @@ public class NonTaggedDataFormat implements IDataFormat {
             }
         });
 
-        functionTypeInferers.put(AsterixBuiltinFunctions.ADM_TO_BYTEARRAY, new FunctionTypeInferer() {
+        functionTypeInferers.put(AsterixBuiltinFunctions.ADM_TO_BYTES, new FunctionTypeInferer() {
 
             @Override public void infer(ILogicalExpression expr, IFunctionDescriptor fd,
                     IVariableTypeEnvironment context) throws AlgebricksException {
@@ -1015,7 +1015,7 @@ public class NonTaggedDataFormat implements IDataFormat {
             }
         });
 
-        functionTypeInferers.put(AsterixBuiltinFunctions.ADM_TO_BYTES, new FunctionTypeInferer() {
+        functionTypeInferers.put(AsterixBuiltinFunctions.ADM_TO_BYTEARRAY, new FunctionTypeInferer() {
 
             @Override public void infer(ILogicalExpression expr, IFunctionDescriptor fd,
                     IVariableTypeEnvironment context) throws AlgebricksException {

@@ -70,6 +70,6 @@ public class AdmToBytesDescriptor extends AbstractScalarFunctionDynamicDescripto
     }
 
     @Override public FunctionIdentifier getIdentifier() {
-        return AsterixBuiltinFunctions.ADM_TO_BYTEARRAY;
+        return AsterixBuiltinFunctions.ADM_TO_BYTES;
     }
 }

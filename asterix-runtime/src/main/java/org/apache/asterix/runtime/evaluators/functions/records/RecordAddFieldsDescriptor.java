@@ -79,7 +79,7 @@ public class RecordAddFieldsDescriptor  extends AbstractScalarFunctionDynamicDes
         return new ICopyEvaluatorFactory() {
 
             private static final long serialVersionUID = 1L;
-
+            private final byte SER_NULL_TYPE_TAG = ATypeTag.NULL.serialize();
 
             @SuppressWarnings("unchecked")
             private final ISerializerDeserializer<ANull> nullSerDe = AqlSerializerDeserializerProvider.INSTANCE
@@ -139,7 +139,13 @@ public class RecordAddFieldsDescriptor  extends AbstractScalarFunctionDynamicDes
                         eval0.evaluate(tuple);
                         eval1.evaluate(tuple);
 
-                        if (pu.isNullRecord(abvs0, out) || pu.isNullRecord(abvs1, out)) {
+                        if (abvs0.getByteArray()[0] == SER_NULL_TYPE_TAG ||
+                                abvs1.getByteArray()[0] == SER_NULL_TYPE_TAG) {
+                            try {
+                                nullSerDe.serialize(ANull.NULL, output.getDataOutput());
+                            } catch (HyracksDataException e) {
+                                throw new AlgebricksException(e);
+                            }
                             return;
                         }
 
@@ -158,18 +164,6 @@ public class RecordAddFieldsDescriptor  extends AbstractScalarFunctionDynamicDes
                         }
                     }
 
-                    private void addField(IVisitablePointable fieldNamePointable,
-                            IVisitablePointable fieldValuePointable) throws IOException, AsterixException {
-                        String fieldName = pu.getFieldName(fieldNamePointable);
-                        if (recType.isClosedField(fieldName)) {
-                            int position = recType.findFieldPosition(fieldName);
-                            recordBuilder.addField(position, fieldValuePointable);
-                        } else {
-                            recordBuilder.addField(fieldNamePointable, fieldValuePointable);
-                        }
-
-                    }
-
                     private void addFields(ARecordVisitablePointable inputRecordPointer,
                             AListVisitablePointable listPointable) throws IOException, AsterixException,
                             AlgebricksException {
@@ -184,7 +178,7 @@ public class RecordAddFieldsDescriptor  extends AbstractScalarFunctionDynamicDes
                         for (int i = 0; i < inputRecordPointer.getFieldNames().size(); ++i) {
                             IVisitablePointable fnp = inputRecordPointer.getFieldNames().get(i);
                             IVisitablePointable fvp = inputRecordPointer.getFieldValues().get(i);
-                            addField(fnp, fvp);
+                            pu.addField(recordBuilder, fnp, fvp);
                         }
 
                         // Get the fields from a list of record
@@ -214,9 +208,10 @@ public class RecordAddFieldsDescriptor  extends AbstractScalarFunctionDynamicDes
                             }
 
                             // TODO Add Nested type support
-                            if (!PointableUtils.isAFieldName(inputRecordPointer, namePointable)) {
+                            int pos = PointableUtils.getFieldNamePosition(inputRecordPointer, namePointable);
+                            if (pos>-1) {
                                 if(namePointable != null && valuePointable != null) {
-                                    addField(namePointable, valuePointable);
+                                    pu.addField(recordBuilder, namePointable, valuePointable);
                                 }
                             } else {
                                 throw new AlgebricksException("Conflicting duplicate field found.");

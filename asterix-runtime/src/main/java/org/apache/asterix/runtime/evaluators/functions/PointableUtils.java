@@ -33,7 +33,7 @@ import org.apache.asterix.dataflow.data.nontagged.serde.AInt32SerializerDeserial
 import org.apache.asterix.dataflow.data.nontagged.serde.AInt64SerializerDeserializer;
 import org.apache.asterix.dataflow.data.nontagged.serde.AStringSerializerDeserializer;
 import org.apache.asterix.formats.nontagged.AqlSerializerDeserializerProvider;
-import org.apache.asterix.om.base.ANull;
+import org.apache.asterix.om.base.AString;
 import org.apache.asterix.om.pointables.ARecordVisitablePointable;
 import org.apache.asterix.om.pointables.PointableAllocator;
 import org.apache.asterix.om.pointables.base.IVisitablePointable;
@@ -54,7 +54,6 @@ import org.apache.hyracks.data.std.api.IValueReference;
 import org.apache.hyracks.data.std.primitive.UTF8StringPointable;
 import org.apache.hyracks.data.std.util.ArrayBackedValueStorage;
 import org.apache.hyracks.data.std.util.ByteArrayAccessibleOutputStream;
-import org.apache.hyracks.dataflow.common.data.marshalling.UTF8StringSerializerDeserializer;
 
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
@@ -84,11 +83,10 @@ public class PointableUtils {
     private final DataInputStream dis = new DataInputStream(
             new ByteArrayInputStream(outputStream.getByteArray()));
 
-    private static final byte SER_NULL_TYPE_TAG = ATypeTag.NULL.serialize();
 
     @SuppressWarnings("unchecked")
-    public static final ISerializerDeserializer<ANull> NULL_SERDE = AqlSerializerDeserializerProvider.INSTANCE
-            .getSerializerDeserializer(BuiltinType.ANULL);
+    private static final ISerializerDeserializer<AString> stringSerde = AqlSerializerDeserializerProvider.INSTANCE
+            .getSerializerDeserializer(BuiltinType.ASTRING);
 
     private static final IBinaryComparator STRING_BINARY_COMPARATOR = PointableBinaryComparatorFactory
             .of(UTF8StringPointable.FACTORY).createBinaryComparator();
@@ -210,26 +208,6 @@ public class PointableUtils {
         return EnumDeserializer.ATYPETAGDESERIALIZER.deserialize(bytes[s]);
     }
 
-
-    public boolean isNullRecord(IMutableValueStorage abvs, DataOutput output) throws AlgebricksException {
-        if (abvs.getByteArray()[0] == SER_NULL_TYPE_TAG) {
-            try {
-                NULL_SERDE.serialize(ANull.NULL, output);
-            } catch (HyracksDataException e) {
-                throw new AlgebricksException(e);
-            }
-            return true;
-        }
-
-        return false;
-    }
-
-    public static boolean isAFieldName(ARecordVisitablePointable recordPointer, IVisitablePointable fieldNamePointable) {
-        int fieldPosition = getFieldNamePosition(recordPointer, fieldNamePointable);
-
-        return (fieldPosition>-1);
-    }
-
     public static int getFieldNamePosition(ARecordVisitablePointable recordPointer, IVisitablePointable fieldNamePointable) {
         for (int i = 0; i < recordPointer.getFieldNames().size(); ++i) {
             IVisitablePointable fp = recordPointer.getFieldNames().get(i);
@@ -256,30 +234,20 @@ public class PointableUtils {
         try {
             DataOutput output = vs.getDataOutput();
             output.write(ATypeTag.STRING.serialize());
-            UTF8StringSerializerDeserializer.INSTANCE.serialize(str, output);
+            stringSerde.serialize(new AString(str), output);
         } catch (IOException e) {
             throw new AlgebricksException("Could not serialize " + str);
         }
         fnp.set(vs);
     }
 
-    public static boolean isAList(ATypeTag typeTag) {
-        return (typeTag == ATypeTag.UNORDEREDLIST || typeTag == ATypeTag.ORDEREDLIST);
-    }
-
-    public static boolean isAList(IValueReference vp) {
-        ATypeTag typeTag = getTypeTag(vp);
-        return (typeTag == ATypeTag.UNORDEREDLIST || typeTag == ATypeTag.ORDEREDLIST);
-    }
-
-    public void addField(RecordBuilder recordBuilder, IVisitablePointable fielName,
+    public void addField(IARecordBuilder recordBuilder, IVisitablePointable fielName,
             IVisitablePointable fieldValue) throws AsterixException {
         try {
             if (recordBuilder == null) {
                 recordBuilder = new RecordBuilder();
             }
-
-            int pos = recordBuilder.getFieldId(getFieldName(fielName));
+            int pos = recordBuilder.getFieldId(deserializeString(fielName));
             if (pos>=0) {
                 recordBuilder.addField(pos, fieldValue);
             } else {
