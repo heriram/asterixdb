@@ -20,7 +20,6 @@ package org.apache.asterix.runtime.evaluators.functions.records;
 
 import org.apache.asterix.builders.RecordBuilder;
 import org.apache.asterix.common.exceptions.AsterixException;
-import org.apache.asterix.dataflow.data.nontagged.serde.AStringSerializerDeserializer;
 import org.apache.asterix.formats.nontagged.AqlSerializerDeserializerProvider;
 import org.apache.asterix.om.base.ANull;
 import org.apache.asterix.om.functions.AsterixBuiltinFunctions;
@@ -42,12 +41,8 @@ import org.apache.hyracks.api.dataflow.value.ISerializerDeserializer;
 import org.apache.hyracks.api.exceptions.HyracksDataException;
 import org.apache.hyracks.data.std.api.IDataOutputProvider;
 import org.apache.hyracks.data.std.util.ArrayBackedValueStorage;
-import org.apache.hyracks.data.std.util.ByteArrayAccessibleOutputStream;
 import org.apache.hyracks.dataflow.common.data.accessors.IFrameTupleReference;
 
-import java.io.ByteArrayInputStream;
-import java.io.DataInputStream;
-import java.io.DataOutput;
 import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -106,16 +101,10 @@ class RecordRemoveFieldsEvalFactory implements ICopyEvaluatorFactory {
         final ICopyEvaluator eval0 = inputRecordEvalFactory.createEvaluator(outInput0);
         final ICopyEvaluator eval1 = removeFieldPathsFactory.createEvaluator(outInput1);
 
-
-        // For deserialization purposes
-        final ByteArrayAccessibleOutputStream nameOutputStream = new ByteArrayAccessibleOutputStream();
-        final ByteArrayInputStream namebais = new ByteArrayInputStream(nameOutputStream.getByteArray());
-        final DataInputStream namedis = new DataInputStream(namebais);
-
-        final DataOutput out = output.getDataOutput();
-
         final List<RecordBuilder> rbStack = new ArrayList<>();
         final ArrayBackedValueStorage tabvs = new ArrayBackedValueStorage();
+
+        final PointableUtils pu = new PointableUtils();
 
         return new ICopyEvaluator() {
 
@@ -194,22 +183,12 @@ class RecordRemoveFieldsEvalFactory implements ICopyEvaluatorFactory {
                 }
             }
 
-            private String getFieldName(IVisitablePointable fieldNamePointable) throws IOException {
-                nameOutputStream.reset();
-                nameOutputStream.write(fieldNamePointable.getByteArray(),
-                        fieldNamePointable.getStartOffset() + 1, fieldNamePointable.getLength());
-                namedis.reset();
-
-                return AStringSerializerDeserializer.INSTANCE.deserialize(namedis).getStringValue();
-            }
-
-
             private void addKeptFieldToSubRecord(ARecordType subRecordType, IVisitablePointable fieldNamePointable,
                     IVisitablePointable fieldValuePointable, IVisitablePointable fieldTypePointable,
                     AListVisitablePointable inputList, int nestedLevel)
                     throws IOException, AsterixException, AlgebricksException {
 
-                String fieldName = getFieldName(fieldNamePointable);
+                String fieldName = pu.getFieldName(fieldNamePointable);
 
                 ARecordType resType = subRecordType != null ? subRecordType :
                         DefaultOpenFieldType.NESTED_OPEN_RECORD_TYPE;

@@ -18,24 +18,36 @@
  */
 package org.apache.asterix.runtime.evaluators.functions;
 
-import org.apache.asterix.dataflow.data.nontagged.serde.AStringSerializerDeserializer;
-import org.apache.asterix.formats.nontagged.AqlSerializerDeserializerProvider;
-import org.apache.asterix.om.base.ANull;
+import org.apache.asterix.builders.AbstractListBuilder;
+import org.apache.asterix.builders.AbvsBuilderFactory;
+import org.apache.asterix.builders.IARecordBuilder;
+import org.apache.asterix.builders.IAsterixListBuilder;
+import org.apache.asterix.builders.ListBuilderFactory;
+import org.apache.asterix.builders.OrderedListBuilder;
+import org.apache.asterix.builders.RecordBuilder;
+import org.apache.asterix.builders.RecordBuilderFactory;
+import org.apache.asterix.builders.UnorderedListBuilder;
+import org.apache.asterix.common.exceptions.AsterixException;
+import org.apache.asterix.dataflow.data.nontagged.serde.AInt16SerializerDeserializer;
+import org.apache.asterix.dataflow.data.nontagged.serde.AInt32SerializerDeserializer;
+import org.apache.asterix.dataflow.data.nontagged.serde.AInt64SerializerDeserializer;
 import org.apache.asterix.om.pointables.ARecordVisitablePointable;
+import org.apache.asterix.om.pointables.PointableAllocator;
 import org.apache.asterix.om.pointables.base.IVisitablePointable;
 import org.apache.asterix.om.types.ATypeTag;
-import org.apache.asterix.om.types.BuiltinType;
 import org.apache.asterix.om.types.EnumDeserializer;
+import org.apache.asterix.om.types.IAType;
+import org.apache.asterix.om.util.container.IObjectPool;
+import org.apache.asterix.om.util.container.ListObjectPool;
 import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
 import org.apache.hyracks.api.dataflow.value.IBinaryComparator;
-import org.apache.hyracks.api.dataflow.value.ISerializerDeserializer;
 import org.apache.hyracks.api.exceptions.HyracksDataException;
 import org.apache.hyracks.data.std.accessors.PointableBinaryComparatorFactory;
 import org.apache.hyracks.data.std.api.IMutableValueStorage;
 import org.apache.hyracks.data.std.api.IPointable;
 import org.apache.hyracks.data.std.api.IValueReference;
 import org.apache.hyracks.data.std.primitive.UTF8StringPointable;
-import org.apache.hyracks.data.std.util.ByteArrayAccessibleOutputStream;
+import org.apache.hyracks.data.std.util.ArrayBackedValueStorage;
 import org.apache.hyracks.dataflow.common.data.marshalling.UTF8StringSerializerDeserializer;
 
 import java.io.ByteArrayInputStream;
@@ -54,23 +66,21 @@ import java.io.IOException;
  */
 
 public class PointableUtils {
+    private IObjectPool<IARecordBuilder, ATypeTag> recordBuilderPool = new ListObjectPool<IARecordBuilder, ATypeTag>(
+            new RecordBuilderFactory());
+    private IObjectPool<IAsterixListBuilder, ATypeTag> listBuilderPool = new ListObjectPool<IAsterixListBuilder, ATypeTag>(
+            new ListBuilderFactory());
+    private IObjectPool<IMutableValueStorage, ATypeTag> abvsBuilderPool = new ListObjectPool<IMutableValueStorage, ATypeTag>(
+            new AbvsBuilderFactory());
 
-    static final ByteArrayAccessibleOutputStream outputStream = new ByteArrayAccessibleOutputStream();
-    static final DataInputStream dis = new DataInputStream(
-            new ByteArrayInputStream(outputStream.getByteArray()));
-
-    private static final byte SER_NULL_TYPE_TAG = ATypeTag.NULL.serialize();
-
-    @SuppressWarnings("unchecked")
-    public static final ISerializerDeserializer<ANull> NULL_SERDE = AqlSerializerDeserializerProvider.INSTANCE
-            .getSerializerDeserializer(BuiltinType.ANULL);
+    private final UTF8StringSerializerDeserializer utf8SerDer = new UTF8StringSerializerDeserializer();
 
     private static final IBinaryComparator STRING_BINARY_COMPARATOR = PointableBinaryComparatorFactory
             .of(UTF8StringPointable.FACTORY).createBinaryComparator();
 
-    public static final PointableUtils INSTANCE = new PointableUtils();
+    private final PointableAllocator allocator = new PointableAllocator();
 
-    private PointableUtils(){
+    public PointableUtils(){
     }
 
     public static int compareStringBinValues(IValueReference a, IValueReference b) throws HyracksDataException {
@@ -112,43 +122,84 @@ public class PointableUtils {
         return true;
     }
 
-    public String getFieldName(IValueReference fieldNamePointable) throws IOException {
-        outputStream.reset();
-        outputStream.write(fieldNamePointable.getByteArray(),
-                fieldNamePointable.getStartOffset() + 1, fieldNamePointable.getLength());
-        dis.reset();
+    public IVisitablePointable allocatePointable(IAType type) {
+        if (type == null)
+            return allocator.allocateEmpty();
 
-        return AStringSerializerDeserializer.INSTANCE.deserialize(dis).getStringValue();
+        switch (type.getTypeTag()) {
+            case RECORD:
+                return allocator.allocateRecordValue(type);
+            case ORDEREDLIST:
+            case UNORDEREDLIST:
+                return allocator.allocateListValue(type);
+            default:
+                return allocator.allocateFieldValue(type);
+        }
+
     }
+
+    public static IVisitablePointable allocatePointable(PointableAllocator pa, IAType type) {
+        if (type == null)
+            return pa.allocateEmpty();
+
+        switch (type.getTypeTag()) {
+            case RECORD:
+                return pa.allocateRecordValue(type);
+            case ORDEREDLIST:
+            case UNORDEREDLIST:
+                return pa.allocateListValue(type);
+            default:
+                return pa.allocateFieldValue(type);
+        }
+
+    }
+
+    public String deserializeString(IValueReference fieldNamePointable, boolean isTaged) throws IOException {
+        int offset = fieldNamePointable.getStartOffset();
+        int length = fieldNamePointable.getLength();
+
+        if (isTaged) {
+            offset++;
+            length--;
+        }
+        return utf8SerDer.deserialize(new DataInputStream(new ByteArrayInputStream(fieldNamePointable.getByteArray(),
+                offset, length)));
+    }
+
+    public String getFieldName(IValueReference fieldNamePointable) throws IOException {
+        return deserializeString(fieldNamePointable, true);
+    }
+
+    public long getNonTaggedIntegerValue(IValueReference valuePointable) throws AlgebricksException {
+        return getIntegerValue(valuePointable, false);
+    }
+
+    public long getIntegerValue(IValueReference valuePointable, boolean isTagged) throws AlgebricksException {
+        ATypeTag tag = getTypeTag(valuePointable);
+
+        int offset = isTagged ? valuePointable.getStartOffset() + 1 : valuePointable.getStartOffset();
+
+        switch (tag) {
+            case INT64:
+                return AInt64SerializerDeserializer.getLong(valuePointable.getByteArray(), offset);
+            case INT32:
+                return AInt32SerializerDeserializer.getInt(valuePointable.getByteArray(), offset);
+            case INT16:
+                return AInt16SerializerDeserializer.getShort(valuePointable.getByteArray(), offset);
+            default:
+                throw new AlgebricksException("Unsupported type " + tag);
+        }
+    }
+
 
     public static boolean isType(ATypeTag typeTag, IVisitablePointable visitablePointable) {
         return (getTypeTag(visitablePointable)==typeTag);
     }
 
-    public static ATypeTag getTypeTag(IVisitablePointable visitablePointable) {
+    public static ATypeTag getTypeTag(IValueReference visitablePointable) {
         byte[] bytes = visitablePointable.getByteArray();
         int s = visitablePointable.getStartOffset();
         return EnumDeserializer.ATYPETAGDESERIALIZER.deserialize(bytes[s]);
-    }
-
-
-    public boolean isNullRecord(IMutableValueStorage abvs, DataOutput output) throws AlgebricksException {
-        if (abvs.getByteArray()[0] == SER_NULL_TYPE_TAG) {
-            try {
-                NULL_SERDE.serialize(ANull.NULL, output);
-            } catch (HyracksDataException e) {
-                throw new AlgebricksException(e);
-            }
-            return true;
-        }
-
-        return false;
-    }
-
-    public static boolean isAFieldName(ARecordVisitablePointable recordPointer, IVisitablePointable fieldNamePointable) {
-        int fieldPosition = getFieldNamePosition(recordPointer, fieldNamePointable);
-
-        return (fieldPosition>-1);
     }
 
     public static int getFieldNamePosition(ARecordVisitablePointable recordPointer, IVisitablePointable fieldNamePointable) {
@@ -175,10 +226,51 @@ public class PointableUtils {
     public static void serializeString(String str, IMutableValueStorage vs, IPointable fnp) throws AlgebricksException {
         vs.reset();
         try {
-            UTF8StringSerializerDeserializer.INSTANCE.serialize(str, vs.getDataOutput());
-        } catch (HyracksDataException e) {
+            DataOutput output = vs.getDataOutput();
+            output.write(ATypeTag.STRING.serialize());
+            (new UTF8StringSerializerDeserializer()).serialize(str, output);
+        } catch (IOException e) {
             throw new AlgebricksException("Could not serialize " + str);
         }
         fnp.set(vs);
+    }
+
+    public void addField(IARecordBuilder recordBuilder, IVisitablePointable fielName,
+            IVisitablePointable fieldValue) throws AsterixException {
+        try {
+            if (recordBuilder == null) {
+                recordBuilder = new RecordBuilder();
+            }
+            int pos = recordBuilder.getFieldId(deserializeString(fielName, true));
+            if (pos>=0) {
+                recordBuilder.addField(pos, fieldValue);
+            } else {
+                recordBuilder.addField(fielName, fieldValue);
+            }
+        } catch (IOException e) {
+            throw new AsterixException("Couldn't add field to the recordbuilder.");
+        }
+
+    }
+
+    public void resetObjectPools() {
+        abvsBuilderPool.reset();
+        recordBuilderPool.reset();
+        listBuilderPool.reset();
+    }
+
+    public ArrayBackedValueStorage getTempBuffer() {
+        return (ArrayBackedValueStorage) abvsBuilderPool.allocate(ATypeTag.BINARY);
+    }
+
+    public IARecordBuilder getRecordBuilder() {
+        return recordBuilderPool.allocate(ATypeTag.RECORD);
+    }
+
+    public AbstractListBuilder getListBuilder(ATypeTag listType) {
+        if (listType==ATypeTag.UNORDEREDLIST)
+            return (UnorderedListBuilder) listBuilderPool.allocate(ATypeTag.UNORDEREDLIST);
+        else
+            return (OrderedListBuilder) listBuilderPool.allocate(ATypeTag.ORDEREDLIST);
     }
 }

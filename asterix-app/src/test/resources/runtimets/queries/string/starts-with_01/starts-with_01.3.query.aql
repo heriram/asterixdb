@@ -1,5 +1,0 @@
-use dataverse test;
-
-for $x in ["foofoo"]
-for $y in ["barbar"]
-return [starts-with($x, "ba"), starts-with($y, "ba")]

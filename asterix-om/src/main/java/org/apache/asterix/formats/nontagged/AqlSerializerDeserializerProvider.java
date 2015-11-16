@@ -18,11 +18,6 @@
  */
 package org.apache.asterix.formats.nontagged;
 
-import java.io.DataInput;
-import java.io.DataOutput;
-import java.io.IOException;
-import java.io.Serializable;
-
 import org.apache.asterix.dataflow.data.nontagged.serde.ABinarySerializerDeserializer;
 import org.apache.asterix.dataflow.data.nontagged.serde.ABooleanSerializerDeserializer;
 import org.apache.asterix.dataflow.data.nontagged.serde.ACircleSerializerDeserializer;
@@ -66,6 +61,11 @@ import org.apache.hyracks.api.dataflow.value.ISerializerDeserializer;
 import org.apache.hyracks.api.exceptions.HyracksDataException;
 import org.apache.hyracks.dataflow.common.data.marshalling.ShortSerializerDeserializer;
 
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.IOException;
+import java.io.Serializable;
+
 public class AqlSerializerDeserializerProvider implements ISerializerDeserializerProvider, Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -84,7 +84,7 @@ public class AqlSerializerDeserializerProvider implements ISerializerDeserialize
         switch (aqlType.getTypeTag()) {
             case ANY:
             case UNION: { // we could do smth better for nullable fields
-                return AObjectSerializerDeserializer.INSTANCE;
+                return new AObjectSerializerDeserializer();
             }
             default: {
                 return addTag(getNonTaggedSerializerDeserializer(aqlType), aqlType.getTypeTag());
@@ -132,10 +132,10 @@ public class AqlSerializerDeserializerProvider implements ISerializerDeserialize
                 return ANullSerializerDeserializer.INSTANCE;
             }
             case STRING: {
-                return AStringSerializerDeserializer.INSTANCE;
+                return new AStringSerializerDeserializer();
             }
             case BINARY: {
-                return ABinarySerializerDeserializer.INSTANCE;
+                return new ABinarySerializerDeserializer();
             }
             case TIME: {
                 return ATimeSerializerDeserializer.INSTANCE;

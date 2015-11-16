@@ -22,8 +22,9 @@ import java.util.List;
 
 import org.apache.hyracks.api.exceptions.HyracksDataException;
 import org.apache.hyracks.storage.am.lsm.btree.impls.LSMBTreeWithBuddyDiskComponent;
+import org.apache.hyracks.storage.am.lsm.btree.impls.LSMBTreeWithBuddyFileManager;
 import org.apache.hyracks.storage.am.lsm.common.api.ILSMComponent;
-import org.apache.hyracks.storage.am.lsm.common.impls.LSMOperationType;
+import org.apache.hyracks.storage.am.lsm.common.api.LSMOperationType;
 
 public class LSMBTreeWithBuddyIOOperationCallback extends AbstractLSMIOOperationCallback {
 
@@ -53,6 +54,16 @@ public class LSMBTreeWithBuddyIOOperationCallback extends AbstractLSMIOOperation
             maxLSN = Math.max(getTreeIndexLSN(btreeComponent.getBTree()), maxLSN);
         }
         return maxLSN;
+    }
+
+    @Override
+    public boolean componentFileHasLSN(String componentFilePath) {
+        if (componentFilePath.endsWith(LSMBTreeWithBuddyFileManager.BTREE_STRING)
+                || componentFilePath.endsWith(LSMBTreeWithBuddyFileManager.BUDDY_BTREE_STRING)) {
+            return true;
+        }
+
+        return false;
     }
 
 }

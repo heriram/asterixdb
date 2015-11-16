@@ -1,4 +1,0 @@
-with $a:=1
-with $b:=1
-return
-  $b-$a

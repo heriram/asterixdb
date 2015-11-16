@@ -1,3 +1,22 @@
+<!--
+ ! Licensed to the Apache Software Foundation (ASF) under one
+ ! or more contributor license agreements.  See the NOTICE file
+ ! distributed with this work for additional information
+ ! regarding copyright ownership.  The ASF licenses this file
+ ! to you under the Apache License, Version 2.0 (the
+ ! "License"); you may not use this file except in compliance
+ ! with the License.  You may obtain a copy of the License at
+ !
+ !   http://www.apache.org/licenses/LICENSE-2.0
+ !
+ ! Unless required by applicable law or agreed to in writing,
+ ! software distributed under the License is distributed on an
+ ! "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ ! KIND, either express or implied.  See the License for the
+ ! specific language governing permissions and limitations
+ ! under the License.
+ !-->
+
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
    xmlns:test="urn:xml.testframework.asterix.apache.org"
    targetNamespace="urn:xml.testframework.asterix.apache.org" elementFormDefault="qualified">
@@ -112,7 +131,17 @@
                         </xs:simpleContent>
                      </xs:complexType>
                   </xs:element>
-
+                  <xs:element name="parameter" minOccurs="0" maxOccurs="unbounded">
+                     <xs:annotation>
+                        <xs:documentation>
+                           Parameter to send to the HTTP API.
+                        </xs:documentation>
+                     </xs:annotation>
+                     <xs:complexType>
+                        <xs:attribute name="name" type="xs:string" />
+                        <xs:attribute name="value" type="xs:string" />
+                     </xs:complexType>
+                  </xs:element>
 
                   <!-- Zero or more expected errors for this query -->
 
@@ -186,9 +215,12 @@
          <xs:enumeration value="Text"/>
          <xs:enumeration value="Inspect"/>
          <xs:enumeration value="Ignore"/>
-         <xs:enumeration value="JSON"/>
+         <xs:enumeration value="Clean-JSON"/>
+         <xs:enumeration value="Lossless-JSON"/>
          <xs:enumeration value="CSV"/>
          <xs:enumeration value="CSV_Header"/>
+         <xs:enumeration value="AST"/>
+         <xs:enumeration value="PLAN"/>
       </xs:restriction>
    </xs:simpleType>
 
@@ -217,5 +249,5 @@
          <xs:pattern value="\*|([A-Z]{4}[0-9]{4})"/>
       </xs:restriction>
    </xs:simpleType>
-   
+
 </xs:schema>

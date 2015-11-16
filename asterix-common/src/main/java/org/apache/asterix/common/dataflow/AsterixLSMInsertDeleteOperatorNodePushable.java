@@ -41,6 +41,10 @@ public class AsterixLSMInsertDeleteOperatorNodePushable extends LSMIndexInsertUp
 
     private final boolean isPrimary;
 
+    public boolean isPrimary() {
+        return isPrimary;
+    }
+
     public AsterixLSMInsertDeleteOperatorNodePushable(IIndexOperatorDescriptor opDesc, IHyracksTaskContext ctx,
             int partition, int[] fieldPermutation, IRecordDescriptorProvider recordDescProvider, IndexOperation op,
             boolean isPrimary) {
@@ -58,7 +62,7 @@ public class AsterixLSMInsertDeleteOperatorNodePushable extends LSMIndexInsertUp
         AbstractLSMIndex lsmIndex = (AbstractLSMIndex) indexHelper.getIndexInstance();
         try {
             modCallback = opDesc.getModificationOpCallbackFactory().createModificationOperationCallback(
-                    indexHelper.getResourceID(), lsmIndex, ctx);
+                    indexHelper.getResourceName(), indexHelper.getResourceID(), lsmIndex, ctx);
             indexAccessor = lsmIndex.createAccessor(modCallback, NoOpOperationCallback.INSTANCE);
             ITupleFilterFactory tupleFilterFactory = opDesc.getTupleFilterFactory();
             if (tupleFilterFactory != null) {

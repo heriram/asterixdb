@@ -19,14 +19,6 @@
 
 package org.apache.asterix.om.pointables.cast;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutput;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.io.PrintStream;
-import java.util.ArrayList;
-import java.util.List;
-
 import org.apache.asterix.builders.RecordBuilder;
 import org.apache.asterix.common.exceptions.AsterixException;
 import org.apache.asterix.common.exceptions.TypeException;
@@ -35,7 +27,7 @@ import org.apache.asterix.om.pointables.ARecordVisitablePointable;
 import org.apache.asterix.om.pointables.PointableAllocator;
 import org.apache.asterix.om.pointables.base.DefaultOpenFieldType;
 import org.apache.asterix.om.pointables.base.IVisitablePointable;
-import org.apache.asterix.om.pointables.printer.APrintVisitor;
+import org.apache.asterix.om.pointables.printer.adm.APrintVisitor;
 import org.apache.asterix.om.types.ARecordType;
 import org.apache.asterix.om.types.ATypeTag;
 import org.apache.asterix.om.types.AUnionType;
@@ -53,6 +45,15 @@ import org.apache.hyracks.data.std.accessors.PointableBinaryComparatorFactory;
 import org.apache.hyracks.data.std.api.IValueReference;
 import org.apache.hyracks.data.std.primitive.UTF8StringPointable;
 import org.apache.hyracks.data.std.util.ByteArrayAccessibleOutputStream;
+import org.apache.hyracks.util.string.UTF8StringWriter;
+
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutput;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * This class is to do the runtime type cast for a record. It is ONLY visible to
@@ -94,6 +95,8 @@ class ARecordCaster {
     private boolean[] openFields;
     private int[] fieldNamesSortedIndex;
     private int[] reqFieldNamesSortedIndex;
+
+    private final UTF8StringWriter utf8Writer = new UTF8StringWriter();
 
     public ARecordCaster() {
         try {
@@ -182,7 +185,7 @@ class ARecordCaster {
             // add type name pointable (including a string type tag)
             int nameStart = bos.size();
             dos.write(ATypeTag.STRING.serialize());
-            dos.writeUTF(fname);
+            utf8Writer.writeUTF8(fname, dos);
             int nameEnd = bos.size();
             IVisitablePointable typeNamePointable = allocator.allocateEmpty();
             typeNamePointable.set(bos.getByteArray(), nameStart, nameEnd - nameStart);

@@ -29,10 +29,11 @@ import org.apache.asterix.formats.nontagged.AqlBinaryHashFunctionFactoryProvider
 import org.apache.asterix.formats.nontagged.AqlBinaryHashFunctionFamilyProvider;
 import org.apache.asterix.formats.nontagged.AqlBinaryIntegerInspector;
 import org.apache.asterix.formats.nontagged.AqlCSVPrinterFactoryProvider;
-import org.apache.asterix.formats.nontagged.AqlJSONPrinterFactoryProvider;
+import org.apache.asterix.formats.nontagged.AqlCleanJSONPrinterFactoryProvider;
+import org.apache.asterix.formats.nontagged.AqlLosslessJSONPrinterFactoryProvider;
 import org.apache.asterix.formats.nontagged.AqlNormalizedKeyComputerFactoryProvider;
 import org.apache.asterix.formats.nontagged.AqlPredicateEvaluatorFactoryProvider;
-import org.apache.asterix.formats.nontagged.AqlPrinterFactoryProvider;
+import org.apache.asterix.formats.nontagged.AqlADMPrinterFactoryProvider;
 import org.apache.asterix.formats.nontagged.AqlSerializerDeserializerProvider;
 import org.apache.asterix.formats.nontagged.AqlTypeTraitProvider;
 import org.apache.asterix.om.base.ABoolean;
@@ -165,7 +166,7 @@ import org.apache.asterix.runtime.evaluators.functions.AnyCollectionMemberDescri
 import org.apache.asterix.runtime.evaluators.functions.CastListDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.CastRecordDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.CodePointToStringDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.ContainsDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.StringContainsDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.CountHashedGramTokensDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.CountHashedWordTokensDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.CreateCircleDescriptor;
@@ -182,7 +183,7 @@ import org.apache.asterix.runtime.evaluators.functions.EditDistanceDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.EditDistanceListIsFilterable;
 import org.apache.asterix.runtime.evaluators.functions.EditDistanceStringIsFilterable;
 import org.apache.asterix.runtime.evaluators.functions.EmbedTypeDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.EndsWithDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.StringEndsWithDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.FlowRecordDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.FuzzyEqDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.GetItemDescriptor;
@@ -193,7 +194,7 @@ import org.apache.asterix.runtime.evaluators.functions.InjectFailureDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.IsNullDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.IsSystemNullDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.LenDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.LikeDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.StringLikeDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.NotDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.NotNullDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.NumericAbsDescriptor;
@@ -223,9 +224,8 @@ import org.apache.asterix.runtime.evaluators.functions.SpatialAreaDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.SpatialCellDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.SpatialDistanceDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.SpatialIntersectDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.StartsWithDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.StringStartsWithDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.StringConcatDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.StringEndWithDescrtiptor;
 import org.apache.asterix.runtime.evaluators.functions.StringEqualDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.StringJoinDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.StringLengthDescriptor;
@@ -234,7 +234,6 @@ import org.apache.asterix.runtime.evaluators.functions.StringMatchesDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.StringMatchesWithFlagDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.StringReplaceDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.StringReplaceWithFlagsDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.StringStartWithDescrtiptor;
 import org.apache.asterix.runtime.evaluators.functions.StringToCodePointDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.StringUpperCaseDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.Substring2Descriptor;
@@ -373,9 +372,11 @@ public class NonTaggedDataFormat implements IDataFormat {
 
     private static LogicalVariable METADATA_DUMMY_VAR = new LogicalVariable(-1);
 
-    private static final HashMap<ATypeTag, IValueParserFactory> typeToValueParserFactMap = new HashMap<ATypeTag, IValueParserFactory>();
+    private static final HashMap<ATypeTag, IValueParserFactory> typeToValueParserFactMap = new HashMap<>();
 
     public static final String NON_TAGGED_DATA_FORMAT = "org.apache.asterix.runtime.formats.NonTaggedDataFormat";
+
+    private Map<FunctionIdentifier, FunctionTypeInferer> functionTypeInferers = new HashMap<>();
 
     static {
         typeToValueParserFactMap.put(ATypeTag.INT32, IntegerParserFactory.INSTANCE);
@@ -402,16 +403,12 @@ public class NonTaggedDataFormat implements IDataFormat {
         List<IFunctionDescriptorFactory> temp = new ArrayList<IFunctionDescriptorFactory>();
 
         // format-independent
-        temp.add(ContainsDescriptor.FACTORY);
-        temp.add(EndsWithDescriptor.FACTORY);
-        temp.add(StartsWithDescriptor.FACTORY);
-        temp.add(SubstringDescriptor.FACTORY);
         temp.add(TidRunningAggregateDescriptor.FACTORY);
 
         // format-dependent
         temp.add(AndDescriptor.FACTORY);
         temp.add(OrDescriptor.FACTORY);
-        temp.add(LikeDescriptor.FACTORY);
+        temp.add(StringLikeDescriptor.FACTORY);
         temp.add(ScanCollectionDescriptor.FACTORY);
         temp.add(AnyCollectionMemberDescriptor.FACTORY);
         temp.add(ClosedRecordConstructorDescriptor.FACTORY);
@@ -460,9 +457,11 @@ public class NonTaggedDataFormat implements IDataFormat {
         temp.add(FindBinaryFromDescriptor.FACTORY);
 
         // String functions
+        temp.add(StringContainsDescriptor.FACTORY);
+        temp.add(StringEndsWithDescriptor.FACTORY);
+        temp.add(StringStartsWithDescriptor.FACTORY);
+        temp.add(SubstringDescriptor.FACTORY);
         temp.add(StringEqualDescriptor.FACTORY);
-        temp.add(StringStartWithDescrtiptor.FACTORY);
-        temp.add(StringEndWithDescrtiptor.FACTORY);
         temp.add(StringMatchesDescriptor.FACTORY);
         temp.add(StringLowerCaseDescriptor.FACTORY);
         temp.add(StringUpperCaseDescriptor.FACTORY);
@@ -702,6 +701,8 @@ public class NonTaggedDataFormat implements IDataFormat {
             mgr.registerFunction(fdFactory);
         }
         FunctionManagerHolder.setFunctionManager(mgr);
+
+        registerTypeInferers();
     }
 
     @Override
@@ -786,9 +787,8 @@ public class NonTaggedDataFormat implements IDataFormat {
                         factories);
             }
             return evalFactory;
-        } else {
+        } else
             throw new AlgebricksException("Could not find field " + fldName + " in the schema.");
-        }
     }
 
     @SuppressWarnings("unchecked")
@@ -903,272 +903,260 @@ public class NonTaggedDataFormat implements IDataFormat {
         if (fd == null) {
             throw new AsterixRuntimeException("Unresolved function " + fnId);
         }
-        typeInference(expr, fd, context);
+        final FunctionIdentifier fid = fd.getIdentifier();
+        if (functionTypeInferers.containsKey(fid)) {
+            functionTypeInferers.get(fid).infer(expr, fd, context);
+        }
         return fd;
     }
 
-    private void typeInference(ILogicalExpression expr, IFunctionDescriptor fd, IVariableTypeEnvironment context)
-            throws AlgebricksException {
-        if (fd.getIdentifier().equals(AsterixBuiltinFunctions.LISTIFY)) {
-            AbstractFunctionCallExpression f = (AbstractFunctionCallExpression) expr;
-            if (f.getArguments().size() == 0) {
-                ((ListifyAggregateDescriptor) fd).reset(new AOrderedListType(null, null));
-            } else {
-                IAType itemType = (IAType) context.getType(f.getArguments().get(0).getValue());
-                if (itemType instanceof AUnionType) {
-                    if (((AUnionType) itemType).isNullableType())
-                        itemType = ((AUnionType) itemType).getNullableType();
-                    else
-                        // Convert UNION types into ANY.
-                        itemType = BuiltinType.ANY;
-                }
-                ((ListifyAggregateDescriptor) fd).reset(new AOrderedListType(itemType, null));
-            }
-        }
-
-        if (fd.getIdentifier().equals(AsterixBuiltinFunctions.DEEP_EQUAL)) {
-            AbstractFunctionCallExpression f = (AbstractFunctionCallExpression) expr;
-            IAType outType = (IAType) context.getType(expr);
-            IAType type0 = (IAType) context.getType(f.getArguments().get(0).getValue());
-            IAType type1 = (IAType) context.getType(f.getArguments().get(1).getValue());
-            ((DeepEqualityDescriptor) fd).reset(type0, type1);
-        }
-
-        if (fd.getIdentifier().equals(AsterixBuiltinFunctions.RECORD_MERGE)) {
-            AbstractFunctionCallExpression f = (AbstractFunctionCallExpression) expr;
-            IAType outType = (IAType) context.getType(expr);
-            IAType type0 = (IAType) context.getType(f.getArguments().get(0).getValue());
-            IAType type1 = (IAType) context.getType(f.getArguments().get(1).getValue());
-            ((RecordMergeDescriptor) fd).reset(outType, type0, type1);
-        }
-
-        if (fd.getIdentifier().equals(AsterixBuiltinFunctions.ADD_FIELDS)) {
-            AbstractFunctionCallExpression f = (AbstractFunctionCallExpression) expr;
-            IAType outType = (IAType) context.getType(expr);
-            IAType type0 = (IAType) context.getType(f.getArguments().get(0).getValue());
-            ILogicalExpression le = f.getArguments().get(1).getValue();
-            IAType type1 = (IAType) context.getType(le);
-            if (type0.getTypeTag().equals(ATypeTag.ANY)) {
-                type0 = DefaultOpenFieldType.NESTED_OPEN_RECORD_TYPE;
-            }
-            if (type1.getTypeTag().equals(ATypeTag.ANY)) {
-                type1 = DefaultOpenFieldType.NESTED_OPEN_AORDERED_LIST_TYPE;
-            }
-            ((RecordAddFieldsDescriptor) fd).reset(outType, type0, type1);
-        }
-
-        if (fd.getIdentifier().equals(AsterixBuiltinFunctions.REMOVE_FIELDS)) {
-            AbstractFunctionCallExpression f = (AbstractFunctionCallExpression) expr;
-            IAType outType = (IAType) context.getType(expr);
-            IAType type0 = (IAType) context.getType(f.getArguments().get(0).getValue());
-            ILogicalExpression le = f.getArguments().get(1).getValue();
-            IAType type1 = (IAType) context.getType(le);
-            if (type0.getTypeTag().equals(ATypeTag.ANY)) {
-                type0 = DefaultOpenFieldType.NESTED_OPEN_RECORD_TYPE;
-            }
-            if (type1.getTypeTag().equals(ATypeTag.ANY)) {
-                type1 = DefaultOpenFieldType.NESTED_OPEN_AORDERED_LIST_TYPE;
-            }
-            ((RecordRemoveFieldsDescriptor) fd).reset(outType, type0, type1);
-        }
-
-        if (fd.getIdentifier().equals(AsterixBuiltinFunctions.CAST_RECORD)) {
-            AbstractFunctionCallExpression funcExpr = (AbstractFunctionCallExpression) expr;
-            ARecordType rt = (ARecordType) TypeComputerUtilities.getRequiredType(funcExpr);
-            IAType it = (IAType) context.getType(funcExpr.getArguments().get(0).getValue());
-            if (it.getTypeTag().equals(ATypeTag.ANY)) {
-                it = DefaultOpenFieldType.NESTED_OPEN_RECORD_TYPE;
-            }
-            ((CastRecordDescriptor) fd).reset(rt, (ARecordType) it);
-        }
-        if (fd.getIdentifier().equals(AsterixBuiltinFunctions.CAST_LIST)) {
-            AbstractFunctionCallExpression funcExpr = (AbstractFunctionCallExpression) expr;
-            AbstractCollectionType rt = (AbstractCollectionType) TypeComputerUtilities.getRequiredType(funcExpr);
-            IAType it = (IAType) context.getType(funcExpr.getArguments().get(0).getValue());
-            if (it.getTypeTag().equals(ATypeTag.ANY)) {
-                it = DefaultOpenFieldType.NESTED_OPEN_AORDERED_LIST_TYPE;
-            }
-            ((CastListDescriptor) fd).reset(rt, (AbstractCollectionType) it);
-        }
-        if (fd.getIdentifier().equals(AsterixBuiltinFunctions.FLOW_RECORD)) {
-            ARecordType it = (ARecordType) TypeComputerUtilities.getInputType((AbstractFunctionCallExpression) expr);
-            ((FlowRecordDescriptor) fd).reset(it);
-        }
-        if (fd.getIdentifier().equals(AsterixBuiltinFunctions.OPEN_RECORD_CONSTRUCTOR)) {
-            ARecordType rt = (ARecordType) context.getType(expr);
-            ((OpenRecordConstructorDescriptor) fd).reset(rt,
-                    computeOpenFields((AbstractFunctionCallExpression) expr, rt));
-        }
-        if (fd.getIdentifier().equals(AsterixBuiltinFunctions.CLOSED_RECORD_CONSTRUCTOR)) {
-            ((ClosedRecordConstructorDescriptor) fd).reset((ARecordType) context.getType(expr));
-        }
-        if (fd.getIdentifier().equals(AsterixBuiltinFunctions.ORDERED_LIST_CONSTRUCTOR)) {
-            ((OrderedListConstructorDescriptor) fd).reset((AOrderedListType) context.getType(expr));
-        }
-        if (fd.getIdentifier().equals(AsterixBuiltinFunctions.UNORDERED_LIST_CONSTRUCTOR)) {
-            ((UnorderedListConstructorDescriptor) fd).reset((AUnorderedListType) context.getType(expr));
-        }
-        if (fd.getIdentifier().equals(AsterixBuiltinFunctions.FIELD_ACCESS_BY_INDEX)) {
-            AbstractFunctionCallExpression fce = (AbstractFunctionCallExpression) expr;
-            IAType t = (IAType) context.getType(fce.getArguments().get(0).getValue());
-            switch (t.getTypeTag()) {
-                case RECORD: {
-                    ARecordType recType = (ARecordType) t;
-                    ((FieldAccessByIndexDescriptor) fd).reset(recType);
-                    break;
-                }
-                case UNION: {
-                    AUnionType unionT = (AUnionType) t;
-                    if (unionT.isNullableType()) {
-                        IAType t2 = unionT.getNullableType();
-                        if (t2.getTypeTag() == ATypeTag.RECORD) {
-                            ARecordType recType = (ARecordType) t2;
-                            ((FieldAccessByIndexDescriptor) fd).reset(recType);
-                            break;
-                        }
-                    }
-                    throw new NotImplementedException("field-access-by-index for data of type " + t);
-                }
-                default: {
-                    throw new NotImplementedException("field-access-by-index for data of type " + t);
-                }
-            }
-        }
-        if (fd.getIdentifier().equals(AsterixBuiltinFunctions.FIELD_ACCESS_NESTED)) {
-            AbstractFunctionCallExpression fce = (AbstractFunctionCallExpression) expr;
-            IAType t = (IAType) context.getType(fce.getArguments().get(0).getValue());
-            AOrderedList fieldPath = (AOrderedList) (((AsterixConstantValue) ((ConstantExpression) fce.getArguments()
-                    .get(1).getValue()).getValue()).getObject());
-            List<String> listFieldPath = new ArrayList<String>();
-            for (int i = 0; i < fieldPath.size(); i++) {
-                listFieldPath.add(((AString) fieldPath.getItem(i)).getStringValue());
-            }
-
-            switch (t.getTypeTag()) {
-                case RECORD: {
-                    ARecordType recType = (ARecordType) t;
-                    ((FieldAccessNestedDescriptor) fd).reset(recType, listFieldPath);
-                    break;
-                }
-                default: {
-                    throw new NotImplementedException("field-access-nested for data of type " + t);
-                }
-            }
-        }
-        if (fd.getIdentifier().equals(AsterixBuiltinFunctions.GET_RECORD_FIELDS)) {
-            AbstractFunctionCallExpression fce = (AbstractFunctionCallExpression) expr;
-            IAType t = (IAType) context.getType(fce.getArguments().get(0).getValue());
-            if (t.getTypeTag().equals(ATypeTag.RECORD)) {
-                ARecordType recType = (ARecordType) t;
-                ((GetRecordFieldsDescriptor) fd).reset(recType);
-            } else {
-                throw new NotImplementedException("get-record-fields for data of type " + t);
-            }
-        }
-        if (fd.getIdentifier().equals(AsterixBuiltinFunctions.GET_RECORD_FIELD_VALUE)) {
-            AbstractFunctionCallExpression fce = (AbstractFunctionCallExpression) expr;
-            IAType t = (IAType) context.getType(fce.getArguments().get(0).getValue());
-            if (t.getTypeTag().equals(ATypeTag.RECORD)) {
-                ARecordType recType = (ARecordType) t;
-                ((GetRecordFieldValueDescriptor) fd).reset(recType);
-            } else {
-                throw new NotImplementedException("get-record-field-value for data of type " + t);
-            }
-        }
-
+    interface FunctionTypeInferer {
+        void infer(ILogicalExpression expr, IFunctionDescriptor fd, IVariableTypeEnvironment context) throws AlgebricksException;
     }
 
-    /**
-     *  A method necessary to extract a ordered list of paths from AQL expression
-     *  That is, it will convert ["foo", ["foo2", "bar"]] to a nested orderelist object
-     *
-     *
-     * @param expression
-     *      The expression, normally as {@link AbstractFunctionCallExpression}
-     * @param listType
-     *      The type the list input
-     * @param context
-     *      The current type environment context
-     * @return
-     *      {@link AOrderedList}
-     *
-     * @throws AlgebricksException
-     */
-    public AOrderedList computePathLists(ILogicalExpression expression, IAType listType, IVariableTypeEnvironment context)
-            throws AlgebricksException {
-        AOrderedList pathAList = null;
-
-        if (expression.getExpressionTag() == LogicalExpressionTag.CONSTANT) {
-            pathAList = (AOrderedList) (((AsterixConstantValue) ((ConstantExpression) expression).getValue()).getObject());
-        } else {
-            AbstractFunctionCallExpression funcExp = (AbstractFunctionCallExpression) expression;
-            List<Mutable<ILogicalExpression>> args = funcExp.getArguments();
-            pathAList = new AOrderedList((AOrderedListType) listType);
-            for (int i = 0; i < args.size(); i++) {
-                ILogicalExpression exp = args.get(i).getValue();
-                if (exp.getExpressionTag() == LogicalExpressionTag.CONSTANT) {
-                    ConstantExpression ce = (ConstantExpression) exp;
-
-                    if (!(ce.getValue() instanceof AsterixConstantValue)) {
-                        throw new AlgebricksException("Expecting a list of strings and found " + ce.getValue()
-                                + " instead.");
+    void registerTypeInferers() {
+        functionTypeInferers.put(AsterixBuiltinFunctions.LISTIFY, new FunctionTypeInferer() {
+            public void infer(ILogicalExpression expr, IFunctionDescriptor fd, IVariableTypeEnvironment context) throws AlgebricksException {
+                AbstractFunctionCallExpression f = (AbstractFunctionCallExpression) expr;
+                if (f.getArguments().size() == 0) {
+                    ((ListifyAggregateDescriptor) fd).reset(new AOrderedListType(null, null));
+                } else {
+                    IAType itemType = (IAType) context.getType(f.getArguments().get(0).getValue());
+                    if (itemType instanceof AUnionType) {
+                        if (((AUnionType) itemType).isNullableType())
+                            itemType = ((AUnionType) itemType).getNullableType();
+                        else
+                            // Convert UNION types into ANY.
+                            itemType = BuiltinType.ANY;
                     }
-                    IAObject item = ((AsterixConstantValue) ce.getValue()).getObject();
-                    pathAList.add(item);
-                } else if (exp.getExpressionTag() == LogicalExpressionTag.FUNCTION_CALL) {
-                    List<Mutable<ILogicalExpression>> subFunctionArgs = ((AbstractFunctionCallExpression) exp)
-                            .getArguments();
-                    AOrderedList subPathOrderedList = new AOrderedList((AOrderedListType) context.getType(exp));
-                    for (int j = 0; j < subFunctionArgs.size(); j++) {
-                        ConstantExpression ce = (ConstantExpression) subFunctionArgs.get(j).getValue();
-                        if (!(ce.getValue() instanceof AsterixConstantValue)) {
-                            throw new AlgebricksException("Expecting a list of strings and found " + ce.getValue()
-                                    + " instead.");
-                        }
-                        IAObject item = ((AsterixConstantValue) ce.getValue()).getObject();
-                        subPathOrderedList.add(item);
-                    }
-                    pathAList.add(subPathOrderedList);
-
+                    ((ListifyAggregateDescriptor) fd).reset(new AOrderedListType(itemType, null));
                 }
-
             }
-        }
+        });
+        functionTypeInferers.put(AsterixBuiltinFunctions.RECORD_MERGE, new FunctionTypeInferer() {
+            public void infer(ILogicalExpression expr, IFunctionDescriptor fd, IVariableTypeEnvironment context) throws AlgebricksException {
+                AbstractFunctionCallExpression f = (AbstractFunctionCallExpression) expr;
+                IAType outType = (IAType) context.getType(expr);
+                IAType type0 = (IAType) context.getType(f.getArguments().get(0).getValue());
+                IAType type1 = (IAType) context.getType(f.getArguments().get(1).getValue());
+                ((RecordMergeDescriptor) fd).reset(outType, type0, type1);
+            }
+        });
 
-        return pathAList;
-    }
+        functionTypeInferers.put(AsterixBuiltinFunctions.DEEP_EQUAL, new FunctionTypeInferer() {
 
-    private boolean[] computeOpenFields(AbstractFunctionCallExpression expr, ARecordType recType) {
-        int n = expr.getArguments().size() / 2;
-        boolean[] open = new boolean[n];
-        for (int i = 0; i < n; i++) {
-            Mutable<ILogicalExpression> argRef = expr.getArguments().get(2 * i);
-            ILogicalExpression arg = argRef.getValue();
-            if (arg.getExpressionTag() == LogicalExpressionTag.CONSTANT) {
-                String fn = ((AString) ((AsterixConstantValue) ((ConstantExpression) arg).getValue()).getObject())
-                        .getStringValue();
-                open[i] = true;
-                for (String s : recType.getFieldNames()) {
-                    if (s.equals(fn)) {
-                        open[i] = false;
+            @Override public void infer(ILogicalExpression expr, IFunctionDescriptor fd,
+                    IVariableTypeEnvironment context) throws AlgebricksException {
+                AbstractFunctionCallExpression f = (AbstractFunctionCallExpression) expr;
+                IAType outType = (IAType) context.getType(expr);
+                IAType type0 = (IAType) context.getType(f.getArguments().get(0).getValue());
+                IAType type1 = (IAType) context.getType(f.getArguments().get(1).getValue());
+                ((DeepEqualityDescriptor) fd).reset(type0, type1);
+            }
+        });
+
+        functionTypeInferers.put(AsterixBuiltinFunctions.ADD_FIELDS, new FunctionTypeInferer() {
+
+            @Override public void infer(ILogicalExpression expr, IFunctionDescriptor fd,
+                    IVariableTypeEnvironment context) throws AlgebricksException {
+                AbstractFunctionCallExpression f = (AbstractFunctionCallExpression) expr;
+                IAType outType = (IAType) context.getType(expr);
+                IAType type0 = (IAType) context.getType(f.getArguments().get(0).getValue());
+                ILogicalExpression le = f.getArguments().get(1).getValue();
+                IAType type1 = (IAType) context.getType(le);
+                if (type0.getTypeTag().equals(ATypeTag.ANY)) {
+                    type0 = DefaultOpenFieldType.NESTED_OPEN_RECORD_TYPE;
+                }
+                if (type1.getTypeTag().equals(ATypeTag.ANY)) {
+                    type1 = DefaultOpenFieldType.NESTED_OPEN_AORDERED_LIST_TYPE;
+                }
+                ((RecordAddFieldsDescriptor) fd).reset(outType, type0, type1);
+            }
+        });
+
+        functionTypeInferers.put(AsterixBuiltinFunctions.REMOVE_FIELDS, new FunctionTypeInferer() {
+
+            @Override public void infer(ILogicalExpression expr, IFunctionDescriptor fd,
+                    IVariableTypeEnvironment context) throws AlgebricksException {
+                AbstractFunctionCallExpression f = (AbstractFunctionCallExpression) expr;
+                IAType outType = (IAType) context.getType(expr);
+                IAType type0 = (IAType) context.getType(f.getArguments().get(0).getValue());
+                ILogicalExpression le = f.getArguments().get(1).getValue();
+                IAType type1 = (IAType) context.getType(le);
+                if (type0.getTypeTag().equals(ATypeTag.ANY)) {
+                    type0 = DefaultOpenFieldType.NESTED_OPEN_RECORD_TYPE;
+                }
+                if (type1.getTypeTag().equals(ATypeTag.ANY)) {
+                    type1 = DefaultOpenFieldType.NESTED_OPEN_AORDERED_LIST_TYPE;
+                }
+                ((RecordRemoveFieldsDescriptor) fd).reset(outType, type0, type1);
+            }
+        });
+
+        functionTypeInferers.put(AsterixBuiltinFunctions.CAST_RECORD, new FunctionTypeInferer() {
+            public void infer(ILogicalExpression expr, IFunctionDescriptor fd, IVariableTypeEnvironment context) throws AlgebricksException {
+                AbstractFunctionCallExpression funcExpr = (AbstractFunctionCallExpression) expr;
+                ARecordType rt = (ARecordType) TypeComputerUtilities.getRequiredType(funcExpr);
+                IAType it = (IAType) context.getType(funcExpr.getArguments().get(0).getValue());
+                if (it.getTypeTag().equals(ATypeTag.ANY)) {
+                    it = DefaultOpenFieldType.NESTED_OPEN_RECORD_TYPE;
+                }
+                ((CastRecordDescriptor) fd).reset(rt, (ARecordType) it);
+            }
+        });
+        functionTypeInferers.put(AsterixBuiltinFunctions.CAST_LIST, new FunctionTypeInferer() {
+            public void infer(ILogicalExpression expr, IFunctionDescriptor fd, IVariableTypeEnvironment context) throws AlgebricksException {
+                AbstractFunctionCallExpression funcExpr = (AbstractFunctionCallExpression) expr;
+                AbstractCollectionType rt = (AbstractCollectionType) TypeComputerUtilities.getRequiredType(funcExpr);
+                IAType it = (IAType) context.getType(funcExpr.getArguments().get(0).getValue());
+                if (it.getTypeTag().equals(ATypeTag.ANY)) {
+                    it = DefaultOpenFieldType.NESTED_OPEN_AORDERED_LIST_TYPE;
+                }
+                ((CastListDescriptor) fd).reset(rt, (AbstractCollectionType) it);
+            }
+        });
+        functionTypeInferers.put(AsterixBuiltinFunctions.FLOW_RECORD, new FunctionTypeInferer() {
+            public void infer(ILogicalExpression expr, IFunctionDescriptor fd, IVariableTypeEnvironment context) throws AlgebricksException {
+                ARecordType it = (ARecordType) TypeComputerUtilities.getInputType((AbstractFunctionCallExpression) expr);
+                ((FlowRecordDescriptor) fd).reset(it);
+            }
+        });
+        functionTypeInferers.put(AsterixBuiltinFunctions.OPEN_RECORD_CONSTRUCTOR, new FunctionTypeInferer() {
+            public void infer(ILogicalExpression expr, IFunctionDescriptor fd, IVariableTypeEnvironment context) throws AlgebricksException {
+                ARecordType rt = (ARecordType) context.getType(expr);
+                ((OpenRecordConstructorDescriptor) fd).reset(rt,
+                        computeOpenFields((AbstractFunctionCallExpression) expr, rt));
+            }
+
+            private boolean[] computeOpenFields(AbstractFunctionCallExpression expr, ARecordType recType) {
+                int n = expr.getArguments().size() / 2;
+                boolean[] open = new boolean[n];
+                for (int i = 0; i < n; i++) {
+                    Mutable<ILogicalExpression> argRef = expr.getArguments().get(2 * i);
+                    ILogicalExpression arg = argRef.getValue();
+                    if (arg.getExpressionTag() == LogicalExpressionTag.CONSTANT) {
+                        String fn = ((AString) ((AsterixConstantValue) ((ConstantExpression) arg).getValue()).getObject())
+                                .getStringValue();
+                        open[i] = true;
+                        for (String s : recType.getFieldNames()) {
+                            if (s.equals(fn)) {
+                                open[i] = false;
+                                break;
+                            }
+                        }
+                    } else {
+                        open[i] = true;
+                    }
+                }
+                return open;
+            }
+        });
+        functionTypeInferers.put(AsterixBuiltinFunctions.CLOSED_RECORD_CONSTRUCTOR, new FunctionTypeInferer() {
+            public void infer(ILogicalExpression expr, IFunctionDescriptor fd, IVariableTypeEnvironment context) throws AlgebricksException {
+                ((ClosedRecordConstructorDescriptor) fd).reset((ARecordType) context.getType(expr));
+            }
+        });
+        functionTypeInferers.put(AsterixBuiltinFunctions.ORDERED_LIST_CONSTRUCTOR, new FunctionTypeInferer() {
+            public void infer(ILogicalExpression expr, IFunctionDescriptor fd, IVariableTypeEnvironment context) throws AlgebricksException {
+                ((OrderedListConstructorDescriptor) fd).reset((AOrderedListType) context.getType(expr));
+            }
+        });
+        functionTypeInferers.put(AsterixBuiltinFunctions.UNORDERED_LIST_CONSTRUCTOR, new FunctionTypeInferer() {
+            public void infer(ILogicalExpression expr, IFunctionDescriptor fd, IVariableTypeEnvironment context) throws AlgebricksException {
+                ((UnorderedListConstructorDescriptor) fd).reset((AUnorderedListType) context.getType(expr));
+            }
+        });
+        functionTypeInferers.put(AsterixBuiltinFunctions.FIELD_ACCESS_BY_INDEX, new FunctionTypeInferer() {
+            public void infer(ILogicalExpression expr, IFunctionDescriptor fd, IVariableTypeEnvironment context) throws AlgebricksException {
+                AbstractFunctionCallExpression fce = (AbstractFunctionCallExpression) expr;
+                IAType t = (IAType) context.getType(fce.getArguments().get(0).getValue());
+                switch (t.getTypeTag()) {
+                    case RECORD: {
+                        ARecordType recType = (ARecordType) t;
+                        ((FieldAccessByIndexDescriptor) fd).reset(recType);
                         break;
                     }
+                    case UNION: {
+                        AUnionType unionT = (AUnionType) t;
+                        if (unionT.isNullableType()) {
+                            IAType t2 = unionT.getNullableType();
+                            if (t2.getTypeTag() == ATypeTag.RECORD) {
+                                ARecordType recType = (ARecordType) t2;
+                                ((FieldAccessByIndexDescriptor) fd).reset(recType);
+                                break;
+                            }
+                        }
+                        throw new NotImplementedException("field-access-by-index for data of type " + t);
+                    }
+                    default: {
+                        throw new NotImplementedException("field-access-by-index for data of type " + t);
+                    }
                 }
-            } else {
-                open[i] = true;
             }
-        }
-        return open;
+        });
+        functionTypeInferers.put(AsterixBuiltinFunctions.FIELD_ACCESS_NESTED, new FunctionTypeInferer() {
+            public void infer(ILogicalExpression expr, IFunctionDescriptor fd, IVariableTypeEnvironment context) throws AlgebricksException {
+                AbstractFunctionCallExpression fce = (AbstractFunctionCallExpression) expr;
+                IAType t = (IAType) context.getType(fce.getArguments().get(0).getValue());
+                AOrderedList fieldPath = (AOrderedList) (((AsterixConstantValue) ((ConstantExpression) fce.getArguments()
+                        .get(1).getValue()).getValue()).getObject());
+                List<String> listFieldPath = new ArrayList<String>();
+                for (int i = 0; i < fieldPath.size(); i++) {
+                    listFieldPath.add(((AString) fieldPath.getItem(i)).getStringValue());
+                }
+
+                switch (t.getTypeTag()) {
+                    case RECORD: {
+                        ARecordType recType = (ARecordType) t;
+                        ((FieldAccessNestedDescriptor) fd).reset(recType, listFieldPath);
+                        break;
+                    }
+                    default: {
+                        throw new NotImplementedException("field-access-nested for data of type " + t);
+                    }
+                }
+            }
+        });
+        functionTypeInferers.put(AsterixBuiltinFunctions.GET_RECORD_FIELDS, new FunctionTypeInferer() {
+            public void infer(ILogicalExpression expr, IFunctionDescriptor fd, IVariableTypeEnvironment context) throws AlgebricksException {
+                AbstractFunctionCallExpression fce = (AbstractFunctionCallExpression) expr;
+                IAType t = (IAType) context.getType(fce.getArguments().get(0).getValue());
+                if (t.getTypeTag().equals(ATypeTag.RECORD)) {
+                    ARecordType recType = (ARecordType) t;
+                    ((GetRecordFieldsDescriptor) fd).reset(recType);
+                } else {
+                    throw new NotImplementedException("get-record-fields for data of type " + t);
+                }
+            }
+        });
+        functionTypeInferers.put(AsterixBuiltinFunctions.GET_RECORD_FIELD_VALUE, new FunctionTypeInferer() {
+            public void infer(ILogicalExpression expr, IFunctionDescriptor fd, IVariableTypeEnvironment context) throws AlgebricksException {
+                AbstractFunctionCallExpression fce = (AbstractFunctionCallExpression) expr;
+                IAType t = (IAType) context.getType(fce.getArguments().get(0).getValue());
+                if (t.getTypeTag().equals(ATypeTag.RECORD)) {
+                    ARecordType recType = (ARecordType) t;
+                    ((GetRecordFieldValueDescriptor) fd).reset(recType);
+                } else {
+                    throw new NotImplementedException("get-record-field-value for data of type " + t);
+                }
+            }
+        });
+
     }
 
     @Override
-    public IPrinterFactoryProvider getPrinterFactoryProvider() {
-        return AqlPrinterFactoryProvider.INSTANCE;
+    public IPrinterFactoryProvider getADMPrinterFactoryProvider() {
+        return AqlADMPrinterFactoryProvider.INSTANCE;
     }
 
     @Override
-    public IPrinterFactoryProvider getJSONPrinterFactoryProvider() {
-        return AqlJSONPrinterFactoryProvider.INSTANCE;
+    public IPrinterFactoryProvider getLosslessJSONPrinterFactoryProvider() {
+        return AqlLosslessJSONPrinterFactoryProvider.INSTANCE;
+    }
+
+    @Override
+    public IPrinterFactoryProvider getCleanJSONPrinterFactoryProvider() {
+        return AqlCleanJSONPrinterFactoryProvider.INSTANCE;
     }
 
     @Override
@@ -1309,6 +1297,66 @@ public class NonTaggedDataFormat implements IDataFormat {
     @Override
     public IPredicateEvaluatorFactoryProvider getPredicateEvaluatorFactoryProvider() {
         return AqlPredicateEvaluatorFactoryProvider.INSTANCE;
+    }
+
+    /**
+     *  A method necessary to extract a ordered list of paths from AQL expression
+     *  That is, it will convert ["foo", ["foo2", "bar"]] to a nested orderelist object
+     *
+     *
+     * @param expression
+     *      The expression, normally as {@link AbstractFunctionCallExpression}
+     * @param listType
+     *      The type the list input
+     * @param context
+     *      The current type environment context
+     * @return
+     *      {@link AOrderedList}
+     *
+     * @throws AlgebricksException
+     */
+    public AOrderedList computePathLists(ILogicalExpression expression, IAType listType, IVariableTypeEnvironment context)
+            throws AlgebricksException {
+        AOrderedList pathAList = null;
+
+        if (expression.getExpressionTag() == LogicalExpressionTag.CONSTANT) {
+            pathAList = (AOrderedList) (((AsterixConstantValue) ((ConstantExpression) expression).getValue()).getObject());
+        } else {
+            AbstractFunctionCallExpression funcExp = (AbstractFunctionCallExpression) expression;
+            List<Mutable<ILogicalExpression>> args = funcExp.getArguments();
+            pathAList = new AOrderedList((AOrderedListType) listType);
+            for (int i = 0; i < args.size(); i++) {
+                ILogicalExpression exp = args.get(i).getValue();
+                if (exp.getExpressionTag() == LogicalExpressionTag.CONSTANT) {
+                    ConstantExpression ce = (ConstantExpression) exp;
+
+                    if (!(ce.getValue() instanceof AsterixConstantValue)) {
+                        throw new AlgebricksException("Expecting a list of strings and found " + ce.getValue()
+                                + " instead.");
+                    }
+                    IAObject item = ((AsterixConstantValue) ce.getValue()).getObject();
+                    pathAList.add(item);
+                } else if (exp.getExpressionTag() == LogicalExpressionTag.FUNCTION_CALL) {
+                    List<Mutable<ILogicalExpression>> subFunctionArgs = ((AbstractFunctionCallExpression) exp)
+                            .getArguments();
+                    AOrderedList subPathOrderedList = new AOrderedList((AOrderedListType) context.getType(exp));
+                    for (int j = 0; j < subFunctionArgs.size(); j++) {
+                        ConstantExpression ce = (ConstantExpression) subFunctionArgs.get(j).getValue();
+                        if (!(ce.getValue() instanceof AsterixConstantValue)) {
+                            throw new AlgebricksException("Expecting a list of strings and found " + ce.getValue()
+                                    + " instead.");
+                        }
+                        IAObject item = ((AsterixConstantValue) ce.getValue()).getObject();
+                        subPathOrderedList.add(item);
+                    }
+                    pathAList.add(subPathOrderedList);
+
+                }
+
+            }
+        }
+
+        return pathAList;
     }
 
 }

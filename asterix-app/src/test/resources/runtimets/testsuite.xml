@@ -1352,6 +1352,13 @@
         -->
     </test-group>
     <test-group name="dml">
+         <test-case FilePath="dml">
+            <compilation-unit name="insert-duplicated-keys-from-query">
+                <output-dir compare="Text">insert-duplicated-keys-from-query</output-dir>
+                <expected-error>org.apache.hyracks.storage.am.common.exceptions.TreeIndexDuplicateKeyException
+                </expected-error>
+            </compilation-unit>
+        </test-case>
         <test-case FilePath="dml">
             <compilation-unit name="compact-dataset-and-its-indexes">
                 <output-dir compare="Text">compact-dataset-and-its-indexes</output-dir>
@@ -2480,13 +2487,28 @@
     </test-group> -->
     <test-group name="index-join">
         <test-case FilePath="index-join">
+            <compilation-unit name="btree-index-nested-loop-join">
+                <output-dir compare="Text">btree-index-nested-loop-join</output-dir>
+            </compilation-unit>
+        </test-case>
+        <test-case FilePath="index-join">
             <compilation-unit name="btree-primary-equi-join">
                 <output-dir compare="Text">btree-primary-equi-join</output-dir>
             </compilation-unit>
         </test-case>
         <test-case FilePath="index-join">
-            <compilation-unit name="btree-secondary-equi-join">
-                <output-dir compare="Text">btree-secondary-equi-join</output-dir>
+            <compilation-unit name="btree-secondary-equi-join_01">
+                <output-dir compare="Text">btree-secondary-equi-join_01</output-dir>
+            </compilation-unit>
+        </test-case>
+        <test-case FilePath="index-join">
+            <compilation-unit name="btree-secondary-equi-join_02">
+                <output-dir compare="Text">btree-secondary-equi-join_02</output-dir>
+            </compilation-unit>
+        </test-case>
+        <test-case FilePath="index-join">
+            <compilation-unit name="btree-secondary-equi-join_03">
+                <output-dir compare="Text">btree-secondary-equi-join_03</output-dir>
             </compilation-unit>
         </test-case>
         <test-case FilePath="index-join">
@@ -2813,6 +2835,11 @@
             </compilation-unit>
         </test-case>
         <test-case FilePath="list">
+            <compilation-unit name="ordered-list-constructor_04">
+                <output-dir compare="Text">ordered-list-constructor_04</output-dir>
+            </compilation-unit>
+        </test-case>
+        <test-case FilePath="list">
             <compilation-unit name="scan-collection_01">
                 <output-dir compare="Text">scan-collection_01</output-dir>
             </compilation-unit>
@@ -2841,6 +2868,11 @@
         <test-case FilePath="list">
             <compilation-unit name="unordered-list-constructor_03">
                 <output-dir compare="Text">unordered-list-constructor_03</output-dir>
+            </compilation-unit>
+        </test-case>
+        <test-case FilePath="list">
+            <compilation-unit name="unordered-list-constructor_04">
+                <output-dir compare="Text">unordered-list-constructor_04</output-dir>
             </compilation-unit>
         </test-case>
         <test-case FilePath="list">
@@ -3863,6 +3895,11 @@
             </compilation-unit>
         </test-case>
         <test-case FilePath="numeric">
+            <compilation-unit name="issue_1166">
+                <output-dir compare="Text">issue_1166</output-dir>
+            </compilation-unit>
+        </test-case>
+        <test-case FilePath="numeric">
             <compilation-unit name="multiply_int8">
                 <output-dir compare="Text">multiply_int8</output-dir>
             </compilation-unit>
@@ -4422,6 +4459,28 @@
             </compilation-unit>
         </test-case>
         <test-case FilePath="scan">
+            <compilation-unit name="alltypes_01">
+                <parameter name="wrapper-array" value="true"/>
+                <output-dir compare="Text">alltypes_01-wrapped</output-dir>
+            </compilation-unit>
+        </test-case>
+        <test-case FilePath="scan">
+            <compilation-unit name="alltypes_01">
+                <output-dir compare="Lossless-JSON">alltypes_01-losslessjson</output-dir>
+            </compilation-unit>
+        </test-case>
+        <test-case FilePath="scan">
+            <compilation-unit name="alltypes_01">
+                <parameter name="wrapper-array" value="false"/>
+                <output-dir compare="Lossless-JSON">alltypes_01-losslessjson-unwrapped</output-dir>
+            </compilation-unit>
+        </test-case>
+        <test-case FilePath="scan">
+            <compilation-unit name="alltypes_01">
+                <output-dir compare="Clean-JSON">alltypes_01-cleanjson</output-dir>
+            </compilation-unit>
+        </test-case>
+        <test-case FilePath="scan">
             <compilation-unit name="alltypes_02">
                 <output-dir compare="Text">alltypes_02</output-dir>
             </compilation-unit>
@@ -4779,43 +4838,43 @@
             </compilation-unit>
         </test-case>
         <test-case FilePath="string">
-            <compilation-unit name="end-with1">
-                <output-dir compare="Text">end-with1</output-dir>
+            <compilation-unit name="ends-with1">
+                <output-dir compare="Text">ends-with1</output-dir>
             </compilation-unit>
         </test-case>
         <test-case FilePath="string">
-            <compilation-unit name="end-with2">
-                <output-dir compare="Text">end-with2</output-dir>
+            <compilation-unit name="ends-with2">
+                <output-dir compare="Text">ends-with2</output-dir>
             </compilation-unit>
         </test-case>
         <test-case FilePath="string">
-            <compilation-unit name="end-with3">
-                <output-dir compare="Text">end-with3</output-dir>
+            <compilation-unit name="ends-with3">
+                <output-dir compare="Text">ends-with3</output-dir>
             </compilation-unit>
         </test-case>
         <test-case FilePath="string">
-            <compilation-unit name="end-with4">
-                <output-dir compare="Text">end-with4</output-dir>
+            <compilation-unit name="ends-with4">
+                <output-dir compare="Text">ends-with4</output-dir>
             </compilation-unit>
         </test-case>
         <test-case FilePath="string">
-            <compilation-unit name="end-with5">
-                <output-dir compare="Text">end-with5</output-dir>
+            <compilation-unit name="ends-with5">
+                <output-dir compare="Text">ends-with5</output-dir>
             </compilation-unit>
         </test-case>
         <test-case FilePath="string">
-            <compilation-unit name="ends-with_01">
-                <output-dir compare="Text">ends-with_01</output-dir>
+            <compilation-unit name="ends-with6">
+                <output-dir compare="Text">ends-with6</output-dir>
             </compilation-unit>
         </test-case>
         <test-case FilePath="string">
-            <compilation-unit name="endwith02">
-                <output-dir compare="Text">endwith02</output-dir>
+            <compilation-unit name="ends-with7">
+                <output-dir compare="Text">ends-with7</output-dir>
             </compilation-unit>
         </test-case>
         <test-case FilePath="string">
-            <compilation-unit name="endwith03">
-                <output-dir compare="Text">endwith03</output-dir>
+            <compilation-unit name="ends-with8">
+                <output-dir compare="Text">ends-with8</output-dir>
             </compilation-unit>
         </test-case>
         <test-case FilePath="string">
@@ -4944,44 +5003,44 @@
             </compilation-unit>
         </test-case>
         <test-case FilePath="string">
-            <compilation-unit name="start-with1">
-                <output-dir compare="Text">start-with1</output-dir>
+            <compilation-unit name="starts-with1">
+                <output-dir compare="Text">starts-with1</output-dir>
             </compilation-unit>
         </test-case>
         <test-case FilePath="string">
-            <compilation-unit name="start-with2">
-                <output-dir compare="Text">start-with2</output-dir>
+            <compilation-unit name="starts-with2">
+                <output-dir compare="Text">starts-with2</output-dir>
             </compilation-unit>
         </test-case>
         <test-case FilePath="string">
-            <compilation-unit name="start-with3">
-                <output-dir compare="Text">start-with3</output-dir>
+            <compilation-unit name="starts-with3">
+                <output-dir compare="Text">starts-with3</output-dir>
             </compilation-unit>
         </test-case>
         <test-case FilePath="string">
-            <compilation-unit name="start-with4">
-                <output-dir compare="Text">start-with4</output-dir>
+            <compilation-unit name="starts-with4">
+                <output-dir compare="Text">starts-with4</output-dir>
             </compilation-unit>
         </test-case>
         <test-case FilePath="string">
-            <compilation-unit name="start-with5">
-                <output-dir compare="Text">start-with5</output-dir>
+            <compilation-unit name="starts-with5">
+                <output-dir compare="Text">starts-with5</output-dir>
             </compilation-unit>
         </test-case>
         <test-case FilePath="string">
-            <compilation-unit name="starts-with_01">
-                <output-dir compare="Text">starts-with_01</output-dir>
+            <compilation-unit name="starts-with6">
+                <output-dir compare="Text">starts-with6</output-dir>
             </compilation-unit>
         </test-case>
         <test-case FilePath="string">
-            <compilation-unit name="startwith02">
-                <output-dir compare="Text">startwith02</output-dir>
+            <compilation-unit name="starts-with7">
+                <output-dir compare="Text">starts-with7</output-dir>
             </compilation-unit>
         </test-case>
         <!--
         <test-case FilePath="string">
-          <compilation-unit name="startwith03">
-            <output-dir compare="Text">startwith03</output-dir>
+          <compilation-unit name="starts-with8">
+            <output-dir compare="Text">starts-with8</output-dir>
           </compilation-unit>
         </test-case>
         -->
@@ -5165,6 +5224,11 @@
                 <output-dir compare="Text">uppercase</output-dir>
             </compilation-unit>
         </test-case>
+        <test-case FilePath="string">
+            <compilation-unit name="varlen-encoding">
+                <output-dir compare="Text">varlen-encoding</output-dir>
+            </compilation-unit>
+        </test-case>
     </test-group>
     <test-group name="subset-collection">
         <test-case FilePath="subset-collection">
@@ -5332,7 +5396,7 @@
             </compilation-unit>
         </test-case>
         <test-case FilePath="tpch">
-            <compilation-unit name="q17_small_quantity_order_revenue">
+            <compilation-unit name="q17_squantity_order_revenue">
                 <output-dir compare="Text">q17_small_quantity_order_revenue</output-dir>
             </compilation-unit>
         </test-case>
@@ -5901,6 +5965,11 @@
             </compilation-unit>
         </test-case>
         <test-case FilePath="user-defined-functions">
+            <compilation-unit name="udf31">
+                <output-dir compare="Text">udf31</output-dir>
+            </compilation-unit>
+        </test-case>
+        <test-case FilePath="user-defined-functions">
             <compilation-unit name="f01">
                 <output-dir compare="Text">f01</output-dir>
                 <expected-error>org.apache.asterix.common.exceptions.AsterixException</expected-error>
@@ -6128,7 +6197,7 @@
 
     </test-group>
     <test-group name="hdfs">
-    	<test-case FilePath="hdfs">
+      <test-case FilePath="hdfs">
             <compilation-unit name="hdfs_shortcircuit">
                 <output-dir compare="Text">hdfs_shortcircuit</output-dir>
             </compilation-unit>
@@ -6168,6 +6237,11 @@
         <test-case FilePath="big-object">
             <compilation-unit name="big_object_join">
                 <output-dir compare="Text">big_object_join</output-dir>
+            </compilation-unit>
+        </test-case>
+        <test-case FilePath="big-object">
+            <compilation-unit name="big_object_load">
+                <output-dir compare="Text">big_object_load</output-dir>
             </compilation-unit>
         </test-case>
     </test-group>
@@ -6664,7 +6738,14 @@
     <test-group name="json">
         <test-case FilePath="json">
             <compilation-unit name="int01">
-                <output-dir compare="JSON">int01</output-dir>
+                <output-dir compare="Lossless-JSON">int01-losslessjson</output-dir>
+            </compilation-unit>
+        </test-case>
+    </test-group>
+    <test-group name="cleanjson">
+        <test-case FilePath="json">
+            <compilation-unit name="int01">
+                <output-dir compare="Clean-JSON">int01-cleanjson</output-dir>
             </compilation-unit>
         </test-case>
     </test-group>

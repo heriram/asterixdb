@@ -18,11 +18,6 @@
  */
 package org.apache.asterix.external.library.java;
 
-import java.io.ByteArrayInputStream;
-import java.io.DataInputStream;
-import java.util.LinkedHashMap;
-import java.util.List;
-
 import org.apache.asterix.common.exceptions.AsterixException;
 import org.apache.asterix.dataflow.data.nontagged.serde.ABooleanSerializerDeserializer;
 import org.apache.asterix.dataflow.data.nontagged.serde.ACircleSerializerDeserializer;
@@ -86,6 +81,13 @@ import org.apache.asterix.om.types.IAType;
 import org.apache.asterix.om.util.container.IObjectPool;
 import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
 import org.apache.hyracks.api.exceptions.HyracksDataException;
+import org.apache.hyracks.data.std.util.ByteArrayAccessibleOutputStream;
+
+import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
+import java.io.IOException;
+import java.util.LinkedHashMap;
+import java.util.List;
 
 public class JObjectAccessors {
 
@@ -224,6 +226,7 @@ public class JObjectAccessors {
     }
 
     public static class JStringAccessor implements IJObjectAccessor {
+        private final AStringSerializerDeserializer aStringSerDer = new AStringSerializerDeserializer();
 
         @Override
         public IJObject access(IVisitablePointable pointable, IObjectPool<IJObject, IAType> objectPool)
@@ -233,9 +236,8 @@ public class JObjectAccessors {
             int l = pointable.getLength();
 
             String v = null;
-            v = AStringSerializerDeserializer.INSTANCE.deserialize(
-                    new DataInputStream(new ByteArrayInputStream(b, s+1, l-1))).getStringValue();
-            //v = new String(b, s+1, l, "UTF-8");
+            v = aStringSerDer.deserialize(
+                    new DataInputStream(new ByteArrayInputStream(b, s + 1, l - 1))).getStringValue();
             JObjectUtil.getNormalizedString(v);
 
             IJObject jObject = objectPool.allocate(BuiltinType.ASTRING);
@@ -442,6 +444,7 @@ public class JObjectAccessors {
         private final JRecord jRecord;
         private final IJObject[] jObjects;
         private final LinkedHashMap<String, IJObject> openFields;
+        private final AStringSerializerDeserializer aStringSerDer = new AStringSerializerDeserializer();
 
         public JRecordAccessor(ARecordType recordType, IObjectPool<IJObject, IAType> objectPool) {
             this.typeInfo = new TypeInfo(objectPool, null, null);
@@ -484,7 +487,8 @@ public class JObjectAccessors {
                                 // value is null
                                 fieldObject = null;
                             } else {
-                                fieldObject = pointableVisitor.visit((AListVisitablePointable) fieldPointable, typeInfo);
+                                fieldObject = pointableVisitor
+                                        .visit((AListVisitablePointable) fieldPointable, typeInfo);
                             }
                             break;
                         case ANY:
@@ -498,7 +502,7 @@ public class JObjectAccessors {
                         byte[] b = fieldName.getByteArray();
                         int s = fieldName.getStartOffset();
                         int l = fieldName.getLength();
-                        String v = AStringSerializerDeserializer.INSTANCE.deserialize(
+                        String v = aStringSerDer.deserialize(
                                 new DataInputStream(new ByteArrayInputStream(b, s + 1, l - 1))).getStringValue();
                         openFields.put(v, fieldObject);
                     }
@@ -533,7 +537,8 @@ public class JObjectAccessors {
         }
 
         @Override
-        public IJObject access(AListVisitablePointable pointable, IObjectPool<IJObject, IAType> objectPool, IAType listType,
+        public IJObject access(AListVisitablePointable pointable, IObjectPool<IJObject, IAType> objectPool,
+                IAType listType,
                 JObjectPointableVisitor pointableVisitor) throws HyracksDataException {
             List<IVisitablePointable> items = pointable.getItems();
             List<IVisitablePointable> itemTags = pointable.getItemTags();

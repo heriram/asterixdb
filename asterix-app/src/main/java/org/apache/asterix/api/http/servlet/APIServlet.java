@@ -37,12 +37,12 @@ import javax.servlet.http.HttpServletResponse;
 import org.apache.asterix.api.common.APIFramework;
 import org.apache.asterix.api.common.SessionConfig;
 import org.apache.asterix.api.common.SessionConfig.OutputFormat;
-import org.apache.asterix.aql.base.Statement;
-import org.apache.asterix.aql.parser.AQLParser;
-import org.apache.asterix.aql.parser.ParseException;
-import org.apache.asterix.aql.parser.TokenMgrError;
 import org.apache.asterix.aql.translator.AqlTranslator;
 import org.apache.asterix.common.config.GlobalConfig;
+import org.apache.asterix.common.exceptions.AsterixException;
+import org.apache.asterix.lang.aql.parser.AQLParser;
+import org.apache.asterix.lang.aql.parser.TokenMgrError;
+import org.apache.asterix.lang.common.base.Statement;
 import org.apache.asterix.metadata.MetadataManager;
 import org.apache.asterix.result.ResultReader;
 import org.apache.asterix.result.ResultUtils;
@@ -69,12 +69,15 @@ public class APIServlet extends HttpServlet {
         } else if (output.equals("CSV-Header")) {
             format = OutputFormat.CSV;
             csv_and_header = true;
+        } else if (output.equals("LOSSLESS_JSON")) {
+            format = OutputFormat.LOSSLESS_JSON;
         } else {
             // Default output format
-            format = OutputFormat.JSON;
+            format = OutputFormat.CLEAN_JSON;
         }
 
         String query = request.getParameter("query");
+        String wrapperArray = request.getParameter("wrapper-array");
         String printExprParam = request.getParameter("print-expr-tree");
         String printRewrittenExprParam = request.getParameter("print-rewritten-expr-tree");
         String printLogicalPlanParam = request.getParameter("print-logical-plan");
@@ -103,6 +106,7 @@ public class APIServlet extends HttpServlet {
             SessionConfig sessionConfig = new SessionConfig(out, format, true, isSet(executeQuery), true);
             sessionConfig.set(SessionConfig.FORMAT_HTML, true);
             sessionConfig.set(SessionConfig.FORMAT_CSV_HEADER, csv_and_header);
+            sessionConfig.set(SessionConfig.FORMAT_WRAPPER_ARRAY, isSet(wrapperArray));
             sessionConfig.setOOBData(isSet(printExprParam), isSet(printRewrittenExprParam),
                     isSet(printLogicalPlanParam), isSet(printOptimizedLogicalPlanParam), isSet(printJob));
             MetadataManager.INSTANCE.init();
@@ -114,7 +118,7 @@ public class APIServlet extends HttpServlet {
             duration = (endTime - startTime) / 1000.00;
             out.println(APIFramework.HTML_STATEMENT_SEPARATOR);
             out.println("<PRE>Duration of all jobs: " + duration + " sec</PRE>");
-        } catch (ParseException | TokenMgrError | org.apache.asterix.aqlplus.parser.TokenMgrError pe) {
+        } catch (AsterixException | TokenMgrError | org.apache.asterix.aqlplus.parser.TokenMgrError pe) {
             GlobalConfig.ASTERIX_LOGGER.log(Level.INFO, pe.toString(), pe);
             ResultUtils.webUIParseExceptionHandler(out, pe, query);
         } catch (Exception e) {

@@ -1,4 +1,0 @@
-use dataverse test;
-
-let $c1 := end-with("hello world"," world")
-return {"result1": $c1}

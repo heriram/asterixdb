@@ -1,4 +1,0 @@
-let $users := dataset('User')
-for $user in $users
-where some $i in $user.interests satisfies $i = "movies"
-return { "name": $user.name }

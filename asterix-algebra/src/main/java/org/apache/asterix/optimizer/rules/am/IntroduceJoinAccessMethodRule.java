@@ -23,10 +23,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.lang3.mutable.Mutable;
-
 import org.apache.asterix.metadata.declared.AqlMetadataProvider;
 import org.apache.asterix.metadata.entities.Index;
+import org.apache.commons.lang3.mutable.Mutable;
 import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
 import org.apache.hyracks.algebricks.common.utils.Pair;
 import org.apache.hyracks.algebricks.core.algebra.base.ILogicalExpression;
@@ -35,6 +34,7 @@ import org.apache.hyracks.algebricks.core.algebra.base.IOptimizationContext;
 import org.apache.hyracks.algebricks.core.algebra.base.LogicalExpressionTag;
 import org.apache.hyracks.algebricks.core.algebra.base.LogicalOperatorTag;
 import org.apache.hyracks.algebricks.core.algebra.expressions.AbstractFunctionCallExpression;
+import org.apache.hyracks.algebricks.core.algebra.expressions.IVariableTypeEnvironment;
 import org.apache.hyracks.algebricks.core.algebra.expressions.ScalarFunctionCallExpression;
 import org.apache.hyracks.algebricks.core.algebra.functions.FunctionIdentifier;
 import org.apache.hyracks.algebricks.core.algebra.operators.logical.AbstractBinaryJoinOperator;
@@ -49,7 +49,9 @@ import org.apache.hyracks.algebricks.core.algebra.util.OperatorPropertiesUtil;
  * Matches the following operator pattern:
  * (join) <-- (select)? <-- (assign | unnest)+ <-- (datasource scan)
  * <-- (select)? <-- (assign | unnest)+ <-- (datasource scan | unnest-map)
- * The order of the join inputs does not matter.
+ * The order of the join inputs matters (left-outer relation, right-inner relation).
+ * This rule tries to utilize an index on the inner relation first.
+ * If that's not possible, it tries to use an index on the outer relation.
  * Replaces the above pattern with the following simplified plan:
  * (select) <-- (assign) <-- (btree search) <-- (sort) <-- (unnest(index search)) <-- (assign) <-- (datasource scan | unnest-map)
  * The sort is optional, and some access methods may choose not to sort.
@@ -78,11 +80,13 @@ public class IntroduceJoinAccessMethodRule extends AbstractIntroduceAccessMethod
     protected AbstractFunctionCallExpression joinCond = null;
     protected final OptimizableOperatorSubTree leftSubTree = new OptimizableOperatorSubTree();
     protected final OptimizableOperatorSubTree rightSubTree = new OptimizableOperatorSubTree();
+    protected IVariableTypeEnvironment typeEnvironment = null;
     protected boolean isLeftOuterJoin = false;
     protected boolean hasGroupBy = true;
 
     // Register access methods.
     protected static Map<FunctionIdentifier, List<IAccessMethod>> accessMethods = new HashMap<FunctionIdentifier, List<IAccessMethod>>();
+
     static {
         registerAccessMethod(BTreeAccessMethod.INSTANCE, accessMethods);
         registerAccessMethod(RTreeAccessMethod.INSTANCE, accessMethods);
@@ -104,10 +108,12 @@ public class IntroduceJoinAccessMethodRule extends AbstractIntroduceAccessMethod
         boolean matchInLeftSubTree = false;
         boolean matchInRightSubTree = false;
         if (leftSubTree.hasDataSource()) {
-            matchInLeftSubTree = analyzeCondition(joinCond, leftSubTree.assignsAndUnnests, analyzedAMs);
+            matchInLeftSubTree = analyzeCondition(joinCond, leftSubTree.assignsAndUnnests, analyzedAMs, context,
+                    typeEnvironment);
         }
         if (rightSubTree.hasDataSource()) {
-            matchInRightSubTree = analyzeCondition(joinCond, rightSubTree.assignsAndUnnests, analyzedAMs);
+            matchInRightSubTree = analyzeCondition(joinCond, rightSubTree.assignsAndUnnests, analyzedAMs, context,
+                    typeEnvironment);
         }
         if (!matchInLeftSubTree && !matchInRightSubTree) {
             return false;
@@ -132,29 +138,54 @@ public class IntroduceJoinAccessMethodRule extends AbstractIntroduceAccessMethod
         if (checkRightSubTreeMetadata) {
             fillSubTreeIndexExprs(rightSubTree, analyzedAMs, context);
         }
-        pruneIndexCandidates(analyzedAMs);
+        pruneIndexCandidates(analyzedAMs, context, typeEnvironment);
 
-        //Remove possibly chosen indexes from left Tree
-        if (isLeftOuterJoin) {
-            Iterator<Map.Entry<IAccessMethod, AccessMethodAnalysisContext>> amIt = analyzedAMs.entrySet().iterator();
-            // Check applicability of indexes by access method type.
-            while (amIt.hasNext()) {
-                Map.Entry<IAccessMethod, AccessMethodAnalysisContext> entry = amIt.next();
-                AccessMethodAnalysisContext amCtx = entry.getValue();
-                Iterator<Map.Entry<Index, List<Pair<Integer, Integer>>>> indexIt = amCtx.indexExprsAndVars.entrySet()
-                        .iterator();
+        // Prioritize the order of index that will be applied. If the right subtree (inner branch) has indexes,
+        // those indexes will be used.
+        String innerDataset = null;
+        if (rightSubTree.dataset != null) {
+            innerDataset = rightSubTree.dataset.getDatasetName();
+        }
+
+        Iterator<Map.Entry<IAccessMethod, AccessMethodAnalysisContext>> amIt = analyzedAMs.entrySet().iterator();
+        while (amIt.hasNext()) {
+            Map.Entry<IAccessMethod, AccessMethodAnalysisContext> entry = amIt.next();
+            AccessMethodAnalysisContext amCtx = entry.getValue();
+            Iterator<Map.Entry<Index, List<Pair<Integer, Integer>>>> indexIt = amCtx.indexExprsAndVars.entrySet()
+                    .iterator();
+
+            // Check whether we can choose the indexes from the inner relations (removing indexes from the outer relations)
+            int totalIndexCount = 0;
+            int indexCountFromTheOuterBranch = 0;
+
+            while (indexIt.hasNext()) {
+                Map.Entry<Index, List<Pair<Integer, Integer>>> indexEntry = indexIt.next();
+
+                Index chosenIndex = indexEntry.getKey();
+                //Count possible indexes that can be removed from left Tree (outer branch)
+                if (!chosenIndex.getDatasetName().equals(innerDataset)) {
+                    indexCountFromTheOuterBranch++;
+                }
+                totalIndexCount++;
+            }
+
+            if (indexCountFromTheOuterBranch < totalIndexCount) {
+                indexIt = amCtx.indexExprsAndVars.entrySet().iterator();
                 while (indexIt.hasNext()) {
                     Map.Entry<Index, List<Pair<Integer, Integer>>> indexEntry = indexIt.next();
 
                     Index chosenIndex = indexEntry.getKey();
-                    if (!chosenIndex.getDatasetName().equals(rightSubTree.dataset.getDatasetName())) {
+                    //Remove possibly chosen indexes from left Tree (outer branch)
+                    if (!chosenIndex.getDatasetName().equals(innerDataset)) {
                         indexIt.remove();
                     }
                 }
             }
         }
 
-        // Choose index to be applied.
+        // For the case of left-outer-join, we have to use indexes from the inner branch.
+        // For the inner-join, we try to use the indexes from the inner branch first.
+        // If no index is available, then we use the indexes from the outer branch.
         Pair<IAccessMethod, Index> chosenIndex = chooseIndex(analyzedAMs);
         if (chosenIndex == null) {
             context.addToDontApplySet(this, join);
@@ -203,6 +234,7 @@ public class IntroduceJoinAccessMethodRule extends AbstractIntroduceAccessMethod
             join = (LeftOuterJoinOperator) joinRef.getValue();
         }
 
+        typeEnvironment = context.getOutputTypeEnvironment(join);
         // Check that the select's condition is a function call.
         ILogicalExpression condExpr = join.getCondition().getValue();
         if (condExpr.getExpressionTag() != LogicalExpressionTag.FUNCTION_CALL) {
@@ -222,7 +254,8 @@ public class IntroduceJoinAccessMethodRule extends AbstractIntroduceAccessMethod
         if (op1.getInputs().size() != 1) {
             return false;
         }
-        if (((AbstractLogicalOperator) op1.getInputs().get(0).getValue()).getOperatorTag() != LogicalOperatorTag.LEFTOUTERJOIN) {
+        if (((AbstractLogicalOperator) op1.getInputs().get(0).getValue())
+                .getOperatorTag() != LogicalOperatorTag.LEFTOUTERJOIN) {
             return false;
         }
         if (op1.getOperatorTag() == LogicalOperatorTag.GROUP) {

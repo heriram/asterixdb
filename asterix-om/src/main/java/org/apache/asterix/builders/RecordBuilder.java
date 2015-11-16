@@ -19,18 +19,14 @@
 
 package org.apache.asterix.builders;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
-import java.io.DataOutput;
-import java.io.IOException;
-import java.util.Arrays;
-
 import org.apache.asterix.common.exceptions.AsterixException;
 import org.apache.asterix.dataflow.data.nontagged.serde.SerializerDeserializerUtil;
+import org.apache.asterix.om.pointables.PointableAllocator;
+import org.apache.asterix.om.pointables.base.IVisitablePointable;
 import org.apache.asterix.om.types.ARecordType;
 import org.apache.asterix.om.types.ATypeTag;
 import org.apache.asterix.om.util.NonTaggedFormatUtil;
+import org.apache.hyracks.algebricks.common.utils.Pair;
 import org.apache.hyracks.api.dataflow.value.IBinaryComparator;
 import org.apache.hyracks.api.dataflow.value.IBinaryHashFunction;
 import org.apache.hyracks.api.exceptions.HyracksDataException;
@@ -41,10 +37,18 @@ import org.apache.hyracks.data.std.primitive.UTF8StringPointable;
 import org.apache.hyracks.data.std.util.ByteArrayAccessibleOutputStream;
 import org.apache.hyracks.dataflow.common.data.marshalling.UTF8StringSerializerDeserializer;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutput;
+import java.io.IOException;
+import java.util.Arrays;
+
 public class RecordBuilder implements IARecordBuilder {
     private final static int DEFAULT_NUM_OPEN_FIELDS = 10;
     private final static byte SER_NULL_TYPE_TAG = ATypeTag.NULL.serialize();
     private final static byte RECORD_TYPE_TAG = ATypeTag.RECORD.serialize();
+    private final UTF8StringSerializerDeserializer utf8SerDer = new UTF8StringSerializerDeserializer();
 
     private int openPartOffsetArraySize;
     private byte[] openPartOffsetArray;
@@ -71,6 +75,9 @@ public class RecordBuilder implements IARecordBuilder {
     private int[] openFieldNameLengths;
 
     private int numberOfOpenFields;
+
+    private final PointableTypeVisitor visitor = new PointableTypeVisitor();
+    private final PointableAllocator pointableAllocator = new PointableAllocator();
 
     public RecordBuilder() {
 
@@ -175,6 +182,21 @@ public class RecordBuilder implements IARecordBuilder {
 
     @Override
     public void addField(IValueReference name, IValueReference value) throws AsterixException {
+        // Check whether the value is a partly closed or a closed record
+        Pair<Boolean, Void> arg = new Pair<>(false, null);
+        IVisitablePointable vp;
+
+        if (value instanceof IVisitablePointable) {
+            vp = (IVisitablePointable) value;
+        } else {
+            vp = pointableAllocator.allocateEmpty();
+            vp.set(value.getByteArray(), value.getStartOffset(), value.getLength());
+        }
+        vp.accept(visitor, arg);
+        if (arg.first == true)
+            throw new AsterixException("Adding non-schemaless records to an open field.");
+
+
         if (numberOfOpenFields == openPartOffsets.length) {
             openPartOffsets = Arrays.copyOf(openPartOffsets, openPartOffsets.length + DEFAULT_NUM_OPEN_FIELDS);
             openFieldNameLengths = Arrays.copyOf(openFieldNameLengths, openFieldNameLengths.length
@@ -226,9 +248,8 @@ public class RecordBuilder implements IARecordBuilder {
                 for (int i = 1; i < numberOfOpenFields; i++) {
                     if (utf8Comparator.compare(openBytes, (int) openPartOffsets[i - 1], openFieldNameLengths[i - 1],
                             openBytes, (int) openPartOffsets[i], openFieldNameLengths[i]) == 0) {
-                        String field = UTF8StringSerializerDeserializer.INSTANCE
-                                .deserialize(new DataInputStream(new ByteArrayInputStream(openBytes,
-                                        (int) openPartOffsets[i], openFieldNameLengths[i])));
+                        String field = utf8SerDer.deserialize(new DataInputStream(new ByteArrayInputStream(openBytes,
+                                (int) openPartOffsets[i], openFieldNameLengths[i])));
                         throw new AsterixException("Open fields " + (i - 1) + " and " + i
                                 + " have the same field name \"" + field + "\"");
                     }

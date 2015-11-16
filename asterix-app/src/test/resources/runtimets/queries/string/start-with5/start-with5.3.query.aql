@@ -1,4 +1,0 @@
-use dataverse test;
-
-let $c1 := start-with("","s")
-return {"result1": $c1}

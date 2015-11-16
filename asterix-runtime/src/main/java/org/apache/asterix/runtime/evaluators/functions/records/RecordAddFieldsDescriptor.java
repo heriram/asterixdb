@@ -31,7 +31,7 @@ import org.apache.asterix.om.pointables.AListVisitablePointable;
 import org.apache.asterix.om.pointables.ARecordVisitablePointable;
 import org.apache.asterix.om.pointables.PointableAllocator;
 import org.apache.asterix.om.pointables.base.IVisitablePointable;
-import org.apache.asterix.om.typecomputer.impl.AbstractRecordManipulationTypeComputer;
+import org.apache.asterix.om.typecomputer.impl.TypeComputerUtils;
 import org.apache.asterix.om.types.AOrderedListType;
 import org.apache.asterix.om.types.ARecordType;
 import org.apache.asterix.om.types.ATypeTag;
@@ -49,7 +49,6 @@ import org.apache.hyracks.data.std.api.IDataOutputProvider;
 import org.apache.hyracks.data.std.util.ArrayBackedValueStorage;
 import org.apache.hyracks.dataflow.common.data.accessors.IFrameTupleReference;
 
-import java.io.DataOutput;
 import java.io.IOException;
 import java.util.List;
 
@@ -68,9 +67,9 @@ public class RecordAddFieldsDescriptor  extends AbstractScalarFunctionDynamicDes
     private AOrderedListType inListType;
 
     public void reset(IAType outType, IAType inType0, IAType inType1) {
-        outRecType = AbstractRecordManipulationTypeComputer.extractRecordType(outType);
-        inRecType = AbstractRecordManipulationTypeComputer.extractRecordType(inType0);
-        inListType = AbstractRecordManipulationTypeComputer.extractOrderedListType(inType1);
+        outRecType = TypeComputerUtils.extractRecordType(outType);
+        inRecType = TypeComputerUtils.extractRecordType(inType0);
+        inListType = TypeComputerUtils.extractOrderedListType(inType1);
     }
 
 
@@ -79,7 +78,7 @@ public class RecordAddFieldsDescriptor  extends AbstractScalarFunctionDynamicDes
         return new ICopyEvaluatorFactory() {
 
             private static final long serialVersionUID = 1L;
-
+            private final byte SER_NULL_TYPE_TAG = ATypeTag.NULL.serialize();
 
             @SuppressWarnings("unchecked")
             private final ISerializerDeserializer<ANull> nullSerDe = AqlSerializerDeserializerProvider.INSTANCE
@@ -106,8 +105,7 @@ public class RecordAddFieldsDescriptor  extends AbstractScalarFunctionDynamicDes
                 final ICopyEvaluator eval0 = args[0].createEvaluator(abvs0);
                 final ICopyEvaluator eval1 = args[1].createEvaluator(abvs1);
 
-                final DataOutput out = output.getDataOutput();
-
+                final PointableUtils pu = new PointableUtils();
 
                 final ISerializerDeserializer<AString> stringSerde = AqlSerializerDeserializerProvider.INSTANCE
                         .getSerializerDeserializer(BuiltinType.ASTRING);
@@ -138,8 +136,13 @@ public class RecordAddFieldsDescriptor  extends AbstractScalarFunctionDynamicDes
                         eval0.evaluate(tuple);
                         eval1.evaluate(tuple);
 
-                        if (PointableUtils.INSTANCE.isNullRecord(abvs0, out) ||
-                                PointableUtils.INSTANCE.isNullRecord(abvs1, out)) {
+                        if (abvs0.getByteArray()[0] == SER_NULL_TYPE_TAG ||
+                                abvs1.getByteArray()[0] == SER_NULL_TYPE_TAG) {
+                            try {
+                                nullSerDe.serialize(ANull.NULL, output.getDataOutput());
+                            } catch (HyracksDataException e) {
+                                throw new AlgebricksException(e);
+                            }
                             return;
                         }
 
@@ -158,18 +161,6 @@ public class RecordAddFieldsDescriptor  extends AbstractScalarFunctionDynamicDes
                         }
                     }
 
-                    private void addField(IVisitablePointable fieldNamePointable,
-                            IVisitablePointable fieldValuePointable) throws IOException, AsterixException {
-                        String fieldName = PointableUtils.INSTANCE.getFieldName(fieldNamePointable);
-                        if (recType.isClosedField(fieldName)) {
-                            int position = recType.findFieldPosition(fieldName);
-                            recordBuilder.addField(position, fieldValuePointable);
-                        } else {
-                            recordBuilder.addField(fieldNamePointable, fieldValuePointable);
-                        }
-
-                    }
-
                     private void addFields(ARecordVisitablePointable inputRecordPointer,
                             AListVisitablePointable listPointable) throws IOException, AsterixException,
                             AlgebricksException {
@@ -184,7 +175,7 @@ public class RecordAddFieldsDescriptor  extends AbstractScalarFunctionDynamicDes
                         for (int i = 0; i < inputRecordPointer.getFieldNames().size(); ++i) {
                             IVisitablePointable fnp = inputRecordPointer.getFieldNames().get(i);
                             IVisitablePointable fvp = inputRecordPointer.getFieldValues().get(i);
-                            addField(fnp, fvp);
+                            pu.addField(recordBuilder, fnp, fvp);
                         }
 
                         // Get the fields from a list of record
@@ -213,10 +204,11 @@ public class RecordAddFieldsDescriptor  extends AbstractScalarFunctionDynamicDes
                                 }
                             }
 
-                            // TODO Add Nested type support
-                            if (!PointableUtils.isAFieldName(inputRecordPointer, namePointable)) {
+                            int pos = recType.findFieldPosition(namePointable.getByteArray(),
+                                    namePointable.getStartOffset()+1, namePointable.getLength()-1);
+                            if (pos>-1) {
                                 if(namePointable != null && valuePointable != null) {
-                                    addField(namePointable, valuePointable);
+                                    pu.addField(recordBuilder, namePointable, valuePointable);
                                 }
                             } else {
                                 throw new AlgebricksException("Conflicting duplicate field found.");
