@@ -23,6 +23,7 @@ import org.apache.asterix.common.exceptions.AsterixRuntimeException;
 import org.apache.asterix.common.parse.IParseFileSplitsDecl;
 import org.apache.asterix.dataflow.data.nontagged.AqlNullWriterFactory;
 import org.apache.asterix.formats.base.IDataFormat;
+import org.apache.asterix.formats.nontagged.AqlADMPrinterFactoryProvider;
 import org.apache.asterix.formats.nontagged.AqlBinaryBooleanInspectorImpl;
 import org.apache.asterix.formats.nontagged.AqlBinaryComparatorFactoryProvider;
 import org.apache.asterix.formats.nontagged.AqlBinaryHashFunctionFactoryProvider;
@@ -33,7 +34,6 @@ import org.apache.asterix.formats.nontagged.AqlCleanJSONPrinterFactoryProvider;
 import org.apache.asterix.formats.nontagged.AqlLosslessJSONPrinterFactoryProvider;
 import org.apache.asterix.formats.nontagged.AqlNormalizedKeyComputerFactoryProvider;
 import org.apache.asterix.formats.nontagged.AqlPredicateEvaluatorFactoryProvider;
-import org.apache.asterix.formats.nontagged.AqlADMPrinterFactoryProvider;
 import org.apache.asterix.formats.nontagged.AqlSerializerDeserializerProvider;
 import org.apache.asterix.formats.nontagged.AqlTypeTraitProvider;
 import org.apache.asterix.om.base.ABoolean;
@@ -161,12 +161,12 @@ import org.apache.asterix.runtime.evaluators.constructors.AUUIDFromStringConstru
 import org.apache.asterix.runtime.evaluators.constructors.AYearMonthDurationConstructorDescriptor;
 import org.apache.asterix.runtime.evaluators.constructors.ClosedRecordConstructorDescriptor;
 import org.apache.asterix.runtime.evaluators.constructors.OpenRecordConstructorDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.AdmToBytesDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.AndDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.AnyCollectionMemberDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.CastListDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.CastRecordDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.CodePointToStringDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.StringContainsDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.CountHashedGramTokensDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.CountHashedWordTokensDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.CreateCircleDescriptor;
@@ -182,7 +182,6 @@ import org.apache.asterix.runtime.evaluators.functions.EditDistanceDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.EditDistanceListIsFilterable;
 import org.apache.asterix.runtime.evaluators.functions.EditDistanceStringIsFilterable;
 import org.apache.asterix.runtime.evaluators.functions.EmbedTypeDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.StringEndsWithDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.FlowRecordDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.FuzzyEqDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.GetItemDescriptor;
@@ -193,7 +192,6 @@ import org.apache.asterix.runtime.evaluators.functions.InjectFailureDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.IsNullDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.IsSystemNullDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.LenDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.StringLikeDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.NotDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.NotNullDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.NumericAbsDescriptor;
@@ -223,16 +221,19 @@ import org.apache.asterix.runtime.evaluators.functions.SpatialAreaDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.SpatialCellDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.SpatialDistanceDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.SpatialIntersectDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.StringStartsWithDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.StringConcatDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.StringContainsDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.StringEndsWithDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.StringEqualDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.StringJoinDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.StringLengthDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.StringLikeDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.StringLowerCaseDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.StringMatchesDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.StringMatchesWithFlagDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.StringReplaceDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.StringReplaceWithFlagsDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.StringStartsWithDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.StringToCodePointDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.StringUpperCaseDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.Substring2Descriptor;
@@ -311,6 +312,8 @@ import org.apache.asterix.runtime.runningaggregates.std.TidRunningAggregateDescr
 import org.apache.asterix.runtime.unnestingfunctions.std.RangeDescriptor;
 import org.apache.asterix.runtime.unnestingfunctions.std.ScanCollectionDescriptor;
 import org.apache.asterix.runtime.unnestingfunctions.std.SubsetCollectionDescriptor;
+import org.apache.commons.lang3.mutable.Mutable;
+import org.apache.commons.lang3.mutable.MutableObject;
 import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
 import org.apache.hyracks.algebricks.common.exceptions.NotImplementedException;
 import org.apache.hyracks.algebricks.common.utils.Triple;
@@ -350,8 +353,6 @@ import org.apache.hyracks.dataflow.common.data.parsers.IntegerParserFactory;
 import org.apache.hyracks.dataflow.common.data.parsers.LongParserFactory;
 import org.apache.hyracks.dataflow.common.data.parsers.UTF8StringParserFactory;
 import org.apache.hyracks.dataflow.std.file.ITupleParserFactory;
-import org.apache.commons.lang3.mutable.Mutable;
-import org.apache.commons.lang3.mutable.MutableObject;
 
 import java.io.DataOutput;
 import java.io.IOException;
@@ -688,6 +689,9 @@ public class NonTaggedDataFormat implements IDataFormat {
         temp.add(AIntervalStartFromDateTimeConstructorDescriptor.FACTORY);
         temp.add(AIntervalStartFromTimeConstructorDescriptor.FACTORY);
 
+        // For debugging
+        temp.add(AdmToBytesDescriptor.FACTORY);
+
         IFunctionManager mgr = new FunctionManagerImpl();
         for (IFunctionDescriptorFactory fdFactory : temp) {
             mgr.registerFunction(fdFactory);
@@ -932,6 +936,17 @@ public class NonTaggedDataFormat implements IDataFormat {
                 IAType type0 = (IAType) context.getType(f.getArguments().get(0).getValue());
                 IAType type1 = (IAType) context.getType(f.getArguments().get(1).getValue());
                 ((RecordMergeDescriptor) fd).reset(outType, type0, type1);
+            }
+        });
+        functionTypeInferers.put(AsterixBuiltinFunctions.ADM_TO_BYTES, new FunctionTypeInferer() {
+
+            @Override public void infer(ILogicalExpression expr, IFunctionDescriptor fd,
+                    IVariableTypeEnvironment context) throws AlgebricksException {
+                AbstractFunctionCallExpression f = (AbstractFunctionCallExpression) expr;
+                IAType outType = (IAType) context.getType(expr);
+                IAType intype0 = (IAType) context.getType(f.getArguments().get(0).getValue());
+                IAType intype1 = (IAType) context.getType(f.getArguments().get(1).getValue());
+                ((AdmToBytesDescriptor) fd).reset(outType, intype0, intype1);
             }
         });
         functionTypeInferers.put(AsterixBuiltinFunctions.CAST_RECORD, new FunctionTypeInferer() {

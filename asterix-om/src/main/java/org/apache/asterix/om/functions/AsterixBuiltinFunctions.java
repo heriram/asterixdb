@@ -18,12 +18,6 @@
  */
 package org.apache.asterix.om.functions;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
 import org.apache.asterix.common.functions.FunctionConstants;
 import org.apache.asterix.common.functions.FunctionSignature;
 import org.apache.asterix.om.typecomputer.base.IResultTypeComputer;
@@ -40,6 +34,7 @@ import org.apache.asterix.om.typecomputer.impl.ARectangleTypeComputer;
 import org.apache.asterix.om.typecomputer.impl.AStringTypeComputer;
 import org.apache.asterix.om.typecomputer.impl.ATimeTypeComputer;
 import org.apache.asterix.om.typecomputer.impl.AUUIDTypeComputer;
+import org.apache.asterix.om.typecomputer.impl.AdmToBytesTypeComputer;
 import org.apache.asterix.om.typecomputer.impl.AnyTypeComputer;
 import org.apache.asterix.om.typecomputer.impl.BinaryBooleanOrNullFunctionTypeComputer;
 import org.apache.asterix.om.typecomputer.impl.BinaryStringBoolOrNullTypeComputer;
@@ -117,6 +112,12 @@ import org.apache.hyracks.algebricks.core.algebra.functions.AlgebricksBuiltinFun
 import org.apache.hyracks.algebricks.core.algebra.functions.FunctionIdentifier;
 import org.apache.hyracks.algebricks.core.algebra.functions.IFunctionInfo;
 
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 public class AsterixBuiltinFunctions {
 
     public enum SpatialFilterKind {
@@ -190,6 +191,9 @@ public class AsterixBuiltinFunctions {
             "get-record-fields", 1);
     public final static FunctionIdentifier GET_RECORD_FIELD_VALUE = new FunctionIdentifier(FunctionConstants.ASTERIX_NS,
             "get-record-field-value", 2);
+
+    public final static FunctionIdentifier ADM_TO_BYTES = new FunctionIdentifier(
+            FunctionConstants.ASTERIX_NS, "adm-to-bytes", 2);
 
     // numeric
     public final static FunctionIdentifier NUMERIC_UNARY_MINUS = new FunctionIdentifier(FunctionConstants.ASTERIX_NS,
@@ -941,6 +945,8 @@ public class AsterixBuiltinFunctions {
         addPrivateFunction(FIELD_ACCESS_BY_NAME, NonTaggedFieldAccessByNameResultType.INSTANCE, true);
         addFunction(GET_RECORD_FIELDS, OrderedListOfAnyTypeComputer.INSTANCE, true);
         addFunction(GET_RECORD_FIELD_VALUE, FieldAccessNestedResultType.INSTANCE, true);
+
+        addFunction(ADM_TO_BYTES, AdmToBytesTypeComputer.INSTANCE, true);
 
         // temporal type accessors
         addFunction(ACCESSOR_TEMPORAL_YEAR, OptionalAInt64TypeComputer.INSTANCE, true);
