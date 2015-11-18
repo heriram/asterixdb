@@ -51,7 +51,6 @@ class ListDeepEqualityAccessor {
 
     public boolean accessList(IVisitablePointable listAccessor0, IVisitablePointable listAccessor1,
             DeepEqualityVisitor visitor) throws IOException, AsterixException {
-
         this.visitor = visitor;
 
         AListVisitablePointable list0 = (AListVisitablePointable)listAccessor0;
@@ -103,12 +102,9 @@ class ListDeepEqualityAccessor {
         Pair<IVisitablePointable, Boolean> arg=null;
         for(int i=0; i<items0.size(); i++) {
             ATypeTag fieldType0 = PointableUtils.getTypeTag(itemTagTypes0.get(i));
-            ATypeTag fieldType1 = PointableUtils.getTypeTag(itemTagTypes1.get(i));
-            if(fieldType0 != fieldType1) {
+            if(fieldType0.isDerivedType() && fieldType0 != PointableUtils.getTypeTag(itemTagTypes1.get(i))) {
                 return false;
             }
-
-            IVisitablePointable item1 = items1.get(i);
             if (!compareListItems(fieldType0, items0.get(i), items1.get(i)))
                 return false;
         }
@@ -129,7 +125,7 @@ class ListDeepEqualityAccessor {
             int len = item.getLength();
             keyEntry.set(buf, off, len);
             IntegerPointable.setInteger(valEntry.buf, 0, i);
-            BinaryEntry entry = hashMap.put(keyEntry, valEntry);
+            hashMap.put(keyEntry, valEntry);
         }
 
         return probeHashMap(items0, itemTagTypes0, items1, itemTagTypes1);
@@ -148,14 +144,14 @@ class ListDeepEqualityAccessor {
             keyEntry.set(buf, off, len);
             BinaryEntry entry = hashMap.get(keyEntry);
 
-            // The fieldnames doesn't match
+            // The items doesn't match
             if (entry == null) {
                 return false;
             }
 
             int index0 = IntegerPointable.getInteger(entry.buf, entry.off);
             ATypeTag fieldType0 = PointableUtils.getTypeTag(itemTagTypes0.get(index0));
-            if(fieldType0 != PointableUtils.getTypeTag(itemTagTypes1.get(index1))) {
+            if(fieldType0.isDerivedType() && fieldType0 != PointableUtils.getTypeTag(itemTagTypes1.get(index1))) {
                 return false;
             }
 

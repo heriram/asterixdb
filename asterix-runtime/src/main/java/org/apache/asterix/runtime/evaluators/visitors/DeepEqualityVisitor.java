@@ -25,6 +25,8 @@ import org.apache.asterix.om.pointables.ARecordVisitablePointable;
 import org.apache.asterix.om.pointables.base.IVisitablePointable;
 import org.apache.asterix.om.pointables.visitor.IVisitablePointableVisitor;
 import org.apache.asterix.om.types.ATypeTag;
+import org.apache.asterix.om.types.hierachy.ATypeHierarchy;
+import org.apache.asterix.om.types.hierachy.ATypeHierarchy.Domain;
 import org.apache.asterix.runtime.evaluators.functions.PointableUtils;
 import org.apache.hyracks.algebricks.common.utils.Pair;
 import org.apache.hyracks.api.exceptions.HyracksDataException;
@@ -37,7 +39,6 @@ public class DeepEqualityVisitor implements IVisitablePointableVisitor<Void, Pai
             new HashMap<IVisitablePointable, ListDeepEqualityAccessor>();
     private final Map<IVisitablePointable, RecordDeepEqualityAccessor> raccessorToEquality =
             new HashMap<IVisitablePointable, RecordDeepEqualityAccessor>();
-
 
     @Override public Void visit(AListVisitablePointable accessor, Pair<IVisitablePointable, Boolean> arg)
             throws AsterixException {
@@ -76,25 +77,38 @@ public class DeepEqualityVisitor implements IVisitablePointableVisitor<Void, Pai
     @Override public Void visit(AFlatValuePointable accessor,Pair<IVisitablePointable, Boolean> arg)
             throws AsterixException {
 
-        ATypeTag tt1 = PointableUtils.getTypeTag(accessor);
-        ATypeTag tt2 = PointableUtils.getTypeTag(arg.first);
-
-        if (accessor.equals(arg.second)) {
+        if (accessor.equals(arg.first)) {
             arg.second = true;
             return null;
         }
-
-        if(tt1!=tt2 || accessor.getLength()!=arg.first.getLength()) {
-            arg.second = false;
-            return null;
-        }
-
         try {
-            arg.second = PointableUtils.byteArrayEqual(accessor, arg.first, 1);
+            ATypeTag tt1 = PointableUtils.getTypeTag(accessor);
+            ATypeTag tt2 = PointableUtils.getTypeTag(arg.first);
+
+            if (tt1 != tt2) {
+                if (!ATypeHierarchy.isSameTypeDomain(tt1, tt2, false)) {
+                    arg.second = false;
+                } else {
+                    // If same domain, check if numberic
+                    Domain domain = ATypeHierarchy.getTypeDomain(tt1);
+                    byte b1[] = accessor.getByteArray();
+                    byte b2[] = arg.first.getByteArray();
+                    if (domain == Domain.NUMERIC) {
+                        int s1 = accessor.getStartOffset();
+                        int s2 = arg.first.getStartOffset();
+                        arg.second = (ATypeHierarchy.getDoubleValue(b1, s1) == ATypeHierarchy.getDoubleValue(b2, s2));
+                    } else {
+                        arg.second = false;
+                    }
+                }
+            } else {
+                arg.second = PointableUtils.byteArrayEqual(accessor, arg.first, 1);
+            }
         } catch (HyracksDataException e) {
             throw new AsterixException(e);
         }
 
         return null;
     }
+
 }

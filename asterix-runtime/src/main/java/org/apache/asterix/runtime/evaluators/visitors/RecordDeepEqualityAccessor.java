@@ -69,12 +69,12 @@ class RecordDeepEqualityAccessor {
         if (s0 != s1)
             return false;
 
-        // Build phase: Add items into hash map, starting with first list.
-        for (int i = 0; i < s0; i++) {
-            IVisitablePointable item = fieldNames0.get(i);
-            keyEntry.set(item.getByteArray(), item.getStartOffset(), item.getLength());
+        // Build phase: Add items into hash map, starting with first record.
+        for (int i = 0; i<s0; i++) {
+            IVisitablePointable fieldName = fieldNames0.get(i);
+            keyEntry.set(fieldName.getByteArray(), fieldName.getStartOffset(), fieldName.getLength());
             IntegerPointable.setInteger(valEntry.buf, 0, i);
-            BinaryHashMap.BinaryEntry entry = hashMap.put(keyEntry, valEntry);
+            hashMap.put(keyEntry, valEntry);
         }
 
         return compareValues(rec0.getFieldTypeTags(), rec0.getFieldValues(),
@@ -86,36 +86,35 @@ class RecordDeepEqualityAccessor {
             List<IVisitablePointable> fieldNames1, List<IVisitablePointable> fieldTypes1,
             List<IVisitablePointable> fieldValues1) throws HyracksDataException, AsterixException {
 
-        // Probe phase: Probe items from second list
+        // Probe phase: Probe items from second record
         Pair<IVisitablePointable, Boolean> arg=null;
-        for(int index1=0; index1<fieldNames1.size(); index1++) {
-            IVisitablePointable item = fieldNames1.get(index1);
-            keyEntry.set(item.getByteArray(), item.getStartOffset(), item.getLength());
+        for(int i=0; i<fieldNames1.size(); i++) {
+            IVisitablePointable fieldName = fieldNames1.get(i);
+            keyEntry.set(fieldName.getByteArray(), fieldName.getStartOffset(), fieldName.getLength());
             BinaryHashMap.BinaryEntry entry = hashMap.get(keyEntry);
             if (entry == null) {
                 return false;
             }
 
-            int index0 = IntegerPointable.getInteger(entry.buf, entry.off);
-            ATypeTag fieldType0 = PointableUtils.getTypeTag(fieldTypes0.get(index0));
-            if(fieldType0 != PointableUtils.getTypeTag(fieldTypes1.get(index1))) {
+            int fieldId0 = IntegerPointable.getInteger(entry.buf, entry.off);
+            ATypeTag fieldType0 = PointableUtils.getTypeTag(fieldTypes0.get(fieldId0));
+            if(fieldType0.isDerivedType() && fieldType0 != PointableUtils.getTypeTag(fieldTypes1.get(i))) {
                 return false;
             }
-
-            arg = new Pair<IVisitablePointable, Boolean>(fieldValues1.get(index1), false);
+            arg = new Pair<IVisitablePointable, Boolean>(fieldValues1.get(i), false);
             switch (fieldType0) {
                 case ORDEREDLIST:
                 case UNORDEREDLIST:
-                    ((AListVisitablePointable)fieldValues0.get(index0)).accept(visitor, arg);
+                    ((AListVisitablePointable)fieldValues0.get(fieldId0)).accept(visitor, arg);
                     break;
                 case RECORD:
-                    ((ARecordVisitablePointable)fieldValues0.get(index0)).accept(visitor, arg);
+                    ((ARecordVisitablePointable)fieldValues0.get(fieldId0)).accept(visitor, arg);
                     break;
                 case ANY:
                     return false;
                 // TODO Should have a way to check "ANY" types too
                 default:
-                    ((AFlatValuePointable)fieldValues0.get(index0)).accept(visitor, arg);
+                    ((AFlatValuePointable)fieldValues0.get(fieldId0)).accept(visitor, arg);
             }
 
             if (!arg.second) return false;

@@ -18,12 +18,6 @@
  */
 package org.apache.asterix.om.types.hierachy;
 
-import java.io.DataOutput;
-import java.io.IOException;
-import java.util.BitSet;
-import java.util.HashMap;
-import java.util.Map;
-
 import org.apache.asterix.common.exceptions.AsterixException;
 import org.apache.asterix.om.base.ADouble;
 import org.apache.asterix.om.base.AFloat;
@@ -42,6 +36,12 @@ import org.apache.hyracks.data.std.primitive.FloatPointable;
 import org.apache.hyracks.data.std.primitive.IntegerPointable;
 import org.apache.hyracks.data.std.primitive.LongPointable;
 import org.apache.hyracks.data.std.primitive.ShortPointable;
+
+import java.io.DataOutput;
+import java.io.IOException;
+import java.util.BitSet;
+import java.util.HashMap;
+import java.util.Map;
 
 public class ATypeHierarchy {
 
@@ -123,6 +123,10 @@ public class ATypeHierarchy {
         hierarchyDomains.put(ATypeTag.DOUBLE, Domain.NUMERIC);
         hierarchyDomains.put(ATypeTag.ORDEREDLIST, Domain.LIST);
         hierarchyDomains.put(ATypeTag.UNORDEREDLIST, Domain.LIST);
+    }
+
+    public static Domain getTypeDomain(ATypeTag tag) {
+        return hierarchyDomains.get(tag);
     }
 
     public static boolean isSameTypeDomain(ATypeTag tag1, ATypeTag tag2, boolean useListDomain) {

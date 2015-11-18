@@ -20,10 +20,14 @@ package org.apache.asterix.runtime.evaluators.comparisons;
 
 import org.apache.asterix.common.exceptions.AsterixException;
 import org.apache.asterix.om.pointables.base.IVisitablePointable;
+import org.apache.asterix.om.types.ATypeTag;
+import org.apache.asterix.om.types.hierachy.ATypeHierarchy;
+import org.apache.asterix.om.types.hierachy.ATypeHierarchy.Domain;
 import org.apache.asterix.runtime.evaluators.functions.PointableUtils;
 import org.apache.asterix.runtime.evaluators.visitors.DeepEqualityVisitor;
 import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
 import org.apache.hyracks.algebricks.common.utils.Pair;
+import org.apache.hyracks.api.exceptions.HyracksDataException;
 
 /**
  *
@@ -55,12 +59,29 @@ public class DeepEqualAssessor {
         if (vp0 == null || vp1 == null)
             return false;
 
-        // TODO: In the next version add support for equivalent types that are not necessarily the same type
-        if (PointableUtils.getTypeTag(vp0) != PointableUtils.getTypeTag(vp1))
-            return false;
-
         if (vp0.equals(vp1))
             return true;
+
+        ATypeTag tt0 = PointableUtils.getTypeTag(vp0);
+        ATypeTag tt1 = PointableUtils.getTypeTag(vp1);
+
+        if (tt0 != tt1) {
+            // If types are numeric compare their real values instead
+            if (ATypeHierarchy.isSameTypeDomain(tt0, tt1, false) &&
+                    ATypeHierarchy.getTypeDomain(tt0) == Domain.NUMERIC) {
+                try {
+                    double val0 = ATypeHierarchy.getDoubleValue(vp0.getByteArray(), vp0.getStartOffset());
+                    double val1 = ATypeHierarchy.getDoubleValue(vp1.getByteArray(), vp1.getStartOffset());
+                    if (val0 == val1) return true;
+                    else return false;
+                } catch (HyracksDataException e) {
+                    throw new AlgebricksException(e);
+                }
+
+            }
+            else
+                return false;
+        }
 
         final Pair<IVisitablePointable, Boolean> arg =
                 new Pair<IVisitablePointable, Boolean>(vp1, Boolean.FALSE);
