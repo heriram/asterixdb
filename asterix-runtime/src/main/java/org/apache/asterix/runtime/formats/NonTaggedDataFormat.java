@@ -945,8 +945,7 @@ public class NonTaggedDataFormat implements IDataFormat {
                 AbstractFunctionCallExpression f = (AbstractFunctionCallExpression) expr;
                 IAType outType = (IAType) context.getType(expr);
                 IAType intype0 = (IAType) context.getType(f.getArguments().get(0).getValue());
-                IAType intype1 = (IAType) context.getType(f.getArguments().get(1).getValue());
-                ((AdmToBytesDescriptor) fd).reset(outType, intype0, intype1);
+                ((AdmToBytesDescriptor) fd).reset(outType, intype0);
             }
         });
         functionTypeInferers.put(AsterixBuiltinFunctions.CAST_RECORD, new FunctionTypeInferer() {
