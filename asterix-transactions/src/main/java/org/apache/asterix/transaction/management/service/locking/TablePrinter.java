@@ -16,12 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.asterix.common.feeds;
 
-public class FeedStorageStatistics {
+package org.apache.asterix.transaction.management.service.locking;
 
-    private long avgPersistenceDelay;
-    private long lastIntakeTimestamp;
-    
-    
+public interface TablePrinter {
+    StringBuilder append(StringBuilder sb);
 }

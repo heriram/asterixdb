@@ -37,53 +37,34 @@ import org.apache.asterix.om.types.BuiltinType;
 import org.apache.asterix.om.types.IAType;
 import org.apache.asterix.om.types.runtime.RuntimeRecordTypeInfo;
 import org.apache.asterix.runtime.evaluators.functions.PointableUtils;
-import org.apache.asterix.runtime.evaluators.functions.AdmToBytesHelper;
-import org.apache.hyracks.algebricks.common.utils.Pair;
 import org.apache.hyracks.algebricks.common.utils.Triple;
 import org.apache.hyracks.api.exceptions.HyracksDataException;
+import org.apache.hyracks.data.std.api.IValueReference;
 import org.apache.hyracks.data.std.util.ByteArrayAccessibleOutputStream;
 
 public class ListBytesProcessor {
     // pointable allocator
     private final PointableAllocator allocator = new PointableAllocator();
-    // for storing the cast result
     private final IVisitablePointable itemTempReference = allocator.allocateEmpty();
-    private final Triple<IVisitablePointable, Pair<IAType, RuntimeRecordTypeInfo>, Long> itemVisitorArg = new Triple<>(
-            itemTempReference, new Pair<>(null, new RuntimeRecordTypeInfo()), 1L);
+    private final Triple<IAType, RuntimeRecordTypeInfo, Long> itemVisitorArg = new Triple<>(null,
+            new RuntimeRecordTypeInfo(), 1L);
     private final UnorderedListBuilder unOrderedListBuilder = new UnorderedListBuilder();
     private final OrderedListBuilder orderedListBuilder = new OrderedListBuilder();
     private final ByteArrayAccessibleOutputStream dataBos = new ByteArrayAccessibleOutputStream();
     private final DataOutput dataDos = new DataOutputStream(dataBos);
-    private AdmToBytesHelper admToBytesHelper;
-    private long outputLevel;
     private IAType reqItemType;
 
-    public ListBytesProcessor(AdmToBytesHelper admToBytesHelper, long outputLevel) {
-        this.admToBytesHelper = admToBytesHelper;
-        this.outputLevel = outputLevel;
-    }
-
-    public void accessList(AListVisitablePointable pointable, AdmToBytesVisitor visitor, IAType requiredType,
-            long nestedLevel, IVisitablePointable resultPointable) throws AsterixException {
+    public void accessList(AListVisitablePointable pointable, long outputLevel, AdmToBytesVisitor visitor,
+            IAType requiredType, long nestedLevel, IVisitablePointable resultPointable) throws AsterixException {
         // Printing just the highest level of the annotated bytes
-        if (outputLevel == 1
-                || (nestedLevel == outputLevel && requiredType.getTypeTag() != ATypeTag.UNORDEREDLIST && requiredType
-                        .getTypeTag() != ATypeTag.ORDEREDLIST)) {
-            if (requiredType != null && requiredType.getTypeTag() == ATypeTag.RECORD) {
-                admToBytesHelper.getAnnotatedByteArray(pointable, (ARecordType) requiredType, resultPointable);
-            } else {
-                admToBytesHelper
-                        .getAnnotatedByteArray(pointable, DefaultOpenFieldType.NESTED_OPEN_RECORD_TYPE, resultPointable);
-            }
-            return;
-        }
+        ATypeTag reqTypeTag = requiredType.getTypeTag();
 
-        if (requiredType != null && requiredType.getTypeTag() != ATypeTag.ANY) {
-            if (requiredType.getTypeTag().equals(ATypeTag.UNORDEREDLIST)) {
+        if (requiredType != null && reqTypeTag != ATypeTag.ANY) {
+            if (reqTypeTag == ATypeTag.UNORDEREDLIST) {
                 unOrderedListBuilder.reset((AUnorderedListType) requiredType);
                 reqItemType = ((AUnorderedListType) requiredType).getItemType();
             }
-            if (requiredType.getTypeTag().equals(ATypeTag.ORDEREDLIST)) {
+            if (reqTypeTag == ATypeTag.ORDEREDLIST) {
                 orderedListBuilder.reset((AOrderedListType) requiredType);
                 reqItemType = ((AOrderedListType) requiredType).getItemType();
             }
@@ -99,7 +80,6 @@ public class ListBytesProcessor {
         List<IVisitablePointable> items = pointable.getItems();
         List<IVisitablePointable> itemTypeTags = pointable.getItemTags();
 
-
         try {
             for (int i = 0; i < items.size(); i++) {
                 IVisitablePointable item = items.get(i);
@@ -108,42 +88,40 @@ public class ListBytesProcessor {
 
                 // If reached the max nesting level just "print" the annotated byte record for this item
                 if (nestedLevel == outputLevel) {
-                    if (reqItemType != null && reqItemType.getTypeTag() == ATypeTag.RECORD) {
-                        admToBytesHelper.getAnnotatedByteArray(item, (ARecordType) reqItemType, itemTempReference);
-                    } else {
-                        admToBytesHelper.getAnnotatedByteArray(item, DefaultOpenFieldType.NESTED_OPEN_RECORD_TYPE,
-                                itemTempReference);
-                    }
+                    visitor.computeResultPointable(item, reqItemType, itemTempReference);
+                    addListItem(reqTypeTag, itemTempReference);
                 } else {
                     if (reqItemType == null || reqItemType.getTypeTag().equals(ATypeTag.ANY)) {
-                        itemVisitorArg.second.first = DefaultOpenFieldType.getDefaultOpenFieldType(typeTag);
+                        itemVisitorArg.first = DefaultOpenFieldType.getDefaultOpenFieldType(typeTag);
                     } else {
-                        itemVisitorArg.second.first = reqItemType;
+                        itemVisitorArg.first = reqItemType;
                         if (reqItemType.getTypeTag().equals(ATypeTag.RECORD)) {
-                            itemVisitorArg.second.second.reset((ARecordType) reqItemType);
+                            itemVisitorArg.second.reset((ARecordType) reqItemType);
                         }
                     }
                     itemVisitorArg.third = nestedLevel + 1;
-                    item.accept(visitor, itemVisitorArg);
+                    addListItem(reqTypeTag, (item.accept(visitor, itemVisitorArg)));
                 }
-                if (requiredType.getTypeTag().equals(ATypeTag.ORDEREDLIST)) {
-                    orderedListBuilder.addItem(itemTempReference);
-                }
-                if (requiredType.getTypeTag().equals(ATypeTag.UNORDEREDLIST)) {
-                    unOrderedListBuilder.addItem(itemTempReference);
-                }
-
             }
             dataBos.reset();
-            if (requiredType.getTypeTag().equals(ATypeTag.ORDEREDLIST)) {
+            if (reqTypeTag == ATypeTag.ORDEREDLIST) {
                 orderedListBuilder.write(dataDos, true);
             }
-            if (requiredType.getTypeTag().equals(ATypeTag.UNORDEREDLIST)) {
+            if (reqTypeTag == ATypeTag.UNORDEREDLIST) {
                 unOrderedListBuilder.write(dataDos, true);
             }
             resultPointable.set(dataBos.getByteArray(), 0, dataBos.size());
         } catch (HyracksDataException e) {
             throw new AsterixException(e);
+        }
+    }
+
+    private void addListItem(ATypeTag listTypeTag, IValueReference itemReference) throws HyracksDataException {
+        if (listTypeTag == ATypeTag.ORDEREDLIST) {
+            orderedListBuilder.addItem(itemReference);
+        }
+        if (listTypeTag == ATypeTag.UNORDEREDLIST) {
+            unOrderedListBuilder.addItem(itemReference);
         }
     }
 }

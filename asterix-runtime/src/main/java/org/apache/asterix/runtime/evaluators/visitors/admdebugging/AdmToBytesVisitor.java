@@ -25,6 +25,7 @@ import org.apache.asterix.common.exceptions.AsterixException;
 import org.apache.asterix.om.pointables.AFlatValuePointable;
 import org.apache.asterix.om.pointables.AListVisitablePointable;
 import org.apache.asterix.om.pointables.ARecordVisitablePointable;
+import org.apache.asterix.om.pointables.PointableAllocator;
 import org.apache.asterix.om.pointables.base.DefaultOpenFieldType;
 import org.apache.asterix.om.pointables.base.IVisitablePointable;
 import org.apache.asterix.om.pointables.visitor.IVisitablePointableVisitor;
@@ -33,72 +34,90 @@ import org.apache.asterix.om.types.ATypeTag;
 import org.apache.asterix.om.types.IAType;
 import org.apache.asterix.om.types.runtime.RuntimeRecordTypeInfo;
 import org.apache.asterix.runtime.evaluators.functions.AdmToBytesHelper;
-import org.apache.hyracks.algebricks.common.utils.Pair;
 import org.apache.hyracks.algebricks.common.utils.Triple;
 
 public class AdmToBytesVisitor implements
-        IVisitablePointableVisitor<Void, Triple<IVisitablePointable, Pair<IAType, RuntimeRecordTypeInfo>, Long>> {
+        IVisitablePointableVisitor<IVisitablePointable, Triple<IAType, RuntimeRecordTypeInfo, Long>> {
 
     private final Map<IVisitablePointable, RecordBytesProcessor> rProcessorToAnnotatedBytes = new HashMap<>();
     private final Map<IVisitablePointable, ListBytesProcessor> lProcessorToAnnotatedBytes = new HashMap<>();
-
+    private final PointableAllocator allocator = new PointableAllocator();
+    private final IVisitablePointable resultPointable = allocator.allocateEmpty();
     private RecordBytesProcessor recordBytesProcessor;
     private ListBytesProcessor listBytesProcessor;
-
-    private AdmToBytesHelper pvd;
+    private AdmToBytesHelper admToBytesHelper;
 
     private long outputLevel = 0;
 
-    public AdmToBytesVisitor(AdmToBytesHelper pvd, long outputLevel) {
-        this.pvd = pvd;
+    public AdmToBytesVisitor(AdmToBytesHelper admToBytesHelper, long outputLevel) {
+        this.admToBytesHelper = admToBytesHelper;
         this.outputLevel = outputLevel;
     }
 
     @Override
-    public Void visit(AListVisitablePointable pointable,
-            Triple<IVisitablePointable, Pair<IAType, RuntimeRecordTypeInfo>, Long> arg) throws AsterixException {
+    public IVisitablePointable visit(AListVisitablePointable pointable, Triple<IAType, RuntimeRecordTypeInfo, Long> arg)
+            throws AsterixException {
+        if (outputLevel == 1
+                || (arg.third == outputLevel && arg.first.getTypeTag() != ATypeTag.UNORDEREDLIST && arg.first
+                        .getTypeTag() != ATypeTag.ORDEREDLIST)) {
+            computeResultPointable(pointable, arg.first, resultPointable);
+            return resultPointable;
+        }
+
         listBytesProcessor = lProcessorToAnnotatedBytes.get(pointable);
         if (listBytesProcessor == null) {
-            listBytesProcessor = new ListBytesProcessor(pvd, outputLevel);
+            listBytesProcessor = new ListBytesProcessor();
             lProcessorToAnnotatedBytes.put(pointable, listBytesProcessor);
         }
-        if (arg.second.first.getTypeTag() == ATypeTag.ANY) {
-            arg.second.first = DefaultOpenFieldType.NESTED_OPEN_AUNORDERED_LIST_TYPE;
+        if (arg.first.getTypeTag() == ATypeTag.ANY) {
+            arg.first = DefaultOpenFieldType.NESTED_OPEN_AUNORDERED_LIST_TYPE;
             if (pointable.ordered()) {
-                arg.second.first = DefaultOpenFieldType.NESTED_OPEN_AORDERED_LIST_TYPE;
+                arg.first = DefaultOpenFieldType.NESTED_OPEN_AORDERED_LIST_TYPE;
             }
         }
-        listBytesProcessor.accessList(pointable, this, arg.second.first, arg.third, arg.first);
-        return null;
+        listBytesProcessor.accessList(pointable, outputLevel, this, arg.first, arg.third, resultPointable);
+        return resultPointable;
     }
 
     @Override
-    public Void visit(ARecordVisitablePointable pointable,
-            Triple<IVisitablePointable, Pair<IAType, RuntimeRecordTypeInfo>, Long> arg) throws AsterixException {
-        RuntimeRecordTypeInfo runtimeRecordTypeInfo = arg.second.second;
-        if (arg.second.first.getTypeTag() == ATypeTag.ANY) {
-            arg.second.first = DefaultOpenFieldType.NESTED_OPEN_RECORD_TYPE;
+    public IVisitablePointable visit(ARecordVisitablePointable pointable,
+            Triple<IAType, RuntimeRecordTypeInfo, Long> arg) throws AsterixException {
+
+        if (outputLevel == 1 || arg.third == outputLevel) {
+            computeResultPointable(pointable, arg.first, resultPointable);
+            return resultPointable;
         }
-        ARecordType requiredType = (ARecordType) arg.second.first;
+
+        RuntimeRecordTypeInfo runtimeRecordTypeInfo = arg.second;
+        if (arg.first.getTypeTag() == ATypeTag.ANY) {
+            arg.first = DefaultOpenFieldType.NESTED_OPEN_RECORD_TYPE;
+        }
+        ARecordType requiredType = (ARecordType) arg.first;
 
         recordBytesProcessor = rProcessorToAnnotatedBytes.get(pointable);
         if (recordBytesProcessor == null) {
-            recordBytesProcessor = new RecordBytesProcessor(pvd, outputLevel);
+            recordBytesProcessor = new RecordBytesProcessor();
             rProcessorToAnnotatedBytes.put(pointable, recordBytesProcessor);
         }
-        recordBytesProcessor.accessRecord(pointable, this, requiredType, runtimeRecordTypeInfo, arg.third, arg.first);
-        return null;
+        recordBytesProcessor.accessRecord(pointable, this, requiredType, runtimeRecordTypeInfo, arg.third,
+                resultPointable);
+        return resultPointable;
     }
 
     @Override
-    public Void visit(AFlatValuePointable pointable,
-            Triple<IVisitablePointable, Pair<IAType, RuntimeRecordTypeInfo>, Long> arg) throws AsterixException {
-        IAType requiredType = arg.second.first;
+    public IVisitablePointable visit(AFlatValuePointable pointable, Triple<IAType, RuntimeRecordTypeInfo, Long> arg)
+            throws AsterixException {
+        computeResultPointable(pointable, arg.first, resultPointable);
+        return resultPointable;
+    }
+
+    public void computeResultPointable(IVisitablePointable inputPointable, IAType requiredType,
+            IVisitablePointable outputPointable) throws AsterixException {
         if (requiredType != null && requiredType.getTypeTag() == ATypeTag.RECORD) {
-            pvd.getAnnotatedByteArray(pointable, (ARecordType) requiredType, arg.first);
+            admToBytesHelper.getAnnotatedByteArray(inputPointable, (ARecordType) requiredType, outputPointable);
         } else {
-            pvd.getAnnotatedByteArray(pointable, DefaultOpenFieldType.NESTED_OPEN_RECORD_TYPE, arg.first);
+            admToBytesHelper.getAnnotatedByteArray(inputPointable, DefaultOpenFieldType.NESTED_OPEN_RECORD_TYPE,
+                    outputPointable);
         }
-        return null;
     }
 }

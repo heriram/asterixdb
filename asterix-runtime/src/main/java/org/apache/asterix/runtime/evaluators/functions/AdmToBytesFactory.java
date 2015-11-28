@@ -42,7 +42,6 @@ import org.apache.asterix.om.types.runtime.RuntimeRecordTypeInfo;
 import org.apache.asterix.om.util.ResettableByteArrayOutputStream;
 import org.apache.asterix.runtime.evaluators.visitors.admdebugging.AdmToBytesVisitor;
 import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
-import org.apache.hyracks.algebricks.common.utils.Pair;
 import org.apache.hyracks.algebricks.common.utils.Triple;
 import org.apache.hyracks.algebricks.runtime.base.ICopyEvaluator;
 import org.apache.hyracks.algebricks.runtime.base.ICopyEvaluatorFactory;
@@ -74,7 +73,6 @@ public class AdmToBytesFactory implements ICopyEvaluatorFactory {
 
     @Override
     public ICopyEvaluator createEvaluator(final IDataOutputProvider output) throws AlgebricksException {
-        final PointableUtils pu = new PointableUtils();
         @SuppressWarnings("unchecked")
         final ISerializerDeserializer<ANull> nullSerde = AqlSerializerDeserializerProvider.INSTANCE
                 .getSerializerDeserializer(BuiltinType.ANULL);
@@ -91,14 +89,13 @@ public class AdmToBytesFactory implements ICopyEvaluatorFactory {
             private final ResettableByteArrayOutputStream bos = new ResettableByteArrayOutputStream();
             private final DataOutputStream dos = new DataOutputStream(bos);
             private final IARecordBuilder recordBuilder = new RecordBuilder();
-            private PointableAllocator allocator = new PointableAllocator();
+            private final AdmToBytesHelper admToBytesHelper = new AdmToBytesHelper(new PointableUtils());
+            private final PointableAllocator allocator = new PointableAllocator();
             private final IVisitablePointable levelPointable = allocator.allocateEmpty();
             private final IVisitablePointable inputPointable = PointableUtils
                     .allocatePointable(allocator, inputArgType);
-            private final IVisitablePointable resultPointable = PointableUtils.allocatePointable(allocator, outputType);
             private final IVisitablePointable tempReference = allocator.allocateEmpty();
             private AdmToBytesVisitor visitor;
-            private AdmToBytesHelper admToBytesHelper = new AdmToBytesHelper(pu);
 
             @Override
             public void evaluate(IFrameTupleReference tuple) throws AlgebricksException {
@@ -128,9 +125,9 @@ public class AdmToBytesFactory implements ICopyEvaluatorFactory {
                     if (outputLevel < 1) {
                         printRawBytes(inputPointable);
                     } else {
-                        Triple<IVisitablePointable, Pair<IAType, RuntimeRecordTypeInfo>, Long> arg = new Triple<>(
-                                resultPointable, new Pair<>(outputType, runtimeRecordTypeInfo), 1L);
-                        inputPointable.accept(visitor, arg);
+                        Triple<IAType, RuntimeRecordTypeInfo, Long> arg = new Triple<>(outputType,
+                                runtimeRecordTypeInfo, 1L);
+                        IVisitablePointable resultPointable = inputPointable.accept(visitor, arg);
                         output.getDataOutput().write(resultPointable.getByteArray(), resultPointable.getStartOffset(),
                                 resultPointable.getLength());
                     }
