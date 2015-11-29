@@ -19,6 +19,11 @@
 
 package org.apache.asterix.om.typecomputer.impl;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 import org.apache.asterix.common.exceptions.AsterixException;
 import org.apache.asterix.om.types.ARecordType;
 import org.apache.asterix.om.types.ATypeTag;
@@ -32,14 +37,7 @@ import org.apache.hyracks.algebricks.core.algebra.expressions.IVariableTypeEnvir
 import org.apache.hyracks.algebricks.core.algebra.metadata.IMetadataProvider;
 import org.apache.hyracks.api.exceptions.HyracksDataException;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
 public class RecordMergeTypeComputer extends AbstractRecordManipulationTypeComputer {
-    private static final long serialVersionUID = 1L;
-
     public static final RecordMergeTypeComputer INSTANCE = new RecordMergeTypeComputer();
 
     private RecordMergeTypeComputer() {
@@ -107,7 +105,7 @@ public class RecordMergeTypeComputer extends AbstractRecordManipulationTypeCompu
                     throw new AlgebricksException("Duplicate field " + fieldNames[i] + " encountered");
                 }
                 try {
-                    if(fieldTypes[i].getTypeTag() == ATypeTag.RECORD && rt.getTypeTag() == ATypeTag.RECORD) {
+                    if (fieldTypes[i].getTypeTag() == ATypeTag.RECORD && rt.getTypeTag() == ATypeTag.RECORD) {
                         resultFieldTypes.set(pos, mergedNestedType(fieldTypes[i], rt));
                     }
                 } catch (AsterixException e) {
@@ -124,7 +122,7 @@ public class RecordMergeTypeComputer extends AbstractRecordManipulationTypeCompu
         resultFieldTypes.addAll(additionalFieldTypes);
         String resultTypeName = "merged(" + recType0.getTypeName() + ", " + recType1.getTypeName() + ")";
         boolean isOpen = recType0.isOpen() || recType1.isOpen();
-        IAType resultType = null;
+        IAType resultType;
         try {
             resultType = new ARecordType(resultTypeName, resultFieldNames.toArray(new String[] {}),
                     resultFieldTypes.toArray(new IAType[] {}), isOpen);
