@@ -78,7 +78,7 @@ public class RecordBuilder implements IARecordBuilder {
     private int numberOfOpenFields;
     private RuntimeRecordTypeInfo recTypeInfo;
 
-    private final PointableTypeVisitor visitor = new PointableTypeVisitor();
+    private final CheckCompletelyOpenRecordTypeVisitor visitor = new CheckCompletelyOpenRecordTypeVisitor();
     private final PointableAllocator pointableAllocator = new PointableAllocator();
 
     public RecordBuilder() {
@@ -188,18 +188,12 @@ public class RecordBuilder implements IARecordBuilder {
     public void addField(IValueReference name, IValueReference value) throws AsterixException {
         // Check whether the value is a partly closed or a closed record
         Pair<Boolean, Void> arg = new Pair<>(false, null);
-        IVisitablePointable vp;
+        IVisitablePointable vp = pointableAllocator.allocateEmpty();
+        vp.set(value.getByteArray(), value.getStartOffset(), value.getLength());
 
-        if (value instanceof IVisitablePointable) {
-            vp = (IVisitablePointable) value;
-        } else {
-            vp = pointableAllocator.allocateEmpty();
-            vp.set(value.getByteArray(), value.getStartOffset(), value.getLength());
-        }
         vp.accept(visitor, arg);
         if (arg.first == true)
-            throw new AsterixException("Adding non-schemaless records to an open field.");
-
+            throw new AsterixException("Trying to add non-schemaless records to an open field.");
 
         if (numberOfOpenFields == openPartOffsets.length) {
             openPartOffsets = Arrays.copyOf(openPartOffsets, openPartOffsets.length + DEFAULT_NUM_OPEN_FIELDS);
@@ -232,6 +226,8 @@ public class RecordBuilder implements IARecordBuilder {
         openFieldNameLengths[numberOfOpenFields++] = name.getLength() - 1;
         openPartOutputStream.write(name.getByteArray(), name.getStartOffset() + 1, name.getLength() - 1);
         openPartOutputStream.write(value.getByteArray(), value.getStartOffset(), value.getLength());
+
+        pointableAllocator.reset();
     }
 
     @Override

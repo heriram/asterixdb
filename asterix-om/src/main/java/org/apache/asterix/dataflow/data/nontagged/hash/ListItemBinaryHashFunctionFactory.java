@@ -40,11 +40,6 @@ public class ListItemBinaryHashFunctionFactory implements IBinaryHashFunctionFac
 
     private static final long serialVersionUID = 1L;
 
-    public static final ListItemBinaryHashFunctionFactory INSTANCE = new ListItemBinaryHashFunctionFactory();
-
-    private ListItemBinaryHashFunctionFactory() {
-    }
-
     @Override
     public IBinaryHashFunction createBinaryHashFunction() {
         return createBinaryHashFunction(ATypeTag.ANY, false);

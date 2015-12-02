@@ -19,6 +19,8 @@
 
 package org.apache.asterix.runtime.evaluators.functions;
 
+import java.io.DataOutput;
+
 import org.apache.asterix.formats.nontagged.AqlSerializerDeserializerProvider;
 import org.apache.asterix.om.base.ABoolean;
 import org.apache.asterix.om.functions.AsterixBuiltinFunctions;
@@ -30,9 +32,7 @@ import org.apache.asterix.om.types.BuiltinType;
 import org.apache.asterix.om.types.IAType;
 import org.apache.asterix.runtime.evaluators.base.AbstractScalarFunctionDynamicDescriptor;
 import org.apache.asterix.runtime.evaluators.comparisons.DeepEqualAssessor;
-import org.apache.asterix.runtime.evaluators.visitors.DeepEqualityVisitor;
 import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
-import org.apache.hyracks.algebricks.common.utils.Pair;
 import org.apache.hyracks.algebricks.core.algebra.functions.FunctionIdentifier;
 import org.apache.hyracks.algebricks.runtime.base.ICopyEvaluator;
 import org.apache.hyracks.algebricks.runtime.base.ICopyEvaluatorFactory;
@@ -41,9 +41,7 @@ import org.apache.hyracks.data.std.api.IDataOutputProvider;
 import org.apache.hyracks.data.std.util.ArrayBackedValueStorage;
 import org.apache.hyracks.dataflow.common.data.accessors.IFrameTupleReference;
 
-import java.io.DataOutput;
-
-public class DeepEqualityDescriptor  extends AbstractScalarFunctionDynamicDescriptor {
+public class DeepEqualityDescriptor extends AbstractScalarFunctionDynamicDescriptor {
     public static final IFunctionDescriptorFactory FACTORY = new IFunctionDescriptorFactory() {
         public IFunctionDescriptor createFunctionDescriptor() {
             return new DeepEqualityDescriptor();
@@ -51,18 +49,18 @@ public class DeepEqualityDescriptor  extends AbstractScalarFunctionDynamicDescri
     };
 
     private static final long serialVersionUID = 1L;
-    private IAType inputType0;
-    private IAType inputType1;
+    private IAType inputTypeLeft;
+    private IAType inputTypeRight;
 
-    public void reset(IAType inType0, IAType inType1) {
-        this.inputType0 = inType0;
-        this.inputType1 = inType1;
+    public void reset(IAType inTypeLeft, IAType inTypeRight) {
+        this.inputTypeLeft = inTypeLeft;
+        this.inputTypeRight = inTypeRight;
     }
 
     @Override
     public ICopyEvaluatorFactory createEvaluatorFactory(final ICopyEvaluatorFactory[] args) {
-        final ICopyEvaluatorFactory evalFactory0 = args[0];
-        final ICopyEvaluatorFactory evalFactory1 = args[1];
+        final ICopyEvaluatorFactory evalFactoryLeft = args[0];
+        final ICopyEvaluatorFactory evalFactoryRight = args[1];
 
         return new ICopyEvaluatorFactory() {
             private static final long serialVersionUID = 1L;
@@ -72,34 +70,30 @@ public class DeepEqualityDescriptor  extends AbstractScalarFunctionDynamicDescri
             @Override
             public ICopyEvaluator createEvaluator(final IDataOutputProvider output) throws AlgebricksException {
                 final DataOutput out = output.getDataOutput();
-                final ArrayBackedValueStorage abvs0 = new ArrayBackedValueStorage();
-                final ICopyEvaluator eval0 = evalFactory0.createEvaluator(abvs0);
+                final ArrayBackedValueStorage abvsLeft = new ArrayBackedValueStorage();
+                final ICopyEvaluator evalLeft = evalFactoryLeft.createEvaluator(abvsLeft);
 
-                final ArrayBackedValueStorage abvs1 = new ArrayBackedValueStorage();
-                final ICopyEvaluator eval1 = evalFactory1.createEvaluator(abvs1);
+                final ArrayBackedValueStorage abvsRight = new ArrayBackedValueStorage();
+                final ICopyEvaluator evalRight = evalFactoryRight.createEvaluator(abvsRight);
+                final DeepEqualAssessor deepEqualAssessor = new DeepEqualAssessor();
 
                 return new ICopyEvaluator() {
-                    // pointable allocator
-                    private PointableAllocator allocator = new PointableAllocator();
-                    final IVisitablePointable accessor0 = allocator.allocateFieldValue(inputType0);
-                    final IVisitablePointable accessor1 = allocator.allocateFieldValue(inputType1);
-
-                    final DeepEqualityVisitor equalityVisitor = new DeepEqualityVisitor();
-                    final Pair<IVisitablePointable, Boolean> arg = new
-                            Pair<IVisitablePointable, Boolean>(accessor1, false);
+                    private final PointableAllocator allocator = new PointableAllocator();
+                    private final IVisitablePointable pointableLeft = allocator.allocateFieldValue(inputTypeLeft);
+                    private final IVisitablePointable pointableRight = allocator.allocateFieldValue(inputTypeRight);
 
                     @Override
                     public void evaluate(IFrameTupleReference tuple) throws AlgebricksException {
                         try {
-                            abvs0.reset();
-                            abvs1.reset();
-                            eval0.evaluate(tuple);
-                            eval1.evaluate(tuple);
-                            accessor0.set(abvs0);
-                            accessor1.set(abvs1);
+                            abvsLeft.reset();
+                            abvsRight.reset();
+                            evalLeft.evaluate(tuple);
+                            evalRight.evaluate(tuple);
+                            pointableLeft.set(abvsLeft);
+                            pointableRight.set(abvsRight);
 
                             // Using deep equality assessment to assess the equality of the two values
-                            boolean isEqual = DeepEqualAssessor.INSTANCE.isEqual(accessor0, accessor1);
+                            boolean isEqual = deepEqualAssessor.isEqual(pointableLeft, pointableRight);
                             ABoolean result = isEqual ? ABoolean.TRUE : ABoolean.FALSE;
 
                             boolSerde.serialize(result, out);

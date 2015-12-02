@@ -25,11 +25,13 @@ import java.util.Collections;
 import java.util.List;
 
 import org.apache.asterix.common.exceptions.AsterixException;
+import org.apache.asterix.om.typecomputer.base.IResultTypeComputer;
 import org.apache.asterix.om.types.ARecordType;
 import org.apache.asterix.om.types.ATypeTag;
 import org.apache.asterix.om.types.AUnionType;
 import org.apache.asterix.om.types.IAType;
 import org.apache.asterix.om.types.TypeHelper;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
 import org.apache.hyracks.algebricks.core.algebra.base.ILogicalExpression;
 import org.apache.hyracks.algebricks.core.algebra.expressions.AbstractFunctionCallExpression;
@@ -37,25 +39,10 @@ import org.apache.hyracks.algebricks.core.algebra.expressions.IVariableTypeEnvir
 import org.apache.hyracks.algebricks.core.algebra.metadata.IMetadataProvider;
 import org.apache.hyracks.api.exceptions.HyracksDataException;
 
-public class RecordMergeTypeComputer extends AbstractRecordManipulationTypeComputer {
+public class RecordMergeTypeComputer implements IResultTypeComputer {
     public static final RecordMergeTypeComputer INSTANCE = new RecordMergeTypeComputer();
 
     private RecordMergeTypeComputer() {
-    }
-
-    public static ARecordType extractRecordType(IAType t) {
-        if (t.getTypeTag() == ATypeTag.RECORD) {
-            return (ARecordType) t;
-        }
-
-        if (t.getTypeTag() == ATypeTag.UNION) {
-            IAType innerType = ((AUnionType) t).getNullableType();
-            if (innerType.getTypeTag() == ATypeTag.RECORD) {
-                return (ARecordType) innerType;
-            }
-        }
-
-        return null;
     }
 
     @Override
@@ -65,8 +52,8 @@ public class RecordMergeTypeComputer extends AbstractRecordManipulationTypeCompu
         IAType t0 = (IAType) env.getType(f.getArguments().get(0).getValue());
         IAType t1 = (IAType) env.getType(f.getArguments().get(1).getValue());
         boolean nullable = TypeHelper.canBeNull(t0) || TypeHelper.canBeNull(t1);
-        ARecordType recType0 = extractRecordType(t0);
-        ARecordType recType1 = extractRecordType(t1);
+        ARecordType recType0 = TypeComputerUtils.extractRecordType(t0);
+        ARecordType recType1 = TypeComputerUtils.extractRecordType(t1);
 
         if (recType0 == null || recType1 == null) {
             throw new AlgebricksException("record-merge expects possibly NULL records as arguments, but got (" + t0
@@ -78,6 +65,7 @@ public class RecordMergeTypeComputer extends AbstractRecordManipulationTypeCompu
             resultFieldNames.add(fieldName);
         }
         Collections.sort(resultFieldNames);
+
         List<IAType> resultFieldTypes = new ArrayList<>();
         for (String fieldName : resultFieldNames) {
             try {
@@ -100,13 +88,14 @@ public class RecordMergeTypeComputer extends AbstractRecordManipulationTypeCompu
         for (int i = 0; i < fieldNames.length; ++i) {
             int pos = Collections.binarySearch(resultFieldNames, fieldNames[i]);
             if (pos >= 0) {
-                IAType rt = resultFieldTypes.get(pos);
-                if (rt.getTypeTag() != fieldTypes[i].getTypeTag()) {
+                IAType resultFieldType = resultFieldTypes.get(pos);
+                if (resultFieldType.getTypeTag() != fieldTypes[i].getTypeTag()) {
                     throw new AlgebricksException("Duplicate field " + fieldNames[i] + " encountered");
                 }
                 try {
-                    if (fieldTypes[i].getTypeTag() == ATypeTag.RECORD && rt.getTypeTag() == ATypeTag.RECORD) {
-                        resultFieldTypes.set(pos, mergedNestedType(fieldTypes[i], rt));
+                    // Assuming fieldTypes[i].getTypeTag() = resultFieldType.getTypeTag()
+                    if (fieldTypes[i].getTypeTag() == ATypeTag.RECORD) {
+                        resultFieldTypes.set(pos, mergedNestedType(fieldTypes[i], resultFieldType));
                     }
                 } catch (AsterixException e) {
                     throw new AlgebricksException(e);
@@ -136,4 +125,39 @@ public class RecordMergeTypeComputer extends AbstractRecordManipulationTypeCompu
         return resultType;
     }
 
+    private IAType mergedNestedType(IAType fieldType1, IAType fieldType0) throws AlgebricksException, AsterixException {
+        if (fieldType1.getTypeTag() != ATypeTag.RECORD || fieldType0.getTypeTag() != ATypeTag.RECORD) {
+            throw new AlgebricksException("Duplicate field " + fieldType1.getTypeName() + " encountered");
+        }
+
+        ARecordType resultType = (ARecordType) fieldType0;
+        ARecordType fieldType1Copy = (ARecordType) fieldType1;
+
+        for (int i = 0; i < fieldType1Copy.getFieldTypes().length; i++) {
+            try {
+                int pos = resultType.getFieldIndex(fieldType1Copy.getFieldNames()[i]);
+                if (pos >= 0) {
+                    // If a sub-record do merge, else ignore and let the values decide what to do
+                    if (fieldType1Copy.getFieldTypes()[i].getTypeTag() == ATypeTag.RECORD) {
+                        IAType[] oldTypes = resultType.getFieldTypes();
+                        oldTypes[pos] = mergedNestedType(fieldType1Copy.getFieldTypes()[i],
+                                resultType.getFieldTypes()[pos]);
+                        resultType = new ARecordType(resultType.getTypeName(), resultType.getFieldNames(), oldTypes,
+                                resultType.isOpen());
+                    }
+                } else {
+                    IAType[] combinedFieldTypes = ArrayUtils.addAll(resultType.getFieldTypes().clone(),
+                            fieldType1Copy.getFieldTypes()[i]);
+                    resultType = new ARecordType(resultType.getTypeName(), ArrayUtils.addAll(
+                            resultType.getFieldNames(), fieldType1Copy.getFieldNames()[i]), combinedFieldTypes,
+                            resultType.isOpen());
+                }
+
+            } catch (IOException | AsterixException e) {
+                throw new AlgebricksException(e);
+            }
+        }
+
+        return resultType;
+    }
 }

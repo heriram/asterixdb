@@ -19,13 +19,27 @@
 
 package org.apache.asterix.om.typecomputer.impl;
 
+import java.io.IOException;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Deque;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
+
 import org.apache.asterix.common.exceptions.AsterixException;
 import org.apache.asterix.om.base.AOrderedList;
 import org.apache.asterix.om.base.AString;
 import org.apache.asterix.om.base.IAObject;
 import org.apache.asterix.om.constants.AsterixConstantValue;
 import org.apache.asterix.om.pointables.base.DefaultOpenFieldType;
-import org.apache.asterix.om.types.*;
+import org.apache.asterix.om.types.AOrderedListType;
+import org.apache.asterix.om.types.ARecordType;
+import org.apache.asterix.om.types.ATypeTag;
+import org.apache.asterix.om.types.BuiltinType;
+import org.apache.asterix.om.types.IAType;
+import org.apache.commons.lang3.mutable.Mutable;
 import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
 import org.apache.hyracks.algebricks.core.algebra.base.ILogicalExpression;
 import org.apache.hyracks.algebricks.core.algebra.base.LogicalExpressionTag;
@@ -35,39 +49,23 @@ import org.apache.hyracks.algebricks.core.algebra.expressions.ConstantExpression
 import org.apache.hyracks.algebricks.core.algebra.expressions.IVariableTypeEnvironment;
 import org.apache.hyracks.algebricks.core.algebra.metadata.IMetadataProvider;
 import org.apache.hyracks.api.exceptions.HyracksDataException;
-import org.apache.commons.lang3.mutable.Mutable;
-
-import java.io.IOException;
-import java.util.*;
 
 /**
  * Cases to support:
  * remove-fields($record, ["foo", ["bar", "access"]]),
  * where ["bar", "access"] is equivalent to the path bar->access
- *
  */
 public class RecordRemoveFieldsTypeComputer extends AbstractRecordManipulationTypeComputer {
 
-    private static final long serialVersionUID = 1L;
-
     public static final RecordRemoveFieldsTypeComputer INSTANCE = new RecordRemoveFieldsTypeComputer();
 
-    // A set of fieldnames for faster checking purposes
-    private final Set<String> fieldNameSet = new HashSet<>();
-
-    // A list of list holding the list of paths function input arg. #2
-    private final List<List<String>> pathList = new ArrayList<>();
-
-    // A stack used for processing nested recordtypes
-    private final Deque<String> fieldPathStack = new ArrayDeque<>();
+    //private ARecordType inputRecordType;
 
     private RecordRemoveFieldsTypeComputer() {
     }
 
-    private ARecordType inputRecordType;
-
-
-    private void getPathFromConstantExpression(ILogicalExpression expression) throws AlgebricksException {
+    private void getPathFromConstantExpression(ILogicalExpression expression, Set<String> fieldNameSet,
+            List<List<String>> pathList) throws AlgebricksException {
         ConstantExpression ce = (ConstantExpression) expression;
         if (!(ce.getValue() instanceof AsterixConstantValue)) {
             throw new AlgebricksException("Expecting a list of strings and found " + ce.getValue() + " instead.");
@@ -84,7 +82,7 @@ public class RecordRemoveFieldsTypeComputer extends AbstractRecordManipulationTy
                 AOrderedList pathOrdereList = (AOrderedList) item;
                 String fieldName = ((AString) pathOrdereList.getItem(0)).getStringValue();
                 fieldNameSet.add(fieldName);
-                List<String> path = getStringListFromPool();
+                List<String> path = new ArrayList<>();
                 for (int i = 0; i < pathOrdereList.size(); i++) {
                     path.add(((AString) pathOrdereList.getItem(i)).getStringValue());
                 }
@@ -95,9 +93,9 @@ public class RecordRemoveFieldsTypeComputer extends AbstractRecordManipulationTy
         }
     }
 
+    private void getPathFromFunctionExpression(ILogicalExpression expression, Set<String> fieldNameSet,
+            List<List<String>> pathList) throws AlgebricksException {
 
-    private void getPathFromFunctionExpression(ILogicalExpression expression)
-            throws AlgebricksException {
         List<String> path = getListFromExpression(expression);
         // Add the path head to remove set
         fieldNameSet.add(path.get(0));
@@ -105,9 +103,8 @@ public class RecordRemoveFieldsTypeComputer extends AbstractRecordManipulationTy
 
     }
 
-
-    private void computeTypeFromNonConstantExpression(ILogicalExpression expression)
-            throws AlgebricksException {
+    private void computeTypeFromNonConstantExpression(ILogicalExpression expression, Set<String> fieldNameSet,
+            List<List<String>> pathList) throws AlgebricksException {
         AbstractFunctionCallExpression funcExp = (AbstractFunctionCallExpression) expression;
         List<Mutable<ILogicalExpression>> args = funcExp.getArguments();
 
@@ -115,14 +112,13 @@ public class RecordRemoveFieldsTypeComputer extends AbstractRecordManipulationTy
             ILogicalExpression le = arg.getValue();
             switch (le.getExpressionTag()) {
                 case CONSTANT:
-                    getPathFromConstantExpression(le);
+                    getPathFromConstantExpression(le, fieldNameSet, pathList);
                     break;
                 case FUNCTION_CALL:
-                    getPathFromFunctionExpression(le);
+                    getPathFromFunctionExpression(le, fieldNameSet, pathList);
                     break;
                 default:
                     throw new AlgebricksException("Unsupported expression: " + le);
-
             }
         }
     }
@@ -134,14 +130,18 @@ public class RecordRemoveFieldsTypeComputer extends AbstractRecordManipulationTy
         AbstractFunctionCallExpression funcExpr = (AbstractFunctionCallExpression) expression;
         IAType type0 = (IAType) env.getType(funcExpr.getArguments().get(0).getValue());
 
-        inputRecordType = NonTaggedFieldAccessByNameResultType.getRecordTypeFromType(type0, expression);
+        List<List<String>> pathList = new ArrayList<>();
+        Set<String> fieldNameSet = new HashSet<>();
+        Deque<String> fieldPathStack = new ArrayDeque<>();
+
+        ARecordType inputRecordType = NonTaggedFieldAccessByNameResultType.getRecordTypeFromType(type0, expression);
         if (inputRecordType == null) {
             return BuiltinType.ANY;
         }
 
         AbstractLogicalExpression arg1 = (AbstractLogicalExpression) funcExpr.getArguments().get(1).getValue();
         IAType inputListType = (IAType) env.getType(arg1);
-        AOrderedListType inputOrderedListType = extractOrderedListType(inputListType);
+        AOrderedListType inputOrderedListType = TypeComputerUtils.extractOrderedListType(inputListType);
         if (inputOrderedListType == null) {
             throw new AlgebricksException(
                     "The function 'remove-fields' expects an ordered list as the second argument, but got "
@@ -149,23 +149,20 @@ public class RecordRemoveFieldsTypeComputer extends AbstractRecordManipulationTy
         }
 
         ATypeTag tt = inputOrderedListType.getItemType().getTypeTag();
-        fieldNameSet.clear();
-        pathList.clear();
-        if (tt == ATypeTag.STRING) {  // If top-fieldlist
-            if (setFieldNameSet(arg1)) {
-                return buildOutputType(inputRecordType);
+        if (tt == ATypeTag.STRING) { // If top-fieldlist
+            if (setFieldNameSet(arg1, fieldNameSet)) {
+                return buildOutputType(fieldPathStack, inputRecordType, fieldNameSet, pathList);
             } else {
                 return DefaultOpenFieldType.NESTED_OPEN_RECORD_TYPE;
             }
         } else { // tt == ATypeTag.ANY, meaning the list is nested
-            computeTypeFromNonConstantExpression(arg1);
-            IAType resultType = buildOutputType(inputRecordType);
-            pathList.clear();
+            computeTypeFromNonConstantExpression(arg1, fieldNameSet, pathList);
+            IAType resultType = buildOutputType(fieldPathStack, inputRecordType, fieldNameSet, pathList);
             return resultType;
         }
     }
 
-    private boolean setFieldNameSet(ILogicalExpression expr) {
+    private boolean setFieldNameSet(ILogicalExpression expr, Set<String> fieldNameSet) {
         if (expr.getExpressionTag() == LogicalExpressionTag.CONSTANT) {
             AOrderedList orderedList = (AOrderedList) (((AsterixConstantValue) ((ConstantExpression) expr).getValue())
                     .getObject());
@@ -178,7 +175,8 @@ public class RecordRemoveFieldsTypeComputer extends AbstractRecordManipulationTy
         return false;
     }
 
-    private void addField(List<String> resultFieldNames, List<IAType> resultFieldTypes, String fieldName)
+    private void addField(ARecordType inputRecordType,  String fieldName, List<String> resultFieldNames, List<IAType>
+            resultFieldTypes)
             throws AlgebricksException {
         try {
             resultFieldNames.add(fieldName);
@@ -195,25 +193,24 @@ public class RecordRemoveFieldsTypeComputer extends AbstractRecordManipulationTy
         }
     }
 
-    private IAType buildOutputType(ARecordType inputRecordType)
-            throws AlgebricksException {
+    private IAType buildOutputType(Deque<String> fieldPathStack, ARecordType inputRecordType, Set<String> fieldNameSet,
+            List<List<String>> pathList) throws AlgebricksException {
         IAType resultType;
-        List<String> resultFieldNames = getStringListFromPool();
-        List<IAType> resultFieldTypes = getATypeListFromPool();
+        List<String> resultFieldNames = new ArrayList<>();
+        List<IAType> resultFieldTypes = new ArrayList<>();
 
         String[] fieldNames = inputRecordType.getFieldNames();
         IAType[] fieldTypes = inputRecordType.getFieldTypes();
 
-        fieldPathStack.clear();
-        for (int i=0; i < fieldNames.length; i++) {
+        for (int i = 0; i < fieldNames.length; i++) {
             if (!fieldNameSet.contains(fieldNames[i])) { // The main field is to be kept
-                addField(resultFieldNames, resultFieldTypes, fieldNames[i]);
-            } else if(!pathList.isEmpty()){ // Further check needed for nested fields
+                addField(inputRecordType, fieldNames[i], resultFieldNames, resultFieldTypes);
+            } else if (!pathList.isEmpty()) { // Further check needed for nested fields
                 if (fieldTypes[i].getTypeTag() == ATypeTag.RECORD) {
-                    ARecordType subRecord = (ARecordType)fieldTypes[i];
+                    ARecordType subRecord = (ARecordType) fieldTypes[i];
 
                     fieldPathStack.push(fieldNames[i]);
-                    subRecord = deepCheckAndCopy(fieldPathStack, subRecord);
+                    subRecord = deepCheckAndCopy(fieldPathStack, subRecord, pathList, inputRecordType.isOpen());
                     fieldPathStack.pop();
                     if (subRecord != null) {
                         resultFieldNames.add(fieldNames[i]);
@@ -231,37 +228,34 @@ public class RecordRemoveFieldsTypeComputer extends AbstractRecordManipulationTy
         } catch (HyracksDataException | AsterixException e) {
             throw new AlgebricksException(e);
         }
-
-        returnStringListToPool(resultFieldNames);
-        returnATypeListToPool(resultFieldTypes);
-
         return resultType;
     }
 
     /**
      * Comparison elements of two paths
-     *
-     *  Note: l2 uses a LIFO insert and removal.
+     * Note: l2 uses a LIFO insert and removal.
      */
     private <E> boolean isEqualPaths(List<E> l1, Deque<E> l2) {
-        if ((l1 == null) || (l2 == null)) return false;
+        if ((l1 == null) || (l2 == null))
+            return false;
 
-        if (l1.size() != l2.size()) return false;
+        if (l1.size() != l2.size())
+            return false;
 
         Iterator<E> it2 = l2.iterator();
 
         int len = l1.size();
-        for (int i=len-1; i>=0; i--) {
+        for (int i = len - 1; i >= 0; i--) {
             E o1 = l1.get(i);
             E o2 = it2.next();
-            if(!o1.equals(o2)) return false;
+            if (!o1.equals(o2))
+                return false;
         }
         return true;
     }
 
-
-    private boolean isRemovePath(Deque<String> fieldPath) {
-        for (List<String> removePath: pathList) {
+    private boolean isRemovePath(Deque<String> fieldPath, List<List<String>> pathList) {
+        for (List<String> removePath : pathList) {
             if (isEqualPaths(removePath, fieldPath)) {
                 return true;
             }
@@ -273,25 +267,26 @@ public class RecordRemoveFieldsTypeComputer extends AbstractRecordManipulationTy
         A method to deep copy a record the path validation
              i.e., keep only fields that are valid
      */
-    private ARecordType deepCheckAndCopy(Deque<String> fieldPath, ARecordType srcRecType) throws AlgebricksException {
+    private ARecordType deepCheckAndCopy(Deque<String> fieldPath, ARecordType srcRecType, List<List<String>>
+            pathList, boolean isOpen)
+            throws AlgebricksException {
         // Make sure the current path is valid before going further
-        if (isRemovePath(fieldPath)) {
+        if (isRemovePath(fieldPath, pathList)) {
             return null;
         }
 
         String srcFieldNames[] = srcRecType.getFieldNames();
         IAType srcFieldTypes[] = srcRecType.getFieldTypes();
 
-        // Allocate memory
-        List<IAType> destFieldTypes = getATypeListFromPool();
-        List<String> destFieldNames = getStringListFromPool();
+        List<IAType> destFieldTypes = new ArrayList<>();
+        List<String> destFieldNames = new ArrayList<>();
 
         for (int i = 0; i < srcFieldNames.length; i++) {
             fieldPath.push(srcFieldNames[i]);
-            if (!isRemovePath(fieldPath)) {
+            if (!isRemovePath(fieldPath, pathList)) {
                 if (srcFieldTypes[i].getTypeTag() == ATypeTag.RECORD) {
                     ARecordType subRecord = (ARecordType) srcFieldTypes[i];
-                    subRecord = deepCheckAndCopy(fieldPath, subRecord);
+                    subRecord = deepCheckAndCopy(fieldPath, subRecord, pathList, isOpen);
                     if (subRecord != null) {
                         destFieldNames.add(srcFieldNames[i]);
                         destFieldTypes.add(subRecord);
@@ -304,27 +299,16 @@ public class RecordRemoveFieldsTypeComputer extends AbstractRecordManipulationTy
             fieldPath.pop();
         }
 
-        ARecordType destRecordType;
         int n = destFieldNames.size();
-
-        if(n==0) {
-            // Free memory
-            returnStringListToPool(destFieldNames);
-            returnATypeListToPool(destFieldTypes);
-
+        if (n == 0) {
             return null;
         }
-
         try {
-            destRecordType = new ARecordType(srcRecType.getTypeName(), destFieldNames.toArray(new String[n]),
-                    destFieldTypes.toArray(new IAType[n]), inputRecordType.isOpen());
+            return new ARecordType(srcRecType.getTypeName(), destFieldNames.toArray(new String[n]),
+                    destFieldTypes.toArray(new IAType[n]), isOpen);
         } catch (HyracksDataException | AsterixException e) {
             throw new AlgebricksException(e);
         }
-        // Free memory
-        returnStringListToPool(destFieldNames);
-        returnATypeListToPool(destFieldTypes);
-        return destRecordType;
     }
 
 }

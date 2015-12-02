@@ -26,7 +26,7 @@ import org.apache.asterix.om.pointables.visitor.IVisitablePointableVisitor;
 import org.apache.asterix.om.types.ARecordType;
 import org.apache.hyracks.algebricks.common.utils.Pair;
 
-public class PointableTypeVisitor  implements IVisitablePointableVisitor<Void, Pair<Boolean, Void>> {
+public class CheckCompletelyOpenRecordTypeVisitor implements IVisitablePointableVisitor<Void, Pair<Boolean, Void>> {
 
     @Override public Void visit(AListVisitablePointable accessor, Pair<Boolean, Void> arg) throws AsterixException {
         arg.first = false;

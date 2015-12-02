@@ -19,16 +19,25 @@
 
 package org.apache.asterix.om.typecomputer.impl;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import org.apache.asterix.common.exceptions.AsterixException;
 import org.apache.asterix.om.base.AString;
+import org.apache.asterix.om.base.IAObject;
 import org.apache.asterix.om.constants.AsterixConstantValue;
 import org.apache.asterix.om.types.AOrderedListType;
 import org.apache.asterix.om.types.ARecordType;
 import org.apache.asterix.om.types.ATypeTag;
 import org.apache.asterix.om.types.AUnionType;
-import org.apache.asterix.om.types.BuiltinType;
 import org.apache.asterix.om.types.IAType;
 import org.apache.asterix.om.types.TypeHelper;
+import org.apache.commons.lang3.mutable.Mutable;
 import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
 import org.apache.hyracks.algebricks.core.algebra.base.ILogicalExpression;
 import org.apache.hyracks.algebricks.core.algebra.base.LogicalExpressionTag;
@@ -38,16 +47,8 @@ import org.apache.hyracks.algebricks.core.algebra.expressions.ConstantExpression
 import org.apache.hyracks.algebricks.core.algebra.expressions.IVariableTypeEnvironment;
 import org.apache.hyracks.algebricks.core.algebra.metadata.IMetadataProvider;
 import org.apache.hyracks.api.exceptions.HyracksDataException;
-import org.apache.commons.lang3.mutable.Mutable;
-
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
 
 public class RecordAddFieldsTypeComputer extends AbstractRecordManipulationTypeComputer {
-    private static final long serialVersionUID = 1L;
-
     public static final RecordAddFieldsTypeComputer INSTANCE = new RecordAddFieldsTypeComputer();
 
     private static final String FIELD_NAME_NAME = "field-name";
@@ -56,7 +57,6 @@ public class RecordAddFieldsTypeComputer extends AbstractRecordManipulationTypeC
     private RecordAddFieldsTypeComputer() {
     }
 
-
     @Override
     public IAType computeType(ILogicalExpression expression, IVariableTypeEnvironment env,
             IMetadataProvider<?, ?> metadataProvider) throws AlgebricksException {
@@ -64,24 +64,25 @@ public class RecordAddFieldsTypeComputer extends AbstractRecordManipulationTypeC
         AbstractFunctionCallExpression funcExpr = (AbstractFunctionCallExpression) expression;
         IAType type0 = (IAType) env.getType(funcExpr.getArguments().get(0).getValue());
 
-        ARecordType inputRecordType = extractRecordType(type0);
+        ARecordType inputRecordType = TypeComputerUtils.extractRecordType(type0);
         if (inputRecordType == null) {
-            return BuiltinType.ANY;
+            throw new AlgebricksException("Input record cannot be null");
         }
 
         AbstractLogicalExpression arg1 = (AbstractLogicalExpression) funcExpr.getArguments().get(1).getValue();
         IAType type1 = (IAType) env.getType(arg1);
-        AOrderedListType inputOrderedListType = extractOrderedListType(type1);
+        AOrderedListType inputOrderedListType = TypeComputerUtils.extractOrderedListType(type1);
         if (inputOrderedListType == null) {
             return inputRecordType;
         }
 
         boolean nullable = TypeHelper.canBeNull(type0) || TypeHelper.canBeNull(type1);
 
-        List<String> additionalFieldNames = getStringListFromPool();
-        List<IAType> additionalFieldTypes = getATypeListFromPool();
-        List<String> resultFieldNames = getStringListFromPool();
-        List<IAType> resultFieldTypes = getATypeListFromPool();
+        //List<String> additionalFieldNames = new ArrayList<>();
+        //List<IAType> additionalFieldTypes = new ArrayList<>();
+        Map<String, IAType> additionalFields = new HashMap<>();
+        List<String> resultFieldNames = new ArrayList<>();
+        List<IAType> resultFieldTypes = new ArrayList<>();
 
         resultFieldNames.addAll(Arrays.asList(inputRecordType.getFieldNames()));
         Collections.sort(resultFieldNames);
@@ -100,54 +101,67 @@ public class RecordAddFieldsTypeComputer extends AbstractRecordManipulationTypeC
             }
         }
 
-        AbstractFunctionCallExpression f = (AbstractFunctionCallExpression) arg1;
-        List<Mutable<ILogicalExpression>> args = f.getArguments();
+        if (!containsVariable(arg1)) {
+            AbstractFunctionCallExpression f = (AbstractFunctionCallExpression) arg1;
+            List<Mutable<ILogicalExpression>> args = f.getArguments();
 
-        // Iterating through the orderlist input
-        for (Mutable<ILogicalExpression> arg: args) {
-            AbstractFunctionCallExpression recConsExpr = (AbstractFunctionCallExpression) arg.getValue();
-            ARecordType rtype = extractRecordType((IAType) env.getType(recConsExpr));
-            if (rtype!= null) {
-                String[] fn = rtype.getFieldNames();
-                IAType[] ft = rtype.getFieldTypes();
-                for (int j=0; j<fn.length; j++) {
-                    if (fn[j].equals(FIELD_NAME_NAME)) {
-                        ILogicalExpression fieldNameExpr = recConsExpr.getArguments().get(j).getValue();
-                        switch (fieldNameExpr.getExpressionTag()) {
-                            case CONSTANT: // Top fields only
-                                AString as = (AString) ((AsterixConstantValue) ((ConstantExpression) fieldNameExpr).getValue()).getObject();
-                                if (as.getType().getTypeTag() == ATypeTag.STRING) {
-                                    // Get the actual "field-name" string
-                                    ILogicalExpression recFieldExpr = recConsExpr.getArguments().get(j + 1).getValue();
-                                    if (recFieldExpr.getExpressionTag() == LogicalExpressionTag.CONSTANT) {
-                                        as = (AString) ((AsterixConstantValue) ((ConstantExpression) recFieldExpr)
-                                                .getValue()).getObject();
-                                        additionalFieldNames.add(as.getStringValue());
+            AString fieldName = null;
+            IAType fieldType = null;
+
+            // Iterating through the orderlist input
+            for (Mutable<ILogicalExpression> arg : args) {
+                AbstractFunctionCallExpression recConsExpr = (AbstractFunctionCallExpression) arg.getValue();
+                ARecordType rtype = TypeComputerUtils.extractRecordType((IAType) env.getType(recConsExpr));
+                if (rtype != null) {
+                    String[] fn = rtype.getFieldNames();
+                    IAType[] ft = rtype.getFieldTypes();
+                    for (int j = 0; j < fn.length; j++) {
+                        if (fn[j].equals(FIELD_NAME_NAME)) {
+                            ILogicalExpression fieldNameExpr = recConsExpr.getArguments().get(j).getValue();
+                            switch (fieldNameExpr.getExpressionTag()) {
+                                case CONSTANT: // Top fields only
+                                    IAObject object = ((AsterixConstantValue) ((ConstantExpression) fieldNameExpr)
+                                            .getValue()).getObject();
+                                    if (object.getType().getTypeTag() == ATypeTag.STRING) {
+                                        // Get the actual "field-name" string
+                                        ILogicalExpression recFieldExpr = recConsExpr.getArguments().get(j + 1)
+                                                .getValue();
+                                        if (recFieldExpr.getExpressionTag() == LogicalExpressionTag.CONSTANT) {
+                                            fieldName = (AString) ((AsterixConstantValue) ((ConstantExpression)
+                                                    recFieldExpr)
+                                                    .getValue()).getObject();
+                                            //additionalFieldNames.add(fieldName.getStringValue());
+                                        }
                                     }
-                                }
-                                break;
-                            default:
-                                throw new AlgebricksException(fieldNameExpr + " is not supported.");
-
+                                    break;
+                                default:
+                                    throw new AlgebricksException(fieldNameExpr + " is not supported.");
+                            }
+                        } else if (fn[j].equals(FIELD_VALUE_VALUE)) {
+                            //additionalFieldTypes.add(ft[j]);
+                            fieldType = ft[j];
                         }
-                    } else if (fn[j].equals(FIELD_VALUE_VALUE)) {
-                        additionalFieldTypes.add(ft[j]);
                     }
-
+                    if (fieldName != null) {
+                        additionalFields.put(fieldName.getStringValue(), fieldType);
+                    }
                 }
-
             }
-        }
 
-        if (additionalFieldNames.size()>0) {
-            addAdditionalFields(resultFieldNames, resultFieldTypes, additionalFieldNames, additionalFieldTypes);
-        }
+            if (!additionalFields.isEmpty()) {
+                Iterator<Map.Entry<String, IAType>> it = additionalFields.entrySet().iterator();
+                while (it.hasNext()) {
+                    Map.Entry<String, IAType> entry = it.next();
+                    resultFieldNames.add(entry.getKey());
+                    resultFieldTypes.add(entry.getValue());
+                }
+            }
+            /*if (additionalFieldNames.size() > 0) {
+                addAdditionalFields(resultFieldNames, resultFieldTypes, additionalFieldNames, additionalFieldTypes);
+            } */
+        } // If variable ignore, deal with the addition at runtime
 
-        returnStringListToPool(additionalFieldNames);
-        returnATypeListToPool(additionalFieldTypes);
-
-        String resultTypeName =
-                "appended(" + inputRecordType.getTypeName() + ", " + inputOrderedListType.getTypeName() + ")";
+        String resultTypeName = "appended(" + inputRecordType.getTypeName() + ")";
         IAType resultType;
         try {
             int n = resultFieldNames.size();
@@ -160,12 +174,27 @@ public class RecordAddFieldsTypeComputer extends AbstractRecordManipulationTypeC
             resultType = AUnionType.createNullableType(resultType);
         }
 
-        returnStringListToPool(resultFieldNames);
-        returnATypeListToPool(resultFieldTypes);
-
-
         return resultType;
     }
 
+    // Handle variable as input
+    private boolean containsVariable(ILogicalExpression expression) {
+        if (expression.getExpressionTag() == LogicalExpressionTag.FUNCTION_CALL) {
+            AbstractFunctionCallExpression f = (AbstractFunctionCallExpression) expression;
+            List<Mutable<ILogicalExpression>> args = f.getArguments();
+            for (Mutable<ILogicalExpression> arg : args) {
+                ILogicalExpression subExpression = arg.getValue();
+                switch (subExpression.getExpressionTag()) {
+                    case VARIABLE:
+                        return true;
+                    case CONSTANT:
+                        return false;
+                    default: //FUNCTION_CALL
+                        return containsVariable(subExpression);
+                }
+            }
+        }
+        return true;
+    }
 
 }

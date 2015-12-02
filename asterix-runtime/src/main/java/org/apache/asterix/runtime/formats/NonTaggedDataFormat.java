@@ -18,11 +18,20 @@
  */
 package org.apache.asterix.runtime.formats;
 
+import java.io.DataOutput;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.apache.asterix.common.config.GlobalConfig;
 import org.apache.asterix.common.exceptions.AsterixRuntimeException;
 import org.apache.asterix.common.parse.IParseFileSplitsDecl;
 import org.apache.asterix.dataflow.data.nontagged.AqlNullWriterFactory;
 import org.apache.asterix.formats.base.IDataFormat;
+import org.apache.asterix.formats.nontagged.AqlADMPrinterFactoryProvider;
 import org.apache.asterix.formats.nontagged.AqlBinaryBooleanInspectorImpl;
 import org.apache.asterix.formats.nontagged.AqlBinaryComparatorFactoryProvider;
 import org.apache.asterix.formats.nontagged.AqlBinaryHashFunctionFactoryProvider;
@@ -33,7 +42,6 @@ import org.apache.asterix.formats.nontagged.AqlCleanJSONPrinterFactoryProvider;
 import org.apache.asterix.formats.nontagged.AqlLosslessJSONPrinterFactoryProvider;
 import org.apache.asterix.formats.nontagged.AqlNormalizedKeyComputerFactoryProvider;
 import org.apache.asterix.formats.nontagged.AqlPredicateEvaluatorFactoryProvider;
-import org.apache.asterix.formats.nontagged.AqlADMPrinterFactoryProvider;
 import org.apache.asterix.formats.nontagged.AqlSerializerDeserializerProvider;
 import org.apache.asterix.formats.nontagged.AqlTypeTraitProvider;
 import org.apache.asterix.om.base.ABoolean;
@@ -161,88 +169,7 @@ import org.apache.asterix.runtime.evaluators.constructors.AUUIDFromStringConstru
 import org.apache.asterix.runtime.evaluators.constructors.AYearMonthDurationConstructorDescriptor;
 import org.apache.asterix.runtime.evaluators.constructors.ClosedRecordConstructorDescriptor;
 import org.apache.asterix.runtime.evaluators.constructors.OpenRecordConstructorDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.AndDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.AnyCollectionMemberDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.CastListDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.CastRecordDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.CodePointToStringDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.StringContainsDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.CountHashedGramTokensDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.CountHashedWordTokensDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.CreateCircleDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.CreateLineDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.CreateMBRDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.CreatePointDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.CreatePolygonDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.CreateRectangleDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.CreateUUIDDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.DeepEqualityDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.EditDistanceCheckDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.EditDistanceContainsDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.EditDistanceDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.EditDistanceListIsFilterable;
-import org.apache.asterix.runtime.evaluators.functions.EditDistanceStringIsFilterable;
-import org.apache.asterix.runtime.evaluators.functions.EmbedTypeDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.StringEndsWithDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.FlowRecordDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.FuzzyEqDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.GetItemDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.GramTokensDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.HashedGramTokensDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.HashedWordTokensDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.InjectFailureDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.IsNullDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.IsSystemNullDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.LenDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.StringLikeDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.NotDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.NotNullDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.NumericAbsDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.NumericAddDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.NumericCaretDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.NumericCeilingDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.NumericDivideDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.NumericFloorDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.NumericModuloDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.NumericMultiplyDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.NumericRoundDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.NumericRoundHalfToEven2Descriptor;
-import org.apache.asterix.runtime.evaluators.functions.NumericRoundHalfToEvenDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.NumericSubDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.NumericUnaryMinusDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.OrDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.OrderedListConstructorDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.PrefixLenJaccardDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.RegExpDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.SimilarityJaccardCheckDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.SimilarityJaccardDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.SimilarityJaccardPrefixCheckDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.SimilarityJaccardPrefixDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.SimilarityJaccardSortedCheckDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.SimilarityJaccardSortedDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.SpatialAreaDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.SpatialCellDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.SpatialDistanceDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.SpatialIntersectDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.StringStartsWithDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.StringConcatDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.StringEqualDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.StringJoinDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.StringLengthDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.StringLowerCaseDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.StringMatchesDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.StringMatchesWithFlagDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.StringReplaceDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.StringReplaceWithFlagsDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.StringToCodePointDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.StringUpperCaseDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.Substring2Descriptor;
-import org.apache.asterix.runtime.evaluators.functions.SubstringAfterDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.SubstringBeforeDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.SubstringDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.SwitchCaseDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.UnorderedListConstructorDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.WordTokensDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.*;
 import org.apache.asterix.runtime.evaluators.functions.binary.BinaryConcatDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.binary.BinaryLengthDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.binary.FindBinaryDescriptor;
@@ -355,14 +282,6 @@ import org.apache.hyracks.dataflow.common.data.parsers.IntegerParserFactory;
 import org.apache.hyracks.dataflow.common.data.parsers.LongParserFactory;
 import org.apache.hyracks.dataflow.common.data.parsers.UTF8StringParserFactory;
 import org.apache.hyracks.dataflow.std.file.ITupleParserFactory;
-
-import java.io.DataOutput;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 public class NonTaggedDataFormat implements IDataFormat {
 
@@ -948,7 +867,6 @@ public class NonTaggedDataFormat implements IDataFormat {
             @Override public void infer(ILogicalExpression expr, IFunctionDescriptor fd,
                     IVariableTypeEnvironment context) throws AlgebricksException {
                 AbstractFunctionCallExpression f = (AbstractFunctionCallExpression) expr;
-                IAType outType = (IAType) context.getType(expr);
                 IAType type0 = (IAType) context.getType(f.getArguments().get(0).getValue());
                 IAType type1 = (IAType) context.getType(f.getArguments().get(1).getValue());
                 ((DeepEqualityDescriptor) fd).reset(type0, type1);
@@ -962,8 +880,8 @@ public class NonTaggedDataFormat implements IDataFormat {
                 AbstractFunctionCallExpression f = (AbstractFunctionCallExpression) expr;
                 IAType outType = (IAType) context.getType(expr);
                 IAType type0 = (IAType) context.getType(f.getArguments().get(0).getValue());
-                ILogicalExpression le = f.getArguments().get(1).getValue();
-                IAType type1 = (IAType) context.getType(le);
+                ILogicalExpression listExpr = f.getArguments().get(1).getValue();
+                IAType type1 = (IAType) context.getType(listExpr);
                 if (type0.getTypeTag().equals(ATypeTag.ANY)) {
                     type0 = DefaultOpenFieldType.NESTED_OPEN_RECORD_TYPE;
                 }
@@ -1298,65 +1216,4 @@ public class NonTaggedDataFormat implements IDataFormat {
     public IPredicateEvaluatorFactoryProvider getPredicateEvaluatorFactoryProvider() {
         return AqlPredicateEvaluatorFactoryProvider.INSTANCE;
     }
-
-    /**
-     *  A method necessary to extract a ordered list of paths from AQL expression
-     *  That is, it will convert ["foo", ["foo2", "bar"]] to a nested orderelist object
-     *
-     *
-     * @param expression
-     *      The expression, normally as {@link AbstractFunctionCallExpression}
-     * @param listType
-     *      The type the list input
-     * @param context
-     *      The current type environment context
-     * @return
-     *      {@link AOrderedList}
-     *
-     * @throws AlgebricksException
-     */
-    public AOrderedList computePathLists(ILogicalExpression expression, IAType listType, IVariableTypeEnvironment context)
-            throws AlgebricksException {
-        AOrderedList pathAList = null;
-
-        if (expression.getExpressionTag() == LogicalExpressionTag.CONSTANT) {
-            pathAList = (AOrderedList) (((AsterixConstantValue) ((ConstantExpression) expression).getValue()).getObject());
-        } else {
-            AbstractFunctionCallExpression funcExp = (AbstractFunctionCallExpression) expression;
-            List<Mutable<ILogicalExpression>> args = funcExp.getArguments();
-            pathAList = new AOrderedList((AOrderedListType) listType);
-            for (int i = 0; i < args.size(); i++) {
-                ILogicalExpression exp = args.get(i).getValue();
-                if (exp.getExpressionTag() == LogicalExpressionTag.CONSTANT) {
-                    ConstantExpression ce = (ConstantExpression) exp;
-
-                    if (!(ce.getValue() instanceof AsterixConstantValue)) {
-                        throw new AlgebricksException("Expecting a list of strings and found " + ce.getValue()
-                                + " instead.");
-                    }
-                    IAObject item = ((AsterixConstantValue) ce.getValue()).getObject();
-                    pathAList.add(item);
-                } else if (exp.getExpressionTag() == LogicalExpressionTag.FUNCTION_CALL) {
-                    List<Mutable<ILogicalExpression>> subFunctionArgs = ((AbstractFunctionCallExpression) exp)
-                            .getArguments();
-                    AOrderedList subPathOrderedList = new AOrderedList((AOrderedListType) context.getType(exp));
-                    for (int j = 0; j < subFunctionArgs.size(); j++) {
-                        ConstantExpression ce = (ConstantExpression) subFunctionArgs.get(j).getValue();
-                        if (!(ce.getValue() instanceof AsterixConstantValue)) {
-                            throw new AlgebricksException("Expecting a list of strings and found " + ce.getValue()
-                                    + " instead.");
-                        }
-                        IAObject item = ((AsterixConstantValue) ce.getValue()).getObject();
-                        subPathOrderedList.add(item);
-                    }
-                    pathAList.add(subPathOrderedList);
-
-                }
-
-            }
-        }
-
-        return pathAList;
-    }
-
 }

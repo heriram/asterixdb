@@ -36,11 +36,6 @@ public class ListItemBinaryComparatorFactory implements IBinaryComparatorFactory
 
     private static final long serialVersionUID = 1L;
 
-    public static final ListItemBinaryComparatorFactory INSTANCE = new ListItemBinaryComparatorFactory();
-
-    private ListItemBinaryComparatorFactory() {
-    }
-
     @Override
     public IBinaryComparator createBinaryComparator() {
         return createBinaryComparator(ATypeTag.NULL, ATypeTag.NULL, false);

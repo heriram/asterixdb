@@ -18,30 +18,34 @@
  */
 package org.apache.asterix.runtime.evaluators.visitors;
 
+import java.util.Arrays;
+
 import org.apache.asterix.dataflow.data.nontagged.comparators.ListItemBinaryComparatorFactory;
 import org.apache.asterix.dataflow.data.nontagged.hash.ListItemBinaryHashFunctionFactory;
 import org.apache.asterix.runtime.evaluators.functions.BinaryHashMap;
 import org.apache.hyracks.api.dataflow.value.IBinaryComparator;
 import org.apache.hyracks.api.dataflow.value.IBinaryHashFunction;
 
-import java.util.Arrays;
-
-public class DeepEqualityVisitorUtils {
-
+public class DeepEqualityVisitorHelper {
     // Default values
     public static final int TABLE_SIZE = 100;
     public static final int TABLE_FRAME_SIZE = 32768;
 
-    private static IBinaryHashFunction putHashFunc = ListItemBinaryHashFunctionFactory.INSTANCE.createBinaryHashFunction();
-    private static IBinaryHashFunction getHashFunc = ListItemBinaryHashFunctionFactory.INSTANCE.createBinaryHashFunction();
-    private static IBinaryComparator cmp = ListItemBinaryComparatorFactory.INSTANCE.createBinaryComparator();
-    private static BinaryHashMap hashMap = null;
+    private final ListItemBinaryHashFunctionFactory listItemBinaryHashFunctionFactory = new
+            ListItemBinaryHashFunctionFactory();
+    private final ListItemBinaryComparatorFactory listItemBinaryComparatorFactory = new
+            ListItemBinaryComparatorFactory();
 
-    public static BinaryHashMap initializeHashMap(BinaryHashMap.BinaryEntry valEntry) {
+    private final IBinaryHashFunction putHashFunc = listItemBinaryHashFunctionFactory.createBinaryHashFunction();
+    private final IBinaryHashFunction getHashFunc = listItemBinaryHashFunctionFactory.createBinaryHashFunction();
+    private IBinaryComparator cmp = listItemBinaryComparatorFactory.createBinaryComparator();
+    private BinaryHashMap hashMap = null;
+
+    public BinaryHashMap initializeHashMap(BinaryHashMap.BinaryEntry valEntry) {
         return initializeHashMap(0, 0, valEntry);
     }
 
-    public static BinaryHashMap initializeHashMap(int tableSize, int tableFrameSize, BinaryHashMap.BinaryEntry valEntry) {
+    public BinaryHashMap initializeHashMap(int tableSize, int tableFrameSize, BinaryHashMap.BinaryEntry valEntry) {
         if (tableFrameSize != 0 && tableSize != 0) {
             hashMap = new BinaryHashMap(tableSize, tableFrameSize, putHashFunc, getHashFunc, cmp);
         } else {

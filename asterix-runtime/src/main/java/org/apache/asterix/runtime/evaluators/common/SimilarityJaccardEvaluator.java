@@ -62,15 +62,16 @@ public class SimilarityJaccardEvaluator implements ICopyEvaluator {
     protected final AsterixOrderedListIterator sndOrdListIter = new AsterixOrderedListIterator();
     protected final AsterixUnorderedListIterator fstUnordListIter = new AsterixUnorderedListIterator();
     protected final AsterixUnorderedListIterator sndUnordListIter = new AsterixUnorderedListIterator();
-
-    protected AbstractAsterixListIterator firstListIter;
-    protected AbstractAsterixListIterator secondListIter;
-
     protected final AMutableFloat aFloat = new AMutableFloat(0);
     @SuppressWarnings("unchecked")
     protected final ISerializerDeserializer<AFloat> floatSerde = AqlSerializerDeserializerProvider.INSTANCE
             .getSerializerDeserializer(BuiltinType.AFLOAT);
-
+    // Ignore case for strings. Defaults to true.
+    protected final boolean ignoreCase = true;
+    private final ListItemBinaryHashFunctionFactory listItemBinaryHashFunctionFactory = new ListItemBinaryHashFunctionFactory();
+    private final ListItemBinaryComparatorFactory listItemBinaryComparatorFactory = new ListItemBinaryComparatorFactory();
+    protected AbstractAsterixListIterator firstListIter;
+    protected AbstractAsterixListIterator secondListIter;
     protected ATypeTag firstTypeTag;
     protected ATypeTag secondTypeTag;
     protected int firstStart = -1;
@@ -78,13 +79,9 @@ public class SimilarityJaccardEvaluator implements ICopyEvaluator {
     protected float jaccSim = 0.0f;
     protected ATypeTag firstItemTypeTag;
     protected ATypeTag secondItemTypeTag;
-
     protected BinaryHashMap hashMap;
     protected BinaryEntry keyEntry = new BinaryEntry();
     protected BinaryEntry valEntry = new BinaryEntry();
-
-    // Ignore case for strings. Defaults to true.
-    protected final boolean ignoreCase = true;
 
     public SimilarityJaccardEvaluator(ICopyEvaluatorFactory[] args, IDataOutputProvider output)
             throws AlgebricksException {
@@ -231,11 +228,11 @@ public class SimilarityJaccardEvaluator implements ICopyEvaluator {
             return;
         }
 
-        IBinaryHashFunction putHashFunc = ListItemBinaryHashFunctionFactory.INSTANCE.createBinaryHashFunction(
-                buildItemTypeTag, ignoreCase);
-        IBinaryHashFunction getHashFunc = ListItemBinaryHashFunctionFactory.INSTANCE.createBinaryHashFunction(
-                probeItemTypeTag, ignoreCase);
-        IBinaryComparator cmp = ListItemBinaryComparatorFactory.INSTANCE.createBinaryComparator(buildItemTypeTag,
+        IBinaryHashFunction putHashFunc = listItemBinaryHashFunctionFactory.createBinaryHashFunction(buildItemTypeTag,
+                ignoreCase);
+        IBinaryHashFunction getHashFunc = listItemBinaryHashFunctionFactory.createBinaryHashFunction(probeItemTypeTag,
+                ignoreCase);
+        IBinaryComparator cmp = listItemBinaryComparatorFactory.createBinaryComparator(buildItemTypeTag,
                 probeItemTypeTag, ignoreCase);
         hashMap = new BinaryHashMap(TABLE_SIZE, TABLE_FRAME_SIZE, putHashFunc, getHashFunc, cmp);
     }

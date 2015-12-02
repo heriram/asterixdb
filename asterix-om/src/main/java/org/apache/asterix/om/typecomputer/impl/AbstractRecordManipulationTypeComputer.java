@@ -19,122 +19,70 @@
 
 package org.apache.asterix.om.typecomputer.impl;
 
-import  org.apache.asterix.common.exceptions.AsterixException;
-import  org.apache.asterix.om.base.AString;
-import  org.apache.asterix.om.base.IAObject;
-import  org.apache.asterix.om.constants.AsterixConstantValue;
-import  org.apache.asterix.om.typecomputer.base.IResultTypeComputer;
-import  org.apache.asterix.om.types.AOrderedListType;
-import  org.apache.asterix.om.types.ARecordType;
-import  org.apache.asterix.om.types.ATypeTag;
-import  org.apache.asterix.om.types.AUnionType;
-import  org.apache.asterix.om.types.AUnorderedListType;
-import  org.apache.asterix.om.types.IAType;
-import  org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
-import  org.apache.hyracks.algebricks.core.algebra.base.ILogicalExpression;
-import  org.apache.hyracks.algebricks.core.algebra.expressions.AbstractFunctionCallExpression;
-import  org.apache.hyracks.algebricks.core.algebra.expressions.ConstantExpression;
-import  org.apache.hyracks.algebricks.core.algebra.expressions.IVariableTypeEnvironment;
-import  org.apache.hyracks.algebricks.core.algebra.metadata.IMetadataProvider;
-import org.apache.commons.lang3.ArrayUtils;
-import org.apache.commons.lang3.mutable.Mutable;
-
 import java.io.IOException;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Deque;
 import java.util.List;
+import org.apache.asterix.common.exceptions.AsterixException;
+import org.apache.asterix.om.base.AString;
+import org.apache.asterix.om.base.IAObject;
+import org.apache.asterix.om.constants.AsterixConstantValue;
+import org.apache.asterix.om.typecomputer.base.IResultTypeComputer;
+import org.apache.asterix.om.types.ARecordType;
+import org.apache.asterix.om.types.ATypeTag;
+import org.apache.asterix.om.types.IAType;
+import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.mutable.Mutable;
+import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
+import org.apache.hyracks.algebricks.core.algebra.base.ILogicalExpression;
+import org.apache.hyracks.algebricks.core.algebra.expressions.AbstractFunctionCallExpression;
+import org.apache.hyracks.algebricks.core.algebra.expressions.ConstantExpression;
+import org.apache.hyracks.algebricks.core.algebra.expressions.IVariableTypeEnvironment;
+import org.apache.hyracks.algebricks.core.algebra.metadata.IMetadataProvider;
 
 abstract public class AbstractRecordManipulationTypeComputer implements IResultTypeComputer {
-    
-    private static final long serialVersionUID = 1L;
 
-    private final Deque<List<String>> stringListPool = new ArrayDeque<>();
-    private final Deque<List<IAType>> aTypelistPool = new ArrayDeque<>();
-
-
-    protected List<String> getStringListFromPool() {
-        List<String> list = stringListPool.poll();
-        if (list != null) {
-            return list;
-        } else {
-            return new ArrayList<>();
-        }
-    }
-
-    protected List<IAType> getATypeListFromPool() {
-        List<IAType> list = aTypelistPool.poll();
-        if (list != null) {
-            return list;
-        } else {
-            return new ArrayList<>();
-        }
-    }
-
-    protected void returnStringListToPool(List<String> list) {
-        if(!list.isEmpty()) {
-            list.clear();
-        }
-        stringListPool.add(list);
-    }
-
-    protected void returnATypeListToPool(List<IAType> list) {
-        if(!list.isEmpty()) {
-            list.clear();
-        }
-        aTypelistPool.add(list);
-    }
-
-    public static ARecordType extractRecordType(IAType t) {
-        if (t.getTypeTag() == ATypeTag.RECORD) {
-            return (ARecordType) t;
+    public static IAType mergedNestedType(IAType fieldType1, IAType fieldType0) throws AlgebricksException,
+            AsterixException {
+        if (fieldType1.getTypeTag() != ATypeTag.RECORD || fieldType0.getTypeTag() != ATypeTag.RECORD) {
+            throw new AlgebricksException("Duplicate field " + fieldType1.getTypeName() + " encountered");
         }
 
-        if (t.getTypeTag() == ATypeTag.UNION) {
-            IAType innerType = ((AUnionType) t).getUnionList().get(1);
-            if (innerType.getTypeTag() == ATypeTag.RECORD) {
-                return (ARecordType) innerType;
+        ARecordType resultType = (ARecordType) fieldType0;
+        ARecordType fieldType1Copy = (ARecordType) fieldType1;
+
+        for (int i = 0; i < fieldType1Copy.getFieldTypes().length; i++) {
+            try {
+                int pos = resultType.getFieldIndex(fieldType1Copy.getFieldNames()[i]);
+                if (pos >= 0) {
+                    // If a sub-record do merge, else ignore and let the values decide what to do
+                    if (fieldType1Copy.getFieldTypes()[i].getTypeTag() == ATypeTag.RECORD) {
+                        IAType[] oldTypes = resultType.getFieldTypes();
+                        oldTypes[pos] = mergedNestedType(fieldType1Copy.getFieldTypes()[i],
+                                resultType.getFieldTypes()[pos]);
+                        resultType = new ARecordType(resultType.getTypeName(), resultType.getFieldNames(), oldTypes,
+                                resultType.isOpen());
+                    }
+                } else {
+                    IAType[] combinedFieldTypes = ArrayUtils.addAll(resultType.getFieldTypes().clone(),
+                            fieldType1Copy.getFieldTypes()[i]);
+                    resultType = new ARecordType(resultType.getTypeName(), ArrayUtils.addAll(
+                            resultType.getFieldNames(), fieldType1Copy.getFieldNames()[i]), combinedFieldTypes,
+                            resultType.isOpen());
+                }
+
+            } catch (IOException | AsterixException e) {
+                throw new AlgebricksException(e);
             }
         }
 
-        return null;
-    }
-    
-    public static AOrderedListType extractOrderedListType(IAType t) {
-        if (t.getTypeTag() == ATypeTag.ORDEREDLIST) {
-            return (AOrderedListType) t;
-        }
-
-        if (t.getTypeTag() == ATypeTag.UNION) {
-            IAType innerType = ((AUnionType) t).getUnionList().get(1);
-            if (innerType.getTypeTag() == ATypeTag.ORDEREDLIST) {
-                return (AOrderedListType) innerType;
-            }
-        }
-
-        return null;
-    }
-    
-    public static AUnorderedListType extractUnorderedListType(IAType t) {
-        if (t.getTypeTag() == ATypeTag.UNORDEREDLIST) {
-            return (AUnorderedListType) t;
-        }
-
-        if (t.getTypeTag() == ATypeTag.UNION) {
-            IAType innerType = ((AUnionType) t).getUnionList().get(1);
-            if (innerType.getTypeTag() == ATypeTag.UNORDEREDLIST) {
-                return (AUnorderedListType) innerType;
-            }
-        }
-
-        return null;
+        return resultType;
     }
 
     protected void addAdditionalFields(List<String> resultFieldNames, List<IAType> resultFieldTypes,
-            List<String> additionalFieldNames , List<IAType> additionalFieldTypes) throws AlgebricksException {
+            List<String> additionalFieldNames, List<IAType> additionalFieldTypes) throws AlgebricksException {
 
-        for (int i=0; i<additionalFieldNames.size(); i++) {
+        for (int i = 0; i < additionalFieldNames.size(); i++) {
             String fn = additionalFieldNames.get(i);
             IAType ft = additionalFieldTypes.get(i);
             int pos = Collections.binarySearch(resultFieldNames, fn);
@@ -159,12 +107,11 @@ abstract public class AbstractRecordManipulationTypeComputer implements IResultT
         }
     }
 
-    protected List<String> getListFromExpression(ILogicalExpression expression)
-            throws AlgebricksException {
+    protected List<String> getListFromExpression(ILogicalExpression expression) throws AlgebricksException {
         AbstractFunctionCallExpression funcExp = (AbstractFunctionCallExpression) expression;
         List<Mutable<ILogicalExpression>> args = funcExp.getArguments();
 
-        List<String> list = getStringListFromPool();
+        List<String> list = new ArrayList<>();
         for (Mutable<ILogicalExpression> arg : args) {
             // At this point all elements has to be a constant
             // Input list has only one level of nesting (list of list or list of strings)
@@ -184,47 +131,6 @@ abstract public class AbstractRecordManipulationTypeComputer implements IResultT
         return list;
     }
 
-    public static IAType mergedNestedType(IAType fieldType1, IAType fieldType0) throws AlgebricksException,
-            AsterixException {
-        if (fieldType1.getTypeTag() != ATypeTag.RECORD || fieldType0.getTypeTag() != ATypeTag.RECORD) {
-            throw new AlgebricksException("Duplicate field " + fieldType1.getTypeName() + " encountered");
-        }
-
-        ARecordType returnType = (ARecordType) fieldType0;
-        ARecordType fieldType1Copy = (ARecordType) fieldType1;
-
-        for (int i = 0; i < fieldType1Copy.getFieldTypes().length; i++) {
-            try {
-                int pos = returnType.findFieldPosition(fieldType1Copy.getFieldNames()[i]);
-                if (pos >= 0) {
-                    // If a sub-record do merge, else ignore and let the values decide what to do
-                    if (fieldType1Copy.getFieldTypes()[i].getTypeTag() == ATypeTag.RECORD) {
-                        IAType[] oldTypes = returnType.getFieldTypes();
-                        oldTypes[pos] = mergedNestedType(fieldType1Copy.getFieldTypes()[i], returnType.getFieldTypes()[pos]);
-                        returnType = new ARecordType(returnType.getTypeName(), returnType.getFieldNames(), oldTypes,
-                                returnType.isOpen());
-                    }
-                } else {
-                    IAType[] combinedFieldTypes = ArrayUtils
-                            .addAll(returnType.getFieldTypes().clone(), fieldType1Copy.getFieldTypes()[i]);
-                    returnType = new ARecordType(returnType.getTypeName(), ArrayUtils.addAll(
-                            returnType.getFieldNames(), fieldType1Copy.getFieldNames()[i]), combinedFieldTypes,
-                            returnType.isOpen());
-                }
-
-            } catch (IOException | AsterixException e) {
-                throw new AlgebricksException(e);
-            }
-        }
-
-        return returnType;
-    }
-
-    public void reset() {
-        stringListPool.clear();
-        aTypelistPool.clear();
-    }
-    
     abstract public IAType computeType(ILogicalExpression expression, IVariableTypeEnvironment env,
             IMetadataProvider<?, ?> metadataProvider) throws AlgebricksException;
 

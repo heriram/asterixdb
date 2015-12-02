@@ -18,6 +18,10 @@
  */
 package org.apache.asterix.runtime.evaluators.functions.records;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
 import org.apache.asterix.builders.RecordBuilder;
 import org.apache.asterix.common.exceptions.AsterixException;
 import org.apache.asterix.formats.nontagged.AqlSerializerDeserializerProvider;
@@ -27,12 +31,14 @@ import org.apache.asterix.om.functions.IFunctionDescriptor;
 import org.apache.asterix.om.functions.IFunctionDescriptorFactory;
 import org.apache.asterix.om.pointables.ARecordVisitablePointable;
 import org.apache.asterix.om.pointables.PointableAllocator;
+import org.apache.asterix.om.pointables.base.DefaultOpenFieldType;
 import org.apache.asterix.om.pointables.base.IVisitablePointable;
 import org.apache.asterix.om.typecomputer.impl.TypeComputerUtils;
 import org.apache.asterix.om.types.ARecordType;
 import org.apache.asterix.om.types.ATypeTag;
 import org.apache.asterix.om.types.BuiltinType;
 import org.apache.asterix.om.types.IAType;
+import org.apache.asterix.om.types.runtime.RuntimeRecordTypeInfo;
 import org.apache.asterix.runtime.evaluators.base.AbstractScalarFunctionDynamicDescriptor;
 import org.apache.asterix.runtime.evaluators.comparisons.DeepEqualAssessor;
 import org.apache.asterix.runtime.evaluators.functions.PointableUtils;
@@ -46,12 +52,7 @@ import org.apache.hyracks.data.std.api.IDataOutputProvider;
 import org.apache.hyracks.data.std.util.ArrayBackedValueStorage;
 import org.apache.hyracks.dataflow.common.data.accessors.IFrameTupleReference;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-
 /**
- *
  * record merge evaluator is used to combine two records with no matching fieldnames
  * If both records have the same fieldname for a non-record field anywhere in the schema, the merge will fail
  * This function is performed on a recursive level, meaning that nested records can be combined
@@ -62,16 +63,13 @@ import java.util.List;
  */
 public class RecordMergeDescriptor extends AbstractScalarFunctionDynamicDescriptor {
 
-    private static final long serialVersionUID = 1L;
-
-    private static final byte SER_NULL_TYPE_TAG = ATypeTag.NULL.serialize();
-
     public static final IFunctionDescriptorFactory FACTORY = new IFunctionDescriptorFactory() {
         public IFunctionDescriptor createFunctionDescriptor() {
             return new RecordMergeDescriptor();
         }
     };
-
+    private static final long serialVersionUID = 1L;
+    private static final byte SER_NULL_TYPE_TAG = ATypeTag.NULL.serialize();
     private ARecordType outRecType;
     private ARecordType inRecType0;
     private ARecordType inRecType1;
@@ -120,6 +118,9 @@ public class RecordMergeDescriptor extends AbstractScalarFunctionDynamicDescript
 
                 return new ICopyEvaluator() {
 
+                    private final RuntimeRecordTypeInfo runtimeRecordTypeInfo = new RuntimeRecordTypeInfo();
+                    private final DeepEqualAssessor deepEqualAssesor = new DeepEqualAssessor();
+
                     @Override
                     public void evaluate(IFrameTupleReference tuple) throws AlgebricksException {
                         abvs0.reset();
@@ -154,8 +155,8 @@ public class RecordMergeDescriptor extends AbstractScalarFunctionDynamicDescript
                     }
 
                     private void mergeFields(ARecordType combinedType, ARecordVisitablePointable leftRecord,
-                            ARecordVisitablePointable rightRecord, boolean openFromParent, int nestedLevel) throws IOException,
-                            AsterixException, AlgebricksException {
+                            ARecordVisitablePointable rightRecord, boolean openFromParent, int nestedLevel)
+                            throws IOException, AsterixException, AlgebricksException {
                         if (rbStack.size() < (nestedLevel + 1)) {
                             rbStack.add(new RecordBuilder());
                         }
@@ -175,10 +176,10 @@ public class RecordMergeDescriptor extends AbstractScalarFunctionDynamicDescript
                                 IVisitablePointable rightType = rightRecord.getFieldTypeTags().get(j);
                                 // Check if same fieldname
                                 if (PointableUtils.isEqual(leftName, rightName)
-                                        && !DeepEqualAssessor.INSTANCE.isEqual(leftValue, rightValue)) {
+                                        && !deepEqualAssesor.isEqual(leftValue, rightValue)) {
                                     //Field was found on the right and are subrecords, merge them
-                                    if (PointableUtils.isType(ATypeTag.RECORD, rightType) && PointableUtils
-                                            .isType(ATypeTag.RECORD, leftType)) {
+                                    if (PointableUtils.sameType(ATypeTag.RECORD, rightType)
+                                            && PointableUtils.sameType(ATypeTag.RECORD, leftType)) {
                                         //We are merging two sub records
                                         addFieldToSubRecord(combinedType, leftName, leftValue, rightValue,
                                                 openFromParent, nestedLevel);
@@ -209,9 +210,7 @@ public class RecordMergeDescriptor extends AbstractScalarFunctionDynamicDescript
                                 addFieldToSubRecord(combinedType, rightName, rightValue, null, openFromParent,
                                         nestedLevel);
                             }
-
                         }
-
                     }
 
                     /*
@@ -225,17 +224,18 @@ public class RecordMergeDescriptor extends AbstractScalarFunctionDynamicDescript
                             IVisitablePointable leftValue, IVisitablePointable rightValue, boolean openFromParent,
                             int nestedLevel) throws IOException, AsterixException, AlgebricksException {
 
-                        String fieldName =pu.getFieldName(fieldNamePointable);
+                        runtimeRecordTypeInfo.reset(combinedType);
+                        int pos = runtimeRecordTypeInfo.getFieldIndex(fieldNamePointable.getByteArray(),
+                                fieldNamePointable.getStartOffset() + 1, fieldNamePointable.getLength() - 1);
 
                         //Add the merged field
-                        if (combinedType != null && combinedType.isClosedField(fieldName)) {
-                            int pos = combinedType.findFieldPosition(fieldName);
+                        if (combinedType != null && pos >= 0) {
                             if (rightValue == null) {
                                 rbStack.get(nestedLevel).addField(pos, leftValue);
                             } else {
-                                mergeFields((ARecordType) combinedType.getFieldType(fieldName),
-                                        (ARecordVisitablePointable) leftValue,
-                                        (ARecordVisitablePointable) rightValue, false, nestedLevel + 1);
+                                mergeFields((ARecordType) combinedType.getFieldTypes()[pos],
+                                        (ARecordVisitablePointable) leftValue, (ARecordVisitablePointable) rightValue,
+                                        false, nestedLevel + 1);
 
                                 tabvs.reset();
                                 rbStack.get(nestedLevel + 1).write(tabvs.getDataOutput(), true);
@@ -245,12 +245,9 @@ public class RecordMergeDescriptor extends AbstractScalarFunctionDynamicDescript
                             if (rightValue == null) {
                                 rbStack.get(nestedLevel).addField(fieldNamePointable, leftValue);
                             } else {
-                                ARecordType ct = null;
-                                if (combinedType != null) {
-                                    ct = (ARecordType) combinedType.getFieldType(fieldName);
-                                }
-                                mergeFields(ct, (ARecordVisitablePointable) leftValue,
-                                        (ARecordVisitablePointable) rightValue, false, nestedLevel + 1);
+                                mergeFields(DefaultOpenFieldType.NESTED_OPEN_RECORD_TYPE,
+                                        (ARecordVisitablePointable) leftValue, (ARecordVisitablePointable) rightValue,
+                                        false, nestedLevel + 1);
                                 tabvs.reset();
                                 rbStack.get(nestedLevel + 1).write(tabvs.getDataOutput(), true);
                                 rbStack.get(nestedLevel).addField(fieldNamePointable, tabvs);
