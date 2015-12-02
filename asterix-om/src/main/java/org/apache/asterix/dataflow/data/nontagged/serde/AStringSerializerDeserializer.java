@@ -18,14 +18,14 @@
  */
 package org.apache.asterix.dataflow.data.nontagged.serde;
 
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.IOException;
+
 import org.apache.asterix.om.base.AString;
 import org.apache.hyracks.api.dataflow.value.ISerializerDeserializer;
 import org.apache.hyracks.api.exceptions.HyracksDataException;
 import org.apache.hyracks.dataflow.common.data.marshalling.UTF8StringSerializerDeserializer;
-
-import java.io.DataInput;
-import java.io.DataOutput;
-import java.io.IOException;
 
 public class AStringSerializerDeserializer implements ISerializerDeserializer<AString> {
 
@@ -33,7 +33,8 @@ public class AStringSerializerDeserializer implements ISerializerDeserializer<AS
 
     private final UTF8StringSerializerDeserializer utf8SerDer = new UTF8StringSerializerDeserializer();
 
-    public AStringSerializerDeserializer() {}
+    public AStringSerializerDeserializer() {
+    }
 
     @Override
     public AString deserialize(DataInput in) throws HyracksDataException {

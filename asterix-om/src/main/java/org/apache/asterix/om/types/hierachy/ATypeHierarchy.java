@@ -18,6 +18,12 @@
  */
 package org.apache.asterix.om.types.hierachy;
 
+import java.io.DataOutput;
+import java.io.IOException;
+import java.util.BitSet;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.apache.asterix.common.exceptions.AsterixException;
 import org.apache.asterix.om.base.ADouble;
 import org.apache.asterix.om.base.AFloat;
@@ -37,20 +43,7 @@ import org.apache.hyracks.data.std.primitive.IntegerPointable;
 import org.apache.hyracks.data.std.primitive.LongPointable;
 import org.apache.hyracks.data.std.primitive.ShortPointable;
 
-import java.io.DataOutput;
-import java.io.IOException;
-import java.util.BitSet;
-import java.util.HashMap;
-import java.util.Map;
-
 public class ATypeHierarchy {
-
-    public static enum Domain {
-        SPATIAL,
-        NUMERIC,
-        LIST,
-        ANY
-    }
 
     private static BitSet typePromotionHierachyMap = new BitSet(ATypeTag.TYPE_COUNT * ATypeTag.TYPE_COUNT);
     private static BitSet typeDemotionHierachyMap = new BitSet(ATypeTag.TYPE_COUNT * ATypeTag.TYPE_COUNT);
@@ -807,6 +800,13 @@ public class ATypeHierarchy {
         }
 
         return value;
+    }
+
+    public static enum Domain {
+        SPATIAL,
+        NUMERIC,
+        LIST,
+        ANY
     }
 
 }
