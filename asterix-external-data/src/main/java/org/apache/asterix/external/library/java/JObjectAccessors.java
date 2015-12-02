@@ -22,7 +22,6 @@ import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.util.LinkedHashMap;
 import java.util.List;
-
 import org.apache.asterix.common.exceptions.AsterixException;
 import org.apache.asterix.dataflow.data.nontagged.serde.ABooleanSerializerDeserializer;
 import org.apache.asterix.dataflow.data.nontagged.serde.ACircleSerializerDeserializer;
@@ -86,6 +85,7 @@ import org.apache.asterix.om.types.IAType;
 import org.apache.asterix.om.util.container.IObjectPool;
 import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
 import org.apache.hyracks.api.exceptions.HyracksDataException;
+import org.apache.hyracks.util.string.UTF8StringUtil;
 
 public class JObjectAccessors {
 
@@ -444,7 +444,8 @@ public class JObjectAccessors {
         private final JRecord jRecord;
         private final IJObject[] jObjects;
         private final LinkedHashMap<String, IJObject> openFields;
-        private final AStringSerializerDeserializer aStringSerDer = new AStringSerializerDeserializer();
+        private final StringBuilder stringValueHolder = new StringBuilder();
+
 
         public JRecordAccessor(ARecordType recordType, IObjectPool<IJObject, IAType> objectPool) {
             this.typeInfo = new TypeInfo(objectPool, null, null);
@@ -502,10 +503,10 @@ public class JObjectAccessors {
                         byte[] b = fieldName.getByteArray();
                         int s = fieldName.getStartOffset();
                         int l = fieldName.getLength();
-                        String v = aStringSerDer
-                                .deserialize(new DataInputStream(new ByteArrayInputStream(b, s + 1, l - 1)))
-                                .getStringValue();
-                        openFields.put(v, fieldObject);
+
+                        stringValueHolder.setLength(0);
+                        UTF8StringUtil.toString(stringValueHolder, b, s + 1);
+                        openFields.put(stringValueHolder.toString(), fieldObject);
                     }
                     index++;
                     fieldObject = null;
