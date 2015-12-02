@@ -23,8 +23,8 @@
 */
 use dataverse test;
 
-let $rec:={"animal-info": "Test information"}
+let $rec:=[{"field-name":"animal-info", "field-value":"Test information"}]
 for $test in dataset Animals
-let $result := record-add-fields($test, [{"field-name":"animal-info", "field-value":"Test information"}])
+let $result := record-add-fields($test, $rec)
 order by $result.id
 return $result;

@@ -182,6 +182,8 @@ public class RecordAddFieldsDescriptor extends AbstractScalarFunctionDynamicDesc
                             // Thus avoiding unnecessary object construction
                             if (hashMap == null || tableSize > TABLE_SIZE) {
                                 hashMap = new BinaryHashMap(tableSize, TABLE_FRAME_SIZE, putHashFunc, getHashFunc, cmp);
+                            } else {
+                                hashMap.clear();
                             }
                             addFields(recordPointable, listPointable);
                             recordBuilder.write(output.getDataOutput(), true);
