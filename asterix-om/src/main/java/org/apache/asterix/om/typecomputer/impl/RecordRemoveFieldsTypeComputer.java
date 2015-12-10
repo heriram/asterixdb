@@ -27,8 +27,6 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
-
-import org.apache.asterix.common.exceptions.AsterixException;
 import org.apache.asterix.om.base.AOrderedList;
 import org.apache.asterix.om.base.AString;
 import org.apache.asterix.om.base.IAObject;
@@ -48,7 +46,6 @@ import org.apache.hyracks.algebricks.core.algebra.expressions.AbstractLogicalExp
 import org.apache.hyracks.algebricks.core.algebra.expressions.ConstantExpression;
 import org.apache.hyracks.algebricks.core.algebra.expressions.IVariableTypeEnvironment;
 import org.apache.hyracks.algebricks.core.algebra.metadata.IMetadataProvider;
-import org.apache.hyracks.api.exceptions.HyracksDataException;
 
 /**
  * Cases to support:
@@ -222,13 +219,10 @@ public class RecordRemoveFieldsTypeComputer extends AbstractRecordManipulationTy
 
         int n = resultFieldNames.size();
         String resultTypeName = "result-record(" + inputRecordType.getTypeName() + ")";
-        try {
-            resultType = new ARecordType(resultTypeName, resultFieldNames.toArray(new String[n]),
+
+        return new ARecordType(resultTypeName, resultFieldNames.toArray(new String[n]),
                     resultFieldTypes.toArray(new IAType[n]), true); // Make the output type open always
-        } catch (HyracksDataException | AsterixException e) {
-            throw new AlgebricksException(e);
-        }
-        return resultType;
+
     }
 
     /**
@@ -303,12 +297,8 @@ public class RecordRemoveFieldsTypeComputer extends AbstractRecordManipulationTy
         if (n == 0) {
             return null;
         }
-        try {
-            return new ARecordType(srcRecType.getTypeName(), destFieldNames.toArray(new String[n]),
+        return new ARecordType(srcRecType.getTypeName(), destFieldNames.toArray(new String[n]),
                     destFieldTypes.toArray(new IAType[n]), isOpen);
-        } catch (HyracksDataException | AsterixException e) {
-            throw new AlgebricksException(e);
-        }
     }
 
 }

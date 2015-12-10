@@ -27,7 +27,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import org.apache.asterix.common.exceptions.AsterixException;
+
 import org.apache.asterix.om.base.AString;
 import org.apache.asterix.om.base.IAObject;
 import org.apache.asterix.om.constants.AsterixConstantValue;
@@ -46,7 +46,6 @@ import org.apache.hyracks.algebricks.core.algebra.expressions.AbstractLogicalExp
 import org.apache.hyracks.algebricks.core.algebra.expressions.ConstantExpression;
 import org.apache.hyracks.algebricks.core.algebra.expressions.IVariableTypeEnvironment;
 import org.apache.hyracks.algebricks.core.algebra.metadata.IMetadataProvider;
-import org.apache.hyracks.api.exceptions.HyracksDataException;
 
 public class RecordAddFieldsTypeComputer extends AbstractRecordManipulationTypeComputer {
     public static final RecordAddFieldsTypeComputer INSTANCE = new RecordAddFieldsTypeComputer();
@@ -77,9 +76,6 @@ public class RecordAddFieldsTypeComputer extends AbstractRecordManipulationTypeC
         }
 
         boolean nullable = TypeHelper.canBeNull(type0) || TypeHelper.canBeNull(type1);
-
-        //List<String> additionalFieldNames = new ArrayList<>();
-        //List<IAType> additionalFieldTypes = new ArrayList<>();
         Map<String, IAType> additionalFields = new HashMap<>();
         List<String> resultFieldNames = new ArrayList<>();
         List<IAType> resultFieldTypes = new ArrayList<>();
@@ -127,8 +123,7 @@ public class RecordAddFieldsTypeComputer extends AbstractRecordManipulationTypeC
                                         ILogicalExpression recFieldExpr = recConsExpr.getArguments().get(j + 1)
                                                 .getValue();
                                         if (recFieldExpr.getExpressionTag() == LogicalExpressionTag.CONSTANT) {
-                                            fieldName = (AString) ((AsterixConstantValue) ((ConstantExpression)
-                                                    recFieldExpr)
+                                            fieldName = (AString) ((AsterixConstantValue) ((ConstantExpression) recFieldExpr)
                                                     .getValue()).getObject();
                                             //additionalFieldNames.add(fieldName.getStringValue());
                                         }
@@ -156,24 +151,15 @@ public class RecordAddFieldsTypeComputer extends AbstractRecordManipulationTypeC
                     resultFieldTypes.add(entry.getValue());
                 }
             }
-            /*if (additionalFieldNames.size() > 0) {
-                addAdditionalFields(resultFieldNames, resultFieldTypes, additionalFieldNames, additionalFieldTypes);
-            } */
         } // If variable ignore, deal with the addition at runtime
 
         String resultTypeName = "appended(" + inputRecordType.getTypeName() + ")";
-        IAType resultType;
-        try {
-            int n = resultFieldNames.size();
-            resultType = new ARecordType(resultTypeName, resultFieldNames.toArray(new String[n]),
-                    resultFieldTypes.toArray(new IAType[n]), true);
-        } catch (AsterixException | HyracksDataException e) {
-            throw new AlgebricksException(e);
-        }
+        int n = resultFieldNames.size();
+        IAType resultType = new ARecordType(resultTypeName, resultFieldNames.toArray(new String[n]),
+                resultFieldTypes.toArray(new IAType[n]), true);
         if (nullable) {
             resultType = AUnionType.createNullableType(resultType);
         }
-
         return resultType;
     }
 

@@ -45,7 +45,7 @@ import org.apache.hyracks.data.std.primitive.UTF8StringPointable;
 public class PointableUtils {
     private static final IBinaryComparator STRING_BINARY_COMPARATOR = PointableBinaryComparatorFactory.of(
             UTF8StringPointable.FACTORY).createBinaryComparator();
-    private final ISerializerDeserializer strSerde = new AStringSerializerDeserializer();
+    private final ISerializerDeserializer strSerde = AStringSerializerDeserializer.INSTANCE;
     private final AMutableString aString = new AMutableString("");
 
     public PointableUtils() {

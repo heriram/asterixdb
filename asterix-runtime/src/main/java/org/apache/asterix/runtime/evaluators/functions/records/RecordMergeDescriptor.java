@@ -92,14 +92,6 @@ public class RecordMergeDescriptor extends AbstractScalarFunctionDynamicDescript
 
             @Override
             public ICopyEvaluator createEvaluator(final IDataOutputProvider output) throws AlgebricksException {
-                final ARecordType recType;
-                try {
-                    recType = new ARecordType(outRecType.getTypeName(), outRecType.getFieldNames(),
-                            outRecType.getFieldTypes(), outRecType.isOpen());
-                } catch (AsterixException | HyracksDataException e) {
-                    throw new IllegalStateException();
-                }
-
                 final PointableAllocator pa = new PointableAllocator();
                 final IVisitablePointable vp0 = pa.allocateRecordValue(inRecType0);
                 final IVisitablePointable vp1 = pa.allocateRecordValue(inRecType1);
@@ -146,7 +138,7 @@ public class RecordMergeDescriptor extends AbstractScalarFunctionDynamicDescript
                         ARecordVisitablePointable rp1 = (ARecordVisitablePointable) vp1;
 
                         try {
-                            mergeFields(recType, rp0, rp1, true, 0);
+                            mergeFields(outRecType, rp0, rp1, true, 0);
 
                             rbStack.get(0).write(output.getDataOutput(), true);
                         } catch (IOException | AsterixException e) {

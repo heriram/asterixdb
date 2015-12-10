@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
 import org.apache.asterix.common.exceptions.AsterixException;
 import org.apache.asterix.om.typecomputer.base.IResultTypeComputer;
 import org.apache.asterix.om.types.ARecordType;
@@ -37,7 +36,6 @@ import org.apache.hyracks.algebricks.core.algebra.base.ILogicalExpression;
 import org.apache.hyracks.algebricks.core.algebra.expressions.AbstractFunctionCallExpression;
 import org.apache.hyracks.algebricks.core.algebra.expressions.IVariableTypeEnvironment;
 import org.apache.hyracks.algebricks.core.algebra.metadata.IMetadataProvider;
-import org.apache.hyracks.api.exceptions.HyracksDataException;
 
 public class RecordMergeTypeComputer implements IResultTypeComputer {
     public static final RecordMergeTypeComputer INSTANCE = new RecordMergeTypeComputer();
@@ -111,13 +109,9 @@ public class RecordMergeTypeComputer implements IResultTypeComputer {
         resultFieldTypes.addAll(additionalFieldTypes);
         String resultTypeName = "merged(" + recType0.getTypeName() + ", " + recType1.getTypeName() + ")";
         boolean isOpen = recType0.isOpen() || recType1.isOpen();
-        IAType resultType;
-        try {
-            resultType = new ARecordType(resultTypeName, resultFieldNames.toArray(new String[] {}),
+
+        IAType resultType = new ARecordType(resultTypeName, resultFieldNames.toArray(new String[] {}),
                     resultFieldTypes.toArray(new IAType[] {}), isOpen);
-        } catch (AsterixException | HyracksDataException e) {
-            throw new AlgebricksException(e);
-        };
 
         if (nullable) {
             resultType = AUnionType.createNullableType(resultType);
