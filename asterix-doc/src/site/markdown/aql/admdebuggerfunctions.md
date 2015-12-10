@@ -4,8 +4,8 @@
         adm-to-bytes(var1, number)
 
 
- * Displays the annotated bytes of a data value. The main goal with this function is to debug the object serialization 
- process in AsterixDB and to show how data being stored look like. Its mainly used for debugging purposes.
+ * Displays the annotated bytes of a data value. The main goal with this function is to debug the object
+ serialization process in AsterixDB and to show how data being stored look like. Its mainly used for debugging purposes.
  * Arguments:
     * `var1`: a data value, including record, list, string, and number.
     * `number`: a number value from 0 to infinty ("INF") specifying the nested level of a record.

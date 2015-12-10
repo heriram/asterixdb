@@ -26,11 +26,6 @@ import org.apache.asterix.om.types.AUnorderedListType;
 import org.apache.asterix.om.types.IAType;
 
 public class TypeComputerUtils {
-
-    private TypeComputerUtils() {
-        
-    }
-
     public static ARecordType extractRecordType(IAType t) {
         if (t.getTypeTag() == ATypeTag.RECORD) {
             return (ARecordType) t;
@@ -75,6 +70,5 @@ public class TypeComputerUtils {
 
         return null;
     }
-
 
 }
