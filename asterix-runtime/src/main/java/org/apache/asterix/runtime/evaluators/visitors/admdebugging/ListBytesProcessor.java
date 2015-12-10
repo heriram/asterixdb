@@ -42,7 +42,7 @@ import org.apache.hyracks.api.exceptions.HyracksDataException;
 import org.apache.hyracks.data.std.api.IValueReference;
 import org.apache.hyracks.data.std.util.ByteArrayAccessibleOutputStream;
 
-public class ListBytesProcessor {
+class ListBytesProcessor {
     // pointable allocator
     private final PointableAllocator allocator = new PointableAllocator();
     private final IVisitablePointable itemTempReference = allocator.allocateEmpty();

@@ -32,7 +32,6 @@ import org.apache.asterix.om.base.IAObject;
 import org.apache.asterix.om.util.NonTaggedFormatUtil;
 import org.apache.asterix.om.visitors.IOMVisitor;
 import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
-import org.apache.hyracks.api.exceptions.HyracksDataException;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -61,9 +60,6 @@ public class ARecordType extends AbstractComplexType {
      *            the types of the closed fields
      * @param isOpen
      *            whether the record is open
-     * @throws AsterixException
-     *             if there are duplicate field names or if there is an error serializing the field names
-     * @throws HyracksDataException
      */
     public ARecordType(String typeName, String[] fieldNames, IAType[] fieldTypes, boolean isOpen) {
         super(typeName);
@@ -75,6 +71,10 @@ public class ARecordType extends AbstractComplexType {
         for (int index = 0; index < fieldNames.length; ++index) {
             fieldNameToIndexMap.put(fieldNames[index], index);
         }
+    }
+
+    public static int computeNullBitmapSize(ARecordType rt) {
+        return NonTaggedFormatUtil.hasNullableField(rt) ? (int) Math.ceil(rt.getFieldNames().length / 8.0) : 0;
     }
 
     public final String[] getFieldNames() {
@@ -173,8 +173,8 @@ public class ARecordType extends AbstractComplexType {
                 //enforced SubType
                 subRecordType = ((AUnionType) subRecordType).getNullableType();
                 if (subRecordType.getTypeTag().serialize() != ATypeTag.RECORD.serialize()) {
-                    throw new IOException(
-                            "Field accessor is not defined for values of type " + subRecordType.getTypeTag());
+                    throw new IOException("Field accessor is not defined for values of type "
+                            + subRecordType.getTypeTag());
                 }
 
             }
@@ -302,10 +302,6 @@ public class ARecordType extends AbstractComplexType {
 
         type.put("fields", fields);
         return type;
-    }
-
-    public static int computeNullBitmapSize(ARecordType rt) {
-        return NonTaggedFormatUtil.hasNullableField(rt) ? (int) Math.ceil(rt.getFieldNames().length / 8.0) : 0;
     }
 
 }

@@ -21,17 +21,15 @@ package org.apache.asterix.runtime.evaluators.functions;
 import java.io.DataOutput;
 import java.io.IOException;
 import org.apache.asterix.common.exceptions.AsterixException;
-import org.apache.asterix.formats.nontagged.AqlSerializerDeserializerProvider;
+import org.apache.asterix.dataflow.data.nontagged.serde.AStringSerializerDeserializer;
 import org.apache.asterix.om.base.AMutableString;
 import org.apache.asterix.om.pointables.PointableAllocator;
 import org.apache.asterix.om.pointables.base.IVisitablePointable;
 import org.apache.asterix.om.types.ATypeTag;
-import org.apache.asterix.om.types.BuiltinType;
 import org.apache.asterix.om.types.EnumDeserializer;
 import org.apache.asterix.om.types.IAType;
 import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
 import org.apache.hyracks.api.dataflow.value.IBinaryComparator;
-import org.apache.hyracks.api.dataflow.value.ISerializerDeserializer;
 import org.apache.hyracks.api.exceptions.HyracksDataException;
 import org.apache.hyracks.data.std.accessors.PointableBinaryComparatorFactory;
 import org.apache.hyracks.data.std.api.IMutableValueStorage;
@@ -51,8 +49,7 @@ import org.apache.hyracks.data.std.primitive.UTF8StringPointable;
 public class PointableUtils {
     private static final IBinaryComparator STRING_BINARY_COMPARATOR = PointableBinaryComparatorFactory.of(
             UTF8StringPointable.FACTORY).createBinaryComparator();
-    private final ISerializerDeserializer strSerde = AqlSerializerDeserializerProvider.INSTANCE
-            .getSerializerDeserializer(BuiltinType.ASTRING);
+    private final AStringSerializerDeserializer aStringSerDer = AStringSerializerDeserializer.INSTANCE;
     private final AMutableString aString = new AMutableString("");
 
     public PointableUtils() {
@@ -166,7 +163,7 @@ public class PointableUtils {
                 output.write(ATypeTag.STRING.serialize());
             }
             aString.setValue(str);
-            strSerde.serialize(aString, output);
+            aStringSerDer.serialize(aString, output);
         } catch (IOException e) {
             throw new AsterixException("Could not serialize " + str);
         }

@@ -21,7 +21,6 @@ package org.apache.asterix.runtime.evaluators.functions;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
-
 import org.apache.asterix.builders.IARecordBuilder;
 import org.apache.asterix.builders.RecordBuilder;
 import org.apache.asterix.common.exceptions.AsterixException;
@@ -81,7 +80,7 @@ public class AdmToBytesFactory implements ICopyEvaluatorFactory {
             private final AString RAW_BYTES_FIELD_NAME = new AString("RawBytes");
             private final AString INFINITY_STR = new AString("INF");
             private final RuntimeRecordTypeInfo runtimeRecordTypeInfo = new RuntimeRecordTypeInfo();
-            private final AStringSerializerDeserializer aStringSerDer = new AStringSerializerDeserializer();
+            private final AStringSerializerDeserializer aStringSerDer = AStringSerializerDeserializer.INSTANCE;
             private final ArrayBackedValueStorage outInput0 = new ArrayBackedValueStorage();
             private final ICopyEvaluator eval0 = inputEvalFactory.createEvaluator(outInput0);
             private final ArrayBackedValueStorage outInput1 = new ArrayBackedValueStorage();

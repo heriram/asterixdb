@@ -57,6 +57,8 @@ class RecordBytesProcessor {
 
             IAType reqFieldTypes[] = requiredType.getFieldTypes();
             recordBuilder.reset(requiredType);
+            runtimeRecordTypeInfo.reset(requiredType);
+
             recordBuilder.init();
 
             for (int i = 0; i < fieldNames.size(); i++) {

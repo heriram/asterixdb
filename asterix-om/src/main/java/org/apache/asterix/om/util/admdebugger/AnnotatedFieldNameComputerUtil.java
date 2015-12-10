@@ -21,13 +21,11 @@ package org.apache.asterix.om.util.admdebugger;
 import java.util.EnumSet;
 import java.util.Set;
 
-import org.apache.asterix.common.exceptions.AsterixException;
 import org.apache.asterix.om.types.ARecordType;
 import org.apache.asterix.om.types.ATypeTag;
 import org.apache.asterix.om.types.BuiltinType;
 import org.apache.asterix.om.types.IAType;
 import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
-import org.apache.hyracks.api.exceptions.HyracksDataException;
 
 public class AnnotatedFieldNameComputerUtil {
     private AnnotatedFieldNameComputerUtil() {
@@ -51,31 +49,22 @@ public class AnnotatedFieldNameComputerUtil {
         }
     }
 
-    public static ARecordType getNullableAnnotatedFieldsRecordType(boolean isOpen)  throws AlgebricksException {
-        try {
-            return new ARecordType("NullableAnnotationRecord",
-                    new String[] { ByteAnnotationField.TAG.fieldName() }, new IAType[] { BuiltinType.ASTRING }, isOpen);
-        } catch (AsterixException | HyracksDataException e) {
-            throw new AlgebricksException(e);
-        }
+    public static ARecordType getNullableAnnotatedFieldsRecordType(boolean isOpen) throws AlgebricksException {
+        return new ARecordType("NullableAnnotationRecord", new String[] { ByteAnnotationField.TAG.fieldName() },
+                new IAType[] { BuiltinType.ASTRING }, isOpen);
     }
 
     private static ARecordType createAnnotatedFieldsRecordType(Set<ByteAnnotationField> fields, boolean isOpen)
             throws AlgebricksException {
         String fieldNames[] = new String[fields.size()];
         IAType fieldTypes[] = new IAType[fields.size()];
-        try {
-            int j = 0;
-            for (ByteAnnotationField baf : fields) {
-                fieldNames[j] = baf.fieldName();
-                fieldTypes[j] = BuiltinType.ASTRING;
-                j++;
-            }
-            return new ARecordType("ByteArrayfields", fieldNames, fieldTypes, isOpen);
-
-        } catch (HyracksDataException | AsterixException e) {
-            throw new AlgebricksException(e);
+        int j = 0;
+        for (ByteAnnotationField baf : fields) {
+            fieldNames[j] = baf.fieldName();
+            fieldTypes[j] = BuiltinType.ASTRING;
+            j++;
         }
+        return new ARecordType("ByteArrayfields", fieldNames, fieldTypes, isOpen);
     }
 
     public enum ByteAnnotationField {
@@ -106,8 +95,8 @@ public class AnnotatedFieldNameComputerUtil {
         // For all but numeric values
         LENGTH("Length");
 
-        public static EnumSet<ByteAnnotationField> recordFields = EnumSet.of(TAG, LENGTH,
-                NUMBER_CLOSED_FIELDS, CLOSED_FIELD_OFFSETS, CLOSED_FIELDS);
+        public static EnumSet<ByteAnnotationField> recordFields = EnumSet.of(TAG, LENGTH, NUMBER_CLOSED_FIELDS,
+                CLOSED_FIELD_OFFSETS, CLOSED_FIELDS);
         public static EnumSet<ByteAnnotationField> listFields = EnumSet.of(TAG, ITEM_TYPE, LENGTH, NUMBER_OF_ITEMS,
                 ITEM_OFFSETS, VALUE);
         public static EnumSet<ByteAnnotationField> stringObjectFields = EnumSet.of(TAG, LENGTH, VALUE);

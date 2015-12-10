@@ -18,7 +18,6 @@
  */
 package org.apache.asterix.om.typecomputer.impl;
 
-import org.apache.asterix.common.exceptions.AsterixException;
 import org.apache.asterix.om.base.AInt64;
 import org.apache.asterix.om.base.AString;
 import org.apache.asterix.om.base.IAObject;
@@ -42,8 +41,6 @@ import org.apache.hyracks.algebricks.core.algebra.expressions.AbstractFunctionCa
 import org.apache.hyracks.algebricks.core.algebra.expressions.ConstantExpression;
 import org.apache.hyracks.algebricks.core.algebra.expressions.IVariableTypeEnvironment;
 import org.apache.hyracks.algebricks.core.algebra.metadata.IMetadataProvider;
-import org.apache.hyracks.api.exceptions.HyracksDataException;
-import org.apache.hyracks.api.exceptions.HyracksException;
 
 public class AdmToBytesTypeComputer implements IResultTypeComputer {
     public static final AdmToBytesTypeComputer INSTANCE = new AdmToBytesTypeComputer();
@@ -120,12 +117,8 @@ public class AdmToBytesTypeComputer implements IResultTypeComputer {
 
         // If for printing of the raw bytes only
         if (outputLevel == 0) {
-            try {
                 return new ARecordType("RawBytes", new String[] { "RawBytes" }, new IAType[] { BuiltinType.ASTRING },
                         false);
-            } catch (HyracksDataException | AsterixException e) {
-                throw new AlgebricksException(e);
-            }
         }
 
         // For printing annotated byte arrays (outputLevel > 0)
@@ -202,8 +195,7 @@ public class AdmToBytesTypeComputer implements IResultTypeComputer {
     }
 
     private ARecordType getNestedRecordFields(ARecordType inputType, long nestedLevel) throws AlgebricksException {
-        try {
-            String fieldNames[] = inputType.getFieldNames();
+        String fieldNames[] = inputType.getFieldNames();
             IAType fieldTypes[] = inputType.getFieldTypes();
 
             IAType[] newTypes = new IAType[fieldNames.length];
@@ -218,9 +210,5 @@ public class AdmToBytesTypeComputer implements IResultTypeComputer {
             }
             String typeName = "annotated-bytes(" + inputType.getTypeName() + ")";
             return new ARecordType(typeName, fieldNames, newTypes, inputType.isOpen());
-
-        } catch (AsterixException | HyracksException e) {
-            throw new AlgebricksException(e);
-        }
     }
 }
