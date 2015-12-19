@@ -46,7 +46,7 @@ import org.apache.asterix.om.types.IAType;
 import org.apache.asterix.om.types.runtime.RuntimeRecordTypeInfo;
 import org.apache.asterix.runtime.evaluators.base.AbstractScalarFunctionDynamicDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.BinaryHashMap;
-import org.apache.asterix.runtime.evaluators.functions.PointableUtils;
+import org.apache.asterix.runtime.evaluators.functions.PointableHelper;
 import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
 import org.apache.hyracks.algebricks.core.algebra.functions.FunctionIdentifier;
 import org.apache.hyracks.algebricks.runtime.base.ICopyEvaluator;
@@ -97,9 +97,9 @@ public class RecordAddFieldsDescriptor extends AbstractScalarFunctionDynamicDesc
 
             @Override
             public ICopyEvaluator createEvaluator(final IDataOutputProvider output) throws AlgebricksException {
-                final PointableAllocator pa = new PointableAllocator();
-                final IVisitablePointable vp0 = pa.allocateRecordValue(inRecType);
-                final IVisitablePointable vp1 = pa.allocateListValue(inListType);
+                final PointableAllocator allocator = new PointableAllocator();
+                final IVisitablePointable vp0 = allocator.allocateRecordValue(inRecType);
+                final IVisitablePointable vp1 = allocator.allocateListValue(inListType);
 
                 final ArrayBackedValueStorage abvs0 = new ArrayBackedValueStorage();
                 final ArrayBackedValueStorage abvs1 = new ArrayBackedValueStorage();
@@ -109,10 +109,10 @@ public class RecordAddFieldsDescriptor extends AbstractScalarFunctionDynamicDesc
 
                 final ArrayBackedValueStorage fieldNamePointable = new ArrayBackedValueStorage();
                 final ArrayBackedValueStorage fieldValuePointer = new ArrayBackedValueStorage();
-                final PointableUtils pointableUtils = new PointableUtils();
+                final PointableHelper pointableHelper = new PointableHelper();
                 try {
-                    pointableUtils.serializeString("field-name", fieldNamePointable, true);
-                    pointableUtils.serializeString("field-value", fieldValuePointer, true);
+                    pointableHelper.serializeString("field-name", fieldNamePointable, true);
+                    pointableHelper.serializeString("field-value", fieldValuePointer, true);
                 } catch (AsterixException e) {
                     throw new AlgebricksException(e);
                 }
@@ -129,7 +129,7 @@ public class RecordAddFieldsDescriptor extends AbstractScalarFunctionDynamicDesc
                             .createBinaryHashFunction();
                     private final BinaryHashMap.BinaryEntry keyEntry = new BinaryHashMap.BinaryEntry();
                     private final BinaryHashMap.BinaryEntry valEntry = new BinaryHashMap.BinaryEntry();
-                    private final IVisitablePointable tempValReference = pa.allocateEmpty();
+                    private final IVisitablePointable tempValReference = allocator.allocateEmpty();
                     private final IBinaryComparator cmp = (new ListItemBinaryComparatorFactory())
                             .createBinaryComparator();
                     private BinaryHashMap hashMap = new BinaryHashMap(TABLE_SIZE, TABLE_FRAME_SIZE, putHashFunc,
@@ -220,9 +220,9 @@ public class RecordAddFieldsDescriptor extends AbstractScalarFunctionDynamicDesc
 
                             // Get the fields from a list of records
                             for (int i = 0; i < inputFields.size(); i++) {
-                                if (!PointableUtils.sameType(ATypeTag.RECORD, inputFields.get(i))) {
+                                if (!PointableHelper.sameType(ATypeTag.RECORD, inputFields.get(i))) {
                                     throw new AsterixException("Expected list of record, got "
-                                            + PointableUtils.getTypeTag(inputFields.get(i)));
+                                            + PointableHelper.getTypeTag(inputFields.get(i)));
                                 }
                                 List<IVisitablePointable> names = ((ARecordVisitablePointable) inputFields.get(i))
                                         .getFieldNames();
@@ -235,7 +235,7 @@ public class RecordAddFieldsDescriptor extends AbstractScalarFunctionDynamicDesc
                                 for (int j = 0; j < names.size(); j++) {
                                     fieldName = names.get(j);
                                     // if fieldName is "field-name" then read the name
-                                    if (PointableUtils.byteArrayEqual(fieldNamePointable, fieldName)) {
+                                    if (PointableHelper.byteArrayEqual(fieldNamePointable, fieldName)) {
                                         namePointable = values.get(j);
                                     } else { // otherwise the fieldName is "field-value". Thus, read the value
                                         valuePointable = values.get(j);
@@ -257,7 +257,7 @@ public class RecordAddFieldsDescriptor extends AbstractScalarFunctionDynamicDesc
                                 if (entry != null) {
                                     tempValReference.set(entry.buf, entry.off, entry.len);
                                     // If value is not equal throw conflicting duplicate field, otherwise ignore
-                                    if (!PointableUtils.byteArrayEqual(valuePointable, tempValReference)) {
+                                    if (!PointableHelper.byteArrayEqual(valuePointable, tempValReference)) {
                                         throw new AlgebricksException("Conflicting duplicate field found.");
                                     }
                                 } else {

@@ -26,7 +26,7 @@ import org.apache.asterix.om.pointables.ARecordVisitablePointable;
 import org.apache.asterix.om.pointables.base.IVisitablePointable;
 import org.apache.asterix.om.types.ATypeTag;
 import org.apache.asterix.runtime.evaluators.functions.BinaryHashMap;
-import org.apache.asterix.runtime.evaluators.functions.PointableUtils;
+import org.apache.asterix.runtime.evaluators.functions.PointableHelper;
 import org.apache.hyracks.algebricks.common.utils.Pair;
 import org.apache.hyracks.api.exceptions.HyracksDataException;
 import org.apache.hyracks.data.std.primitive.IntegerPointable;
@@ -97,8 +97,8 @@ class RecordDeepEqualityChecker {
             }
 
             int fieldIdLeft = AInt32SerializerDeserializer.getInt(entry.buf, entry.off);
-            ATypeTag fieldTypeLeft = PointableUtils.getTypeTag(fieldTypesLeft.get(fieldIdLeft));
-            if (fieldTypeLeft.isDerivedType() && fieldTypeLeft != PointableUtils.getTypeTag(fieldTypesRight.get(i))) {
+            ATypeTag fieldTypeLeft = PointableHelper.getTypeTag(fieldTypesLeft.get(fieldIdLeft));
+            if (fieldTypeLeft.isDerivedType() && fieldTypeLeft != PointableHelper.getTypeTag(fieldTypesRight.get(i))) {
                 return false;
             }
             nestedVisitorArg.first = fieldValuesRight.get(i);

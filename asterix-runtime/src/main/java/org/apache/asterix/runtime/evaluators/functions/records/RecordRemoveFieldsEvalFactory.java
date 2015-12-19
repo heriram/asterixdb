@@ -41,7 +41,7 @@ import org.apache.asterix.om.types.ATypeTag;
 import org.apache.asterix.om.types.BuiltinType;
 import org.apache.asterix.om.types.EnumDeserializer;
 import org.apache.asterix.om.types.runtime.RuntimeRecordTypeInfo;
-import org.apache.asterix.runtime.evaluators.functions.PointableUtils;
+import org.apache.asterix.runtime.evaluators.functions.PointableHelper;
 import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
 import org.apache.hyracks.algebricks.runtime.base.ICopyEvaluator;
 import org.apache.hyracks.algebricks.runtime.base.ICopyEvaluatorFactory;
@@ -57,7 +57,6 @@ class RecordRemoveFieldsEvalFactory implements ICopyEvaluatorFactory {
     private static final byte SER_NULL_TYPE_TAG = ATypeTag.NULL.serialize();
     private static final byte SER_ORDEREDLIST_TYPE_TAG = ATypeTag.ORDEREDLIST.serialize();
     private static final byte SER_RECORD_TYPE_TAG = ATypeTag.RECORD.serialize();
-    private final Deque<IVisitablePointable> recordPath = new ArrayDeque<>();
     @SuppressWarnings("unchecked")
     private final ISerializerDeserializer<ANull> nullSerDe = AqlSerializerDeserializerProvider.INSTANCE
             .getSerializerDeserializer(BuiltinType.ANULL);
@@ -94,6 +93,8 @@ class RecordRemoveFieldsEvalFactory implements ICopyEvaluatorFactory {
 
             private final List<RecordBuilder> rbStack = new ArrayList<>();
             private final ArrayBackedValueStorage tabvs = new ArrayBackedValueStorage();
+            private final Deque<IVisitablePointable> recordPath = new ArrayDeque<>();
+
 
             @Override
             public void evaluate(IFrameTupleReference tuple) throws AlgebricksException {
@@ -179,7 +180,7 @@ class RecordRemoveFieldsEvalFactory implements ICopyEvaluatorFactory {
                 int pos = runtimeRecordTypeInfo.getFieldIndex(fieldNamePointable.getByteArray(),
                         fieldNamePointable.getStartOffset() + 1, fieldNamePointable.getLength() - 1);
                 if (pos >= 0) { // Closed field
-                    if (PointableUtils.sameType(ATypeTag.RECORD, fieldTypePointable)) {
+                    if (PointableHelper.sameType(ATypeTag.RECORD, fieldTypePointable)) {
                         processRecord((ARecordType) requiredType.getFieldTypes()[pos],
                                 (ARecordVisitablePointable) fieldValuePointable, inputList, nestedLevel + 1);
                         tabvs.reset();
@@ -189,7 +190,7 @@ class RecordRemoveFieldsEvalFactory implements ICopyEvaluatorFactory {
                         rbStack.get(nestedLevel).addField(pos, fieldValuePointable);
                     }
                 } else { // Open field
-                    if (PointableUtils.sameType(ATypeTag.RECORD, fieldTypePointable)) {
+                    if (PointableHelper.sameType(ATypeTag.RECORD, fieldTypePointable)) {
                         processRecord(null, (ARecordVisitablePointable) fieldValuePointable, inputList, nestedLevel + 1);
                         tabvs.reset();
                         rbStack.get(nestedLevel + 1).write(tabvs.getDataOutput(), true);
@@ -207,14 +208,14 @@ class RecordRemoveFieldsEvalFactory implements ICopyEvaluatorFactory {
                 int pathLen = recordPath.size();
                 for (int i = 0; i < items.size(); i++) {
                     IVisitablePointable item = items.get(i);
-                    if (PointableUtils.sameType(ATypeTag.ORDEREDLIST, typeTags.get(i))) {
+                    if (PointableHelper.sameType(ATypeTag.ORDEREDLIST, typeTags.get(i))) {
                         List<IVisitablePointable> inputPathItems = ((AListVisitablePointable) item).getItems();
 
                         if (pathLen == inputPathItems.size()) {
                             boolean match = true;
                             Iterator<IVisitablePointable> fpi = recordPath.iterator();
                             for (int j = inputPathItems.size() - 1; j >= 0; j--) {
-                                match &= PointableUtils.isEqual(inputPathItems.get(j), fpi.next());
+                                match &= PointableHelper.isEqual(inputPathItems.get(j), fpi.next());
                                 if (!match)
                                     break;
                             }
@@ -222,7 +223,7 @@ class RecordRemoveFieldsEvalFactory implements ICopyEvaluatorFactory {
                                 return false; // Not a valid path for the output record
                         }
                     } else {
-                        if (PointableUtils.isEqual(recordPath.getFirst(), item)) {
+                        if (PointableHelper.isEqual(recordPath.getFirst(), item)) {
                             return false;
                         }
                     }

@@ -30,7 +30,7 @@ import org.apache.asterix.om.pointables.visitor.IVisitablePointableVisitor;
 import org.apache.asterix.om.types.ATypeTag;
 import org.apache.asterix.om.types.hierachy.ATypeHierarchy;
 import org.apache.asterix.om.types.hierachy.ATypeHierarchy.Domain;
-import org.apache.asterix.runtime.evaluators.functions.PointableUtils;
+import org.apache.asterix.runtime.evaluators.functions.PointableHelper;
 import org.apache.hyracks.algebricks.common.utils.Pair;
 import org.apache.hyracks.api.exceptions.HyracksDataException;
 
@@ -82,8 +82,8 @@ public class DeepEqualityVisitor implements IVisitablePointableVisitor<Void, Pai
             return null;
         }
         try {
-            ATypeTag tt1 = PointableUtils.getTypeTag(pointable);
-            ATypeTag tt2 = PointableUtils.getTypeTag(arg.first);
+            ATypeTag tt1 = PointableHelper.getTypeTag(pointable);
+            ATypeTag tt2 = PointableHelper.getTypeTag(arg.first);
 
             if (tt1 != tt2) {
                 if (!ATypeHierarchy.isSameTypeDomain(tt1, tt2, false)) {
@@ -102,7 +102,7 @@ public class DeepEqualityVisitor implements IVisitablePointableVisitor<Void, Pai
                     }
                 }
             } else {
-                arg.second = PointableUtils.byteArrayEqual(pointable, arg.first, 1);
+                arg.second = PointableHelper.byteArrayEqual(pointable, arg.first, 1);
             }
         } catch (HyracksDataException e) {
             throw new AsterixException(e);

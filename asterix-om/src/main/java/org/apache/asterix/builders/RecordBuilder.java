@@ -28,13 +28,10 @@ import java.util.Arrays;
 
 import org.apache.asterix.common.exceptions.AsterixException;
 import org.apache.asterix.dataflow.data.nontagged.serde.SerializerDeserializerUtil;
-import org.apache.asterix.om.pointables.PointableAllocator;
-import org.apache.asterix.om.pointables.base.IVisitablePointable;
 import org.apache.asterix.om.types.ARecordType;
 import org.apache.asterix.om.types.ATypeTag;
 import org.apache.asterix.om.types.runtime.RuntimeRecordTypeInfo;
 import org.apache.asterix.om.util.NonTaggedFormatUtil;
-import org.apache.hyracks.algebricks.common.utils.Pair;
 import org.apache.hyracks.api.dataflow.value.IBinaryComparator;
 import org.apache.hyracks.api.dataflow.value.IBinaryHashFunction;
 import org.apache.hyracks.api.exceptions.HyracksDataException;
@@ -50,12 +47,7 @@ public class RecordBuilder implements IARecordBuilder {
     private final static byte SER_NULL_TYPE_TAG = ATypeTag.NULL.serialize();
     private final static byte RECORD_TYPE_TAG = ATypeTag.RECORD.serialize();
     private final UTF8StringSerializerDeserializer utf8SerDer = new UTF8StringSerializerDeserializer();
-    private final IBinaryHashFunction utf8HashFunction;
-    private final IBinaryComparator utf8Comparator;
-    private final ByteArrayOutputStream closedPartOutputStream;
-    private final ByteArrayAccessibleOutputStream openPartOutputStream;
-    private final CheckCompletelyOpenRecordTypeVisitor visitor = new CheckCompletelyOpenRecordTypeVisitor();
-    private final PointableAllocator pointableAllocator = new PointableAllocator();
+
     private int openPartOffsetArraySize;
     private byte[] openPartOffsetArray;
     private int offsetPosition;
@@ -63,14 +55,23 @@ public class RecordBuilder implements IARecordBuilder {
     private boolean isOpen;
     private boolean isNullable;
     private int numberOfSchemaFields;
+
     private int openPartOffset;
     private ARecordType recType;
+
+    private final IBinaryHashFunction utf8HashFunction;
+    private final IBinaryComparator utf8Comparator;
+
+    private final ByteArrayOutputStream closedPartOutputStream;
     private int[] closedPartOffsets;
     private int numberOfClosedFields;
     private byte[] nullBitMap;
     private int nullBitMapSize;
+
+    private final ByteArrayAccessibleOutputStream openPartOutputStream;
     private long[] openPartOffsets;
     private int[] openFieldNameLengths;
+
     private int numberOfOpenFields;
     private RuntimeRecordTypeInfo recTypeInfo;
 
@@ -179,18 +180,10 @@ public class RecordBuilder implements IARecordBuilder {
 
     @Override
     public void addField(IValueReference name, IValueReference value) throws AsterixException {
-        // Check whether the value is a partly closed or a closed record
-        Pair<Boolean, Void> arg = new Pair<>(false, null);
-        IVisitablePointable vp = pointableAllocator.allocateEmpty();
-        vp.set(value.getByteArray(), value.getStartOffset(), value.getLength());
-        vp.accept(visitor, arg);
-        if (arg.first == true)
-            throw new AsterixException("Trying to add non-schemaless records to an open field.");
-
         if (numberOfOpenFields == openPartOffsets.length) {
             openPartOffsets = Arrays.copyOf(openPartOffsets, openPartOffsets.length + DEFAULT_NUM_OPEN_FIELDS);
-            openFieldNameLengths = Arrays.copyOf(openFieldNameLengths, openFieldNameLengths.length
-                    + DEFAULT_NUM_OPEN_FIELDS);
+            openFieldNameLengths = Arrays.copyOf(openFieldNameLengths,
+                    openFieldNameLengths.length + DEFAULT_NUM_OPEN_FIELDS);
         }
         int fieldNameHashCode;
         try {
@@ -218,8 +211,6 @@ public class RecordBuilder implements IARecordBuilder {
         openFieldNameLengths[numberOfOpenFields++] = name.getLength() - 1;
         openPartOutputStream.write(name.getByteArray(), name.getStartOffset() + 1, name.getLength() - 1);
         openPartOutputStream.write(value.getByteArray(), value.getStartOffset(), value.getLength());
-
-        pointableAllocator.reset();
     }
 
     @Override
@@ -242,8 +233,8 @@ public class RecordBuilder implements IARecordBuilder {
                             openBytes, (int) openPartOffsets[i], openFieldNameLengths[i]) == 0) {
                         String field = utf8SerDer.deserialize(new DataInputStream(new ByteArrayInputStream(openBytes,
                                 (int) openPartOffsets[i], openFieldNameLengths[i])));
-                        throw new AsterixException("Open fields " + (i - 1) + " and " + i
-                                + " have the same field name \"" + field + "\"");
+                        throw new AsterixException(
+                                "Open fields " + (i - 1) + " and " + i + " have the same field name \"" + field + "\"");
                     }
                 }
             }
@@ -254,8 +245,8 @@ public class RecordBuilder implements IARecordBuilder {
                 fieldNameHashCode = (int) (openPartOffsets[i] >> 32);
                 SerializerDeserializerUtil.writeIntToByteArray(openPartOffsetArray, fieldNameHashCode, offsetPosition);
                 int fieldOffset = (int) openPartOffsets[i];
-                SerializerDeserializerUtil.writeIntToByteArray(openPartOffsetArray, fieldOffset + openPartOffset + 4
-                        + openPartOffsetArraySize, offsetPosition + 4);
+                SerializerDeserializerUtil.writeIntToByteArray(openPartOffsetArray,
+                        fieldOffset + openPartOffset + 4 + openPartOffsetArraySize, offsetPosition + 4);
                 offsetPosition += 8;
             }
             recordLength = openPartOffset + 4 + openPartOffsetArraySize + openPartOutputStream.size();

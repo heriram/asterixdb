@@ -41,7 +41,7 @@ import org.apache.asterix.om.types.IAType;
 import org.apache.asterix.om.types.runtime.RuntimeRecordTypeInfo;
 import org.apache.asterix.runtime.evaluators.base.AbstractScalarFunctionDynamicDescriptor;
 import org.apache.asterix.runtime.evaluators.comparisons.DeepEqualAssessor;
-import org.apache.asterix.runtime.evaluators.functions.PointableUtils;
+import org.apache.asterix.runtime.evaluators.functions.PointableHelper;
 import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
 import org.apache.hyracks.algebricks.core.algebra.functions.FunctionIdentifier;
 import org.apache.hyracks.algebricks.runtime.base.ICopyEvaluator;
@@ -106,8 +106,6 @@ public class RecordMergeDescriptor extends AbstractScalarFunctionDynamicDescript
 
                 final ArrayBackedValueStorage tabvs = new ArrayBackedValueStorage();
 
-                final PointableUtils pu = new PointableUtils();
-
                 return new ICopyEvaluator() {
 
                     private final RuntimeRecordTypeInfo runtimeRecordTypeInfo = new RuntimeRecordTypeInfo();
@@ -167,11 +165,11 @@ public class RecordMergeDescriptor extends AbstractScalarFunctionDynamicDescript
                                 IVisitablePointable rightValue = rightRecord.getFieldValues().get(j);
                                 IVisitablePointable rightType = rightRecord.getFieldTypeTags().get(j);
                                 // Check if same fieldname
-                                if (PointableUtils.isEqual(leftName, rightName)
+                                if (PointableHelper.isEqual(leftName, rightName)
                                         && !deepEqualAssesor.isEqual(leftValue, rightValue)) {
                                     //Field was found on the right and are subrecords, merge them
-                                    if (PointableUtils.sameType(ATypeTag.RECORD, rightType)
-                                            && PointableUtils.sameType(ATypeTag.RECORD, leftType)) {
+                                    if (PointableHelper.sameType(ATypeTag.RECORD, rightType)
+                                            && PointableHelper.sameType(ATypeTag.RECORD, leftType)) {
                                         //We are merging two sub records
                                         addFieldToSubRecord(combinedType, leftName, leftValue, rightValue,
                                                 openFromParent, nestedLevel);

@@ -26,7 +26,7 @@ import org.apache.asterix.om.pointables.base.IVisitablePointable;
 import org.apache.asterix.om.types.ATypeTag;
 import org.apache.asterix.runtime.evaluators.functions.BinaryHashMap;
 import org.apache.asterix.runtime.evaluators.functions.BinaryHashMap.BinaryEntry;
-import org.apache.asterix.runtime.evaluators.functions.PointableUtils;
+import org.apache.asterix.runtime.evaluators.functions.PointableHelper;
 import org.apache.hyracks.algebricks.common.utils.Pair;
 import org.apache.hyracks.api.exceptions.HyracksDataException;
 import org.apache.hyracks.data.std.primitive.IntegerPointable;
@@ -79,8 +79,8 @@ class ListDeepEqualityChecker {
             List<IVisitablePointable> itemsRight, List<IVisitablePointable> itemTagTypesRight)
             throws HyracksDataException, AsterixException {
         for(int i=0; i<itemsLeft.size(); i++) {
-            ATypeTag fieldTypeLeft = PointableUtils.getTypeTag(itemTagTypesLeft.get(i));
-            if(fieldTypeLeft.isDerivedType() && fieldTypeLeft != PointableUtils.getTypeTag(itemTagTypesRight.get(i))) {
+            ATypeTag fieldTypeLeft = PointableHelper.getTypeTag(itemTagTypesLeft.get(i));
+            if(fieldTypeLeft.isDerivedType() && fieldTypeLeft != PointableHelper.getTypeTag(itemTagTypesRight.get(i))) {
                 return false;
             }
             itemVisitorArg.first = itemsRight.get(i);
@@ -130,8 +130,8 @@ class ListDeepEqualityChecker {
             }
 
             int indexLeft = IntegerPointable.getInteger(entry.buf, entry.off);
-            ATypeTag fieldTypeLeft = PointableUtils.getTypeTag(itemTagTypesLeft.get(indexLeft));
-            if(fieldTypeLeft.isDerivedType() && fieldTypeLeft != PointableUtils.getTypeTag(itemTagTypesRight.get(indexRight))) {
+            ATypeTag fieldTypeLeft = PointableHelper.getTypeTag(itemTagTypesLeft.get(indexLeft));
+            if(fieldTypeLeft.isDerivedType() && fieldTypeLeft != PointableHelper.getTypeTag(itemTagTypesRight.get(indexRight))) {
                 return false;
             }
 

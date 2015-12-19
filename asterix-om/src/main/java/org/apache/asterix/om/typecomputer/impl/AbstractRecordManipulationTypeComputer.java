@@ -42,32 +42,33 @@ import org.apache.hyracks.algebricks.core.algebra.metadata.IMetadataProvider;
 
 abstract public class AbstractRecordManipulationTypeComputer implements IResultTypeComputer {
 
-    public static IAType mergedNestedType(IAType fieldType1, IAType fieldType0) throws AlgebricksException,
+    public static IAType mergeNestedRecordType(IAType nestedRecordTypeLeft, IAType nestedRecordTypeRight) throws AlgebricksException,
             AsterixException {
-        if (fieldType1.getTypeTag() != ATypeTag.RECORD || fieldType0.getTypeTag() != ATypeTag.RECORD) {
-            throw new AlgebricksException("Duplicate field " + fieldType1.getTypeName() + " encountered");
+        if (nestedRecordTypeLeft.getTypeTag() != ATypeTag.RECORD || nestedRecordTypeRight.getTypeTag() != ATypeTag.RECORD) {
+            throw new AlgebricksException("Expected to merge two (sub-)records, but at least one of the types is not "
+                    + "a record type.");
         }
 
-        ARecordType resultType = (ARecordType) fieldType0;
-        ARecordType fieldType1Copy = (ARecordType) fieldType1;
+        ARecordType resultType = (ARecordType) nestedRecordTypeLeft;
+        ARecordType nestedRecordTypeRightCopy = (ARecordType) nestedRecordTypeRight;
 
-        for (int i = 0; i < fieldType1Copy.getFieldTypes().length; i++) {
+        for (int i = 0; i < nestedRecordTypeRightCopy.getFieldTypes().length; i++) {
             try {
-                int pos = resultType.getFieldIndex(fieldType1Copy.getFieldNames()[i]);
+                int pos = resultType.getFieldIndex(nestedRecordTypeRightCopy.getFieldNames()[i]);
                 if (pos >= 0) {
                     // If a sub-record do merge, else ignore and let the values decide what to do
-                    if (fieldType1Copy.getFieldTypes()[i].getTypeTag() == ATypeTag.RECORD) {
+                    if (nestedRecordTypeRightCopy.getFieldTypes()[i].getTypeTag() == ATypeTag.RECORD) {
                         IAType[] oldTypes = resultType.getFieldTypes();
-                        oldTypes[pos] = mergedNestedType(fieldType1Copy.getFieldTypes()[i],
+                        oldTypes[pos] = mergeNestedRecordType(nestedRecordTypeRightCopy.getFieldTypes()[i],
                                 resultType.getFieldTypes()[pos]);
                         resultType = new ARecordType(resultType.getTypeName(), resultType.getFieldNames(), oldTypes,
                                 resultType.isOpen());
                     }
                 } else {
                     IAType[] combinedFieldTypes = ArrayUtils.addAll(resultType.getFieldTypes().clone(),
-                            fieldType1Copy.getFieldTypes()[i]);
+                            nestedRecordTypeRightCopy.getFieldTypes()[i]);
                     resultType = new ARecordType(resultType.getTypeName(), ArrayUtils.addAll(
-                            resultType.getFieldNames(), fieldType1Copy.getFieldNames()[i]), combinedFieldTypes,
+                            resultType.getFieldNames(), nestedRecordTypeRightCopy.getFieldNames()[i]), combinedFieldTypes,
                             resultType.isOpen());
                 }
 
@@ -94,7 +95,7 @@ abstract public class AbstractRecordManipulationTypeComputer implements IResultT
                 try {
                     // Only need to merge records
                     if (ft.getTypeTag() == ATypeTag.RECORD && rt.getTypeTag() == ATypeTag.RECORD) {
-                        resultFieldTypes.set(pos, mergedNestedType(ft, rt));
+                        resultFieldTypes.set(pos, mergeNestedRecordType(ft, rt));
                     }
                 } catch (AsterixException e) {
                     throw new AlgebricksException(e);

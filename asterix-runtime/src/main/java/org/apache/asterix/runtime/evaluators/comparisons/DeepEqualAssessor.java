@@ -23,7 +23,7 @@ import org.apache.asterix.om.pointables.base.IVisitablePointable;
 import org.apache.asterix.om.types.ATypeTag;
 import org.apache.asterix.om.types.hierachy.ATypeHierarchy;
 import org.apache.asterix.om.types.hierachy.ATypeHierarchy.Domain;
-import org.apache.asterix.runtime.evaluators.functions.PointableUtils;
+import org.apache.asterix.runtime.evaluators.functions.PointableHelper;
 import org.apache.asterix.runtime.evaluators.visitors.DeepEqualityVisitor;
 import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
 import org.apache.hyracks.algebricks.common.utils.Pair;
@@ -44,14 +44,16 @@ public class DeepEqualAssessor {
     public boolean isEqual(IVisitablePointable leftPointable, IVisitablePointable rightPointable)
             throws AlgebricksException, AsterixException {
 
-        if (leftPointable == null || rightPointable == null)
+        if (leftPointable == null || rightPointable == null) {
             return false;
+        }
 
-        if (leftPointable.equals(rightPointable))
+        if (leftPointable.equals(rightPointable)) {
             return true;
+        }
 
-        ATypeTag leftTypeTag = PointableUtils.getTypeTag(leftPointable);
-        ATypeTag rightTypeTag = PointableUtils.getTypeTag(rightPointable);
+        ATypeTag leftTypeTag = PointableHelper.getTypeTag(leftPointable);
+        ATypeTag rightTypeTag = PointableHelper.getTypeTag(rightPointable);
 
         if (leftTypeTag != rightTypeTag) {
             // If types are numeric compare their real values instead
@@ -62,16 +64,18 @@ public class DeepEqualAssessor {
                             leftPointable.getStartOffset());
                     double rightVal = ATypeHierarchy.getDoubleValue(rightPointable.getByteArray(),
                             rightPointable.getStartOffset());
-                    if (leftVal == rightVal)
+                    if (leftVal == rightVal) {
                         return true;
-                    else
+                    } else {
                         return false;
+                    }
                 } catch (HyracksDataException e) {
                     throw new AlgebricksException(e);
                 }
 
-            } else
+            } else {
                 return false;
+            }
         }
 
         Pair<IVisitablePointable, Boolean> arg = new Pair<IVisitablePointable, Boolean>(rightPointable, Boolean.FALSE);
