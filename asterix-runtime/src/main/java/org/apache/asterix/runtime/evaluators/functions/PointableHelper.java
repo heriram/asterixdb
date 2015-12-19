@@ -20,9 +20,8 @@ package org.apache.asterix.runtime.evaluators.functions;
 
 import java.io.DataOutput;
 import java.io.IOException;
+
 import org.apache.asterix.common.exceptions.AsterixException;
-import org.apache.asterix.dataflow.data.nontagged.serde.AStringSerializerDeserializer;
-import org.apache.asterix.om.base.AMutableString;
 import org.apache.asterix.om.pointables.PointableAllocator;
 import org.apache.asterix.om.pointables.base.IVisitablePointable;
 import org.apache.asterix.om.types.ATypeTag;
@@ -38,6 +37,7 @@ import org.apache.hyracks.data.std.primitive.IntegerPointable;
 import org.apache.hyracks.data.std.primitive.LongPointable;
 import org.apache.hyracks.data.std.primitive.ShortPointable;
 import org.apache.hyracks.data.std.primitive.UTF8StringPointable;
+import org.apache.hyracks.util.string.UTF8StringWriter;
 
 /**
  * An utility class for some frequently used methods like checking the equality between two pointables (binary values)
@@ -46,13 +46,13 @@ import org.apache.hyracks.data.std.primitive.UTF8StringPointable;
  * method rather than getting it from fhe field value itself.
  */
 
-public class PointableUtils {
+public class PointableHelper {
     private static final IBinaryComparator STRING_BINARY_COMPARATOR = PointableBinaryComparatorFactory.of(
             UTF8StringPointable.FACTORY).createBinaryComparator();
-    private final AStringSerializerDeserializer aStringSerDer = AStringSerializerDeserializer.INSTANCE;
-    private final AMutableString aString = new AMutableString("");
+    private final UTF8StringWriter utf8Writer;
 
-    public PointableUtils() {
+    public PointableHelper() {
+        utf8Writer = new UTF8StringWriter();
     }
 
     public static int compareStringBinValues(IValueReference a, IValueReference b) throws HyracksDataException {
@@ -162,14 +162,9 @@ public class PointableUtils {
             if (writeTag) {
                 output.write(ATypeTag.STRING.serialize());
             }
-            aString.setValue(str);
-            aStringSerDer.serialize(aString, output);
+            utf8Writer.writeUTF8(str, output);
         } catch (IOException e) {
             throw new AsterixException("Could not serialize " + str);
         }
-    }
-
-    public void serializeString(String str, IMutableValueStorage vs) throws AsterixException {
-        serializeString(str, vs, false);
     }
 }

@@ -49,8 +49,11 @@ public class AdmToBytesVisitor implements
 
     private long outputLevel = 0;
 
-    public AdmToBytesVisitor(AdmToBytesHelper admToBytesHelper, long outputLevel) {
+    public AdmToBytesVisitor(AdmToBytesHelper admToBytesHelper) {
         this.admToBytesHelper = admToBytesHelper;
+    }
+
+    public void setOutputLevel(long outputLevel) {
         this.outputLevel = outputLevel;
     }
 

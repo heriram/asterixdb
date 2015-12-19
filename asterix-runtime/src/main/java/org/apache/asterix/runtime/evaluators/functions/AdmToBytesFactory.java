@@ -21,6 +21,7 @@ package org.apache.asterix.runtime.evaluators.functions;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
+
 import org.apache.asterix.builders.IARecordBuilder;
 import org.apache.asterix.builders.RecordBuilder;
 import org.apache.asterix.common.exceptions.AsterixException;
@@ -88,13 +89,16 @@ public class AdmToBytesFactory implements ICopyEvaluatorFactory {
             private final ResettableByteArrayOutputStream bos = new ResettableByteArrayOutputStream();
             private final DataOutputStream dos = new DataOutputStream(bos);
             private final IARecordBuilder recordBuilder = new RecordBuilder();
-            private final AdmToBytesHelper admToBytesHelper = new AdmToBytesHelper(new PointableUtils());
+            private final AdmToBytesHelper admToBytesHelper = new AdmToBytesHelper(new PointableHelper());
             private final PointableAllocator allocator = new PointableAllocator();
             private final IVisitablePointable levelPointable = allocator.allocateEmpty();
-            private final IVisitablePointable inputPointable = PointableUtils
+            private final IVisitablePointable inputPointable = PointableHelper
                     .allocatePointable(allocator, inputArgType);
             private final IVisitablePointable tempReference = allocator.allocateEmpty();
-            private AdmToBytesVisitor visitor;
+            private AdmToBytesVisitor visitor = new AdmToBytesVisitor(admToBytesHelper);
+            private Triple<IAType, RuntimeRecordTypeInfo, Long> visitorArg = new Triple<>(outputType,
+                    runtimeRecordTypeInfo, 1L);
+            private StringBuilder tempStringBuilder = new StringBuilder();
 
             @Override
             public void evaluate(IFrameTupleReference tuple) throws AlgebricksException {
@@ -119,14 +123,12 @@ public class AdmToBytesFactory implements ICopyEvaluatorFactory {
                 try {
                     // Get the level
                     long outputLevel = getOutputLevel();
-                    visitor = new AdmToBytesVisitor(admToBytesHelper, outputLevel);
+                    visitor.setOutputLevel(outputLevel);
                     // Return only an array of raw byte
                     if (outputLevel < 1) {
                         printRawBytes(inputPointable);
                     } else {
-                        Triple<IAType, RuntimeRecordTypeInfo, Long> arg = new Triple<>(outputType,
-                                runtimeRecordTypeInfo, 1L);
-                        IVisitablePointable resultPointable = inputPointable.accept(visitor, arg);
+                        IVisitablePointable resultPointable = inputPointable.accept(visitor, visitorArg);
                         output.getDataOutput().write(resultPointable.getByteArray(), resultPointable.getStartOffset(),
                                 resultPointable.getLength());
                     }
@@ -144,7 +146,7 @@ public class AdmToBytesFactory implements ICopyEvaluatorFactory {
                 }
                 // Level input arg type check
                 levelPointable.set(outInput1);
-                ATypeTag tag = PointableUtils.getTypeTag(levelPointable);
+                ATypeTag tag = PointableHelper.getTypeTag(levelPointable);
                 if (tag != ATypeTag.INT64 && tag != ATypeTag.STRING) {
                     throw new AlgebricksException(AsterixBuiltinFunctions.ADM_TO_BYTES.getName()
                             + ": expects input type (ADM object, INT32|STRING) but got ("
@@ -159,17 +161,19 @@ public class AdmToBytesFactory implements ICopyEvaluatorFactory {
                         aStringSerDer.serialize(INFINITY_STR, dos);
                         int end = bos.size();
                         tempReference.set(bos.getByteArray(), start, end - start);
-                        if (PointableUtils.isEqual(levelPointable, tempReference)) {
+                        if (PointableHelper.isEqual(levelPointable, tempReference)) {
                             return Long.MAX_VALUE;
                         } else {
-                            StringBuilder sb = new StringBuilder();
-                            sb = UTF8StringUtil.toString(sb, levelPointable.getByteArray(),
+                            // Make sure the input string builder is reset
+                            tempStringBuilder.setLength(0);
+                            tempStringBuilder = UTF8StringUtil.toString(tempStringBuilder,
+                                    levelPointable.getByteArray(),
                                     levelPointable.getStartOffset() + 1);
                             // Will throw an exception if not a number
-                            return Long.parseLong(sb.toString());
+                            return Long.parseLong(tempStringBuilder.toString());
                         }
                     } else {
-                        return PointableUtils.getLongValue(levelPointable, true);
+                        return PointableHelper.getLongValue(levelPointable, true);
                     }
                 } catch (IOException e) {
                     throw new AlgebricksException(e);
