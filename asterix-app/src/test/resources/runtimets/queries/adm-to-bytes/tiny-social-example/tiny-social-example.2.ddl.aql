@@ -34,7 +34,7 @@ primary key screen-name;
 
 create dataset TweetMessages(TweetMessageType)
 primary key tweetid
-hints(cardinality=100); 
+hints(cardinality=100);
 
 create index fbUserSinceIdx on FacebookUsers(user-since);
 create index fbAuthorIdx on FacebookMessages(author-id) type btree;

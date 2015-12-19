@@ -51,10 +51,10 @@ public class AdmToBytesHelper {
     private final IVisitablePointable byteArrayStringPointable = allocator.allocateFieldValue(BuiltinType.ASTRING);
     private final ByteArrayAccessibleOutputStream outputBos = new ByteArrayAccessibleOutputStream();
     private final DataOutputStream outputDos = new DataOutputStream(outputBos);
-    private PointableUtils pointableUtils;
+    private PointableHelper pointableHelper;
 
-    public AdmToBytesHelper(PointableUtils pointableUtils) {
-        this.pointableUtils = pointableUtils;
+    public AdmToBytesHelper(PointableHelper pointableHelper) {
+        this.pointableHelper = pointableHelper;
     }
 
     public ARecordVisitablePointable getAnnotatedByteArray(IVisitablePointable valuePointable) throws AsterixException {
@@ -85,7 +85,7 @@ public class AdmToBytesHelper {
                     recordBuilder.addField(id, byteArrayStringPointable);
                 } else {
                     nameBuffer.reset();
-                    pointableUtils.serializeString(markNames[i], nameBuffer, true);
+                    pointableHelper.serializeString(markNames[i], nameBuffer, true);
                     recordBuilder.addField(nameBuffer, byteArrayStringPointable);
                 }
             }
@@ -122,7 +122,7 @@ public class AdmToBytesHelper {
         }
         valueHolder.append("]");
         valueBuffer.reset();
-        pointableUtils.serializeString(valueHolder.toString(), valueBuffer, writeTag);
+        pointableHelper.serializeString(valueHolder.toString(), valueBuffer, writeTag);
         resultPointable.set(valueBuffer.getByteArray(), valueBuffer.getStartOffset(), valueBuffer.getLength());
     }
 

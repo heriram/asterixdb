@@ -88,10 +88,10 @@ public class AdmToBytesFactory implements ICopyEvaluatorFactory {
             private final ResettableByteArrayOutputStream bos = new ResettableByteArrayOutputStream();
             private final DataOutputStream dos = new DataOutputStream(bos);
             private final IARecordBuilder recordBuilder = new RecordBuilder();
-            private final AdmToBytesHelper admToBytesHelper = new AdmToBytesHelper(new PointableUtils());
+            private final AdmToBytesHelper admToBytesHelper = new AdmToBytesHelper(new PointableHelper());
             private final PointableAllocator allocator = new PointableAllocator();
             private final IVisitablePointable levelPointable = allocator.allocateEmpty();
-            private final IVisitablePointable inputPointable = PointableUtils
+            private final IVisitablePointable inputPointable = PointableHelper
                     .allocatePointable(allocator, inputArgType);
             private final IVisitablePointable tempReference = allocator.allocateEmpty();
             private AdmToBytesVisitor visitor;
@@ -144,7 +144,7 @@ public class AdmToBytesFactory implements ICopyEvaluatorFactory {
                 }
                 // Level input arg type check
                 levelPointable.set(outInput1);
-                ATypeTag tag = PointableUtils.getTypeTag(levelPointable);
+                ATypeTag tag = PointableHelper.getTypeTag(levelPointable);
                 if (tag != ATypeTag.INT64 && tag != ATypeTag.STRING) {
                     throw new AlgebricksException(AsterixBuiltinFunctions.ADM_TO_BYTES.getName()
                             + ": expects input type (ADM object, INT32|STRING) but got ("
@@ -159,7 +159,7 @@ public class AdmToBytesFactory implements ICopyEvaluatorFactory {
                         aStringSerDer.serialize(INFINITY_STR, dos);
                         int end = bos.size();
                         tempReference.set(bos.getByteArray(), start, end - start);
-                        if (PointableUtils.isEqual(levelPointable, tempReference)) {
+                        if (PointableHelper.isEqual(levelPointable, tempReference)) {
                             return Long.MAX_VALUE;
                         } else {
                             StringBuilder sb = new StringBuilder();
@@ -169,7 +169,7 @@ public class AdmToBytesFactory implements ICopyEvaluatorFactory {
                             return Long.parseLong(sb.toString());
                         }
                     } else {
-                        return PointableUtils.getLongValue(levelPointable, true);
+                        return PointableHelper.getLongValue(levelPointable, true);
                     }
                 } catch (IOException e) {
                     throw new AlgebricksException(e);

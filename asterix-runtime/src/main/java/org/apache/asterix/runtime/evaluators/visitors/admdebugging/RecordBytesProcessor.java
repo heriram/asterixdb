@@ -33,7 +33,7 @@ import org.apache.asterix.om.types.AUnionType;
 import org.apache.asterix.om.types.IAType;
 import org.apache.asterix.om.types.runtime.RuntimeRecordTypeInfo;
 import org.apache.asterix.om.util.NonTaggedFormatUtil;
-import org.apache.asterix.runtime.evaluators.functions.PointableUtils;
+import org.apache.asterix.runtime.evaluators.functions.PointableHelper;
 import org.apache.hyracks.algebricks.common.utils.Triple;
 import org.apache.hyracks.data.std.util.ByteArrayAccessibleOutputStream;
 
@@ -64,7 +64,7 @@ class RecordBytesProcessor {
             for (int i = 0; i < fieldNames.size(); i++) {
                 IVisitablePointable fieldValue = fieldValues.get(i);
                 IVisitablePointable fieldName = fieldNames.get(i);
-                ATypeTag fieldTypeTag = PointableUtils.getTypeTag(fieldTypeTags.get(i));
+                ATypeTag fieldTypeTag = PointableHelper.getTypeTag(fieldTypeTags.get(i));
 
                 int pos = runtimeRecordTypeInfo.getFieldIndex(fieldName.getByteArray(), fieldName.getStartOffset() + 1,
                         fieldName.getLength() - 1);
@@ -73,7 +73,7 @@ class RecordBytesProcessor {
                     IAType reqfieldType = reqFieldTypes[pos];
                     if (NonTaggedFormatUtil.isOptional(reqFieldTypes[pos])) {
                         if (fieldTypeTags.get(pos) == null
-                                || PointableUtils.sameType(ATypeTag.NULL, fieldTypeTags.get(pos))) {
+                                || PointableHelper.sameType(ATypeTag.NULL, fieldTypeTags.get(pos))) {
                             reqfieldType = ((AUnionType) reqFieldTypes[pos]).getUnionList().get(0);
                         } else {
                             reqfieldType = ((AUnionType) reqFieldTypes[pos]).getNullableType();

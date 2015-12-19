@@ -36,7 +36,7 @@ import org.apache.asterix.om.types.AUnorderedListType;
 import org.apache.asterix.om.types.BuiltinType;
 import org.apache.asterix.om.types.IAType;
 import org.apache.asterix.om.types.runtime.RuntimeRecordTypeInfo;
-import org.apache.asterix.runtime.evaluators.functions.PointableUtils;
+import org.apache.asterix.runtime.evaluators.functions.PointableHelper;
 import org.apache.hyracks.algebricks.common.utils.Triple;
 import org.apache.hyracks.api.exceptions.HyracksDataException;
 import org.apache.hyracks.data.std.api.IValueReference;
@@ -84,7 +84,7 @@ class ListBytesProcessor {
             for (int i = 0; i < items.size(); i++) {
                 IVisitablePointable item = items.get(i);
                 IVisitablePointable itemTypeTag = itemTypeTags.get(i);
-                ATypeTag typeTag = PointableUtils.getTypeTag(itemTypeTag);
+                ATypeTag typeTag = PointableHelper.getTypeTag(itemTypeTag);
 
                 // If reached the max nesting level just "print" the annotated byte record for this item
                 if (nestedLevel == outputLevel) {
