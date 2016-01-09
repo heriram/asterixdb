@@ -27,11 +27,13 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+
 import org.apache.asterix.om.base.AOrderedList;
 import org.apache.asterix.om.base.AString;
 import org.apache.asterix.om.base.IAObject;
 import org.apache.asterix.om.constants.AsterixConstantValue;
 import org.apache.asterix.om.pointables.base.DefaultOpenFieldType;
+import org.apache.asterix.om.typecomputer.base.IResultTypeComputer;
 import org.apache.asterix.om.types.AOrderedListType;
 import org.apache.asterix.om.types.ARecordType;
 import org.apache.asterix.om.types.ATypeTag;
@@ -52,11 +54,9 @@ import org.apache.hyracks.algebricks.core.algebra.metadata.IMetadataProvider;
  * remove-fields($record, ["foo", ["bar", "access"]]),
  * where ["bar", "access"] is equivalent to the path bar->access
  */
-public class RecordRemoveFieldsTypeComputer extends AbstractRecordManipulationTypeComputer {
+public class RecordRemoveFieldsTypeComputer implements IResultTypeComputer {
 
     public static final RecordRemoveFieldsTypeComputer INSTANCE = new RecordRemoveFieldsTypeComputer();
-
-    //private ARecordType inputRecordType;
 
     private RecordRemoveFieldsTypeComputer() {
     }
@@ -88,6 +88,30 @@ public class RecordRemoveFieldsTypeComputer extends AbstractRecordManipulationTy
             default:
                 throw new AlgebricksException("Unsupport type: " + type);
         }
+    }
+
+    private List<String> getListFromExpression(ILogicalExpression expression) throws AlgebricksException {
+        AbstractFunctionCallExpression funcExp = (AbstractFunctionCallExpression) expression;
+        List<Mutable<ILogicalExpression>> args = funcExp.getArguments();
+
+        List<String> list = new ArrayList<>();
+        for (Mutable<ILogicalExpression> arg : args) {
+            // At this point all elements has to be a constant
+            // Input list has only one level of nesting (list of list or list of strings)
+            ConstantExpression ce = (ConstantExpression) arg.getValue();
+            if (!(ce.getValue() instanceof AsterixConstantValue)) {
+                throw new AlgebricksException("Expecting a list of strings and found " + ce.getValue() + " instead.");
+            }
+            IAObject item = ((AsterixConstantValue) ce.getValue()).getObject();
+            ATypeTag type = item.getType().getTypeTag();
+            if (type == ATypeTag.STRING) {
+                list.add(((AString) item).getStringValue());
+            } else {
+                throw new AlgebricksException(type + " is currently not supported. Please check your function call.");
+            }
+        }
+
+        return list;
     }
 
     private void getPathFromFunctionExpression(ILogicalExpression expression, Set<String> fieldNameSet,

@@ -64,11 +64,7 @@ public class DeepEqualAssessor {
                             leftPointable.getStartOffset());
                     double rightVal = ATypeHierarchy.getDoubleValue(rightPointable.getByteArray(),
                             rightPointable.getStartOffset());
-                    if (leftVal == rightVal) {
-                        return true;
-                    } else {
-                        return false;
-                    }
+                    return (leftVal == rightVal);
                 } catch (HyracksDataException e) {
                     throw new AlgebricksException(e);
                 }

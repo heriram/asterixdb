@@ -18,7 +18,6 @@
  */
 package org.apache.asterix.runtime.evaluators.functions.records;
 
-import org.apache.asterix.om.base.AOrderedList;
 import org.apache.asterix.om.functions.AsterixBuiltinFunctions;
 import org.apache.asterix.om.functions.IFunctionDescriptor;
 import org.apache.asterix.om.functions.IFunctionDescriptorFactory;
@@ -30,8 +29,6 @@ import org.apache.asterix.runtime.evaluators.base.AbstractScalarFunctionDynamicD
 import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
 import org.apache.hyracks.algebricks.core.algebra.functions.FunctionIdentifier;
 import org.apache.hyracks.algebricks.runtime.base.ICopyEvaluatorFactory;
-
-import java.util.List;
 
 public class RecordRemoveFieldsDescriptor extends AbstractScalarFunctionDynamicDescriptor {
 
@@ -52,14 +49,6 @@ public class RecordRemoveFieldsDescriptor extends AbstractScalarFunctionDynamicD
     private ARecordType outputRecordType;
     private ARecordType inputRecType;
     private AOrderedListType inputListType;
-    private AOrderedList pathAList;
-    private List<List<String>> pathList;
-
-    public void reset(IAType outType, IAType inType, List<List<String>> pathList) {
-        this.outputRecordType = (ARecordType) outType;
-        this.inputRecType = (ARecordType) inType;
-        this.pathList = pathList;
-    }
 
     public void reset(IAType outType, IAType inType, IAType inListType) {
         outputRecordType = (ARecordType) outType;

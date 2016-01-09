@@ -31,6 +31,7 @@ import java.util.Map;
 import org.apache.asterix.om.base.AString;
 import org.apache.asterix.om.base.IAObject;
 import org.apache.asterix.om.constants.AsterixConstantValue;
+import org.apache.asterix.om.typecomputer.base.IResultTypeComputer;
 import org.apache.asterix.om.types.AOrderedListType;
 import org.apache.asterix.om.types.ARecordType;
 import org.apache.asterix.om.types.ATypeTag;
@@ -47,7 +48,7 @@ import org.apache.hyracks.algebricks.core.algebra.expressions.ConstantExpression
 import org.apache.hyracks.algebricks.core.algebra.expressions.IVariableTypeEnvironment;
 import org.apache.hyracks.algebricks.core.algebra.metadata.IMetadataProvider;
 
-public class RecordAddFieldsTypeComputer extends AbstractRecordManipulationTypeComputer {
+public class RecordAddFieldsTypeComputer implements IResultTypeComputer {
     public static final RecordAddFieldsTypeComputer INSTANCE = new RecordAddFieldsTypeComputer();
 
     private static final String FIELD_NAME_NAME = "field-name";
@@ -125,7 +126,6 @@ public class RecordAddFieldsTypeComputer extends AbstractRecordManipulationTypeC
                                         if (recFieldExpr.getExpressionTag() == LogicalExpressionTag.CONSTANT) {
                                             fieldName = (AString) ((AsterixConstantValue) ((ConstantExpression) recFieldExpr)
                                                     .getValue()).getObject();
-                                            //additionalFieldNames.add(fieldName.getStringValue());
                                         }
                                     }
                                     break;
@@ -133,7 +133,6 @@ public class RecordAddFieldsTypeComputer extends AbstractRecordManipulationTypeC
                                     throw new AlgebricksException(fieldNameExpr + " is not supported.");
                             }
                         } else if (fn[j].equals(FIELD_VALUE_VALUE)) {
-                            //additionalFieldTypes.add(ft[j]);
                             fieldType = ft[j];
                         }
                     }

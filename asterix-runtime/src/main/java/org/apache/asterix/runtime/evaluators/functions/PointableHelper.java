@@ -20,6 +20,7 @@ package org.apache.asterix.runtime.evaluators.functions;
 
 import java.io.DataOutput;
 import java.io.IOException;
+
 import org.apache.asterix.common.exceptions.AsterixException;
 import org.apache.asterix.om.pointables.base.IVisitablePointable;
 import org.apache.asterix.om.types.ATypeTag;
@@ -59,13 +60,11 @@ public class PointableHelper {
         return (compareStringBinValues(a, b) == 0);
     }
 
-    public static boolean byteArrayEqual(IValueReference valueRef1, IValueReference valueRef2)
-            throws HyracksDataException {
+    public static boolean byteArrayEqual(IValueReference valueRef1, IValueReference valueRef2) {
         return byteArrayEqual(valueRef1, valueRef2, 3);
     }
 
-    public static boolean byteArrayEqual(IValueReference valueRef1, IValueReference valueRef2, int dataOffset)
-            throws HyracksDataException {
+    public static boolean byteArrayEqual(IValueReference valueRef1, IValueReference valueRef2, int dataOffset) {
         if (valueRef1 == null || valueRef2 == null) {
             return false;
         }
@@ -126,9 +125,5 @@ public class PointableHelper {
         } catch (IOException e) {
             throw new AsterixException("Could not serialize " + str);
         }
-    }
-
-    public void serializeString(String str, IMutableValueStorage vs) throws AsterixException {
-        serializeString(str, vs, false);
     }
 }

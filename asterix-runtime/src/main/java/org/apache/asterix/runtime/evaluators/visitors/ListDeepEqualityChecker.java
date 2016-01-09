@@ -45,10 +45,6 @@ class ListDeepEqualityChecker {
         hashMap = deepEqualityVisitorHelper.initializeHashMap(valEntry);
     }
 
-    public ListDeepEqualityChecker(int tableSize, int tableFrameSize) {
-        hashMap = deepEqualityVisitorHelper.initializeHashMap(tableSize, tableFrameSize, valEntry);
-    }
-
     public boolean accessList(IVisitablePointable listPointableLeft, IVisitablePointable listPointableRight,
             DeepEqualityVisitor visitor) throws IOException, AsterixException {
         this.visitor = visitor;
