@@ -65,13 +65,11 @@ public class PointableHelper {
         return (compareStringBinValues(a, b) == 0);
     }
 
-    public static boolean byteArrayEqual(IValueReference valueRef1, IValueReference valueRef2)
-            throws HyracksDataException {
+    public static boolean byteArrayEqual(IValueReference valueRef1, IValueReference valueRef2) {
         return byteArrayEqual(valueRef1, valueRef2, 3);
     }
 
-    public static boolean byteArrayEqual(IValueReference valueRef1, IValueReference valueRef2, int dataOffset)
-            throws HyracksDataException {
+    public static boolean byteArrayEqual(IValueReference valueRef1, IValueReference valueRef2, int dataOffset) {
         if (valueRef1 == null || valueRef2 == null) {
             return false;
         }

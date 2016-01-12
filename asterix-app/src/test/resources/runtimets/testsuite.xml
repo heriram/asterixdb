@@ -20,7 +20,9 @@
 
         <!ENTITY RecordsQueries SYSTEM "queries/records/RecordsQueries.xml">
         <!ENTITY AdmToBytesQueries SYSTEM "queries/adm-to-bytes/AdmToBytes.xml">
+        <!ENTITY DeepEqualQueries SYSTEM "queries/comparison/deep_equal/DeepEqualQueries.xml">
         ]>
+
 <test-suite
         xmlns="urn:xml.testframework.asterix.apache.org"
         ResultOffsetPath="results"
@@ -4420,6 +4422,9 @@
     <test-group name="adm-to-bytes">
         &AdmToBytesQueries;
     </test-group>
+    <test-group name="deep-equal">
+        &DeepEqualQueries;
+    </test-group>
     <test-group name="scan">
         <test-case FilePath="scan">
             <compilation-unit name="10">
@@ -6196,7 +6201,12 @@
 
     </test-group>
     <test-group name="hdfs">
-      <test-case FilePath="hdfs">
+        <test-case FilePath="hdfs">
+            <compilation-unit name="large-record">
+                <output-dir compare="Text">large-record</output-dir>
+            </compilation-unit>
+        </test-case>
+        <test-case FilePath="hdfs">
             <compilation-unit name="hdfs_shortcircuit">
                 <output-dir compare="Text">hdfs_shortcircuit</output-dir>
             </compilation-unit>
