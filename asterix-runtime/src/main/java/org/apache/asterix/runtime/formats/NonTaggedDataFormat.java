@@ -168,7 +168,89 @@ import org.apache.asterix.runtime.evaluators.constructors.AUUIDFromStringConstru
 import org.apache.asterix.runtime.evaluators.constructors.AYearMonthDurationConstructorDescriptor;
 import org.apache.asterix.runtime.evaluators.constructors.ClosedRecordConstructorDescriptor;
 import org.apache.asterix.runtime.evaluators.constructors.OpenRecordConstructorDescriptor;
-import org.apache.asterix.runtime.evaluators.functions.*;
+import org.apache.asterix.runtime.evaluators.functions.AdmToBytesDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.AndDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.AnyCollectionMemberDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.CastListDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.CastRecordDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.CodePointToStringDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.CountHashedGramTokensDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.CountHashedWordTokensDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.CreateCircleDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.CreateLineDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.CreateMBRDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.CreatePointDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.CreatePolygonDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.CreateRectangleDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.CreateUUIDDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.DeepEqualityDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.EditDistanceCheckDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.EditDistanceContainsDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.EditDistanceDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.EditDistanceListIsFilterable;
+import org.apache.asterix.runtime.evaluators.functions.EditDistanceStringIsFilterable;
+import org.apache.asterix.runtime.evaluators.functions.EmbedTypeDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.FlowRecordDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.FuzzyEqDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.GetItemDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.GramTokensDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.HashedGramTokensDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.HashedWordTokensDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.InjectFailureDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.IsNullDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.IsSystemNullDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.LenDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.NotDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.NotNullDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.NumericAbsDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.NumericAddDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.NumericCaretDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.NumericCeilingDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.NumericDivideDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.NumericFloorDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.NumericModuloDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.NumericMultiplyDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.NumericRoundDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.NumericRoundHalfToEven2Descriptor;
+import org.apache.asterix.runtime.evaluators.functions.NumericRoundHalfToEvenDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.NumericSubDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.NumericUnaryMinusDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.OrDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.OrderedListConstructorDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.PrefixLenJaccardDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.RegExpDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.SimilarityJaccardCheckDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.SimilarityJaccardDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.SimilarityJaccardPrefixCheckDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.SimilarityJaccardPrefixDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.SimilarityJaccardSortedCheckDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.SimilarityJaccardSortedDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.SpatialAreaDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.SpatialCellDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.SpatialDistanceDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.SpatialIntersectDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.StringConcatDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.StringContainsDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.StringEndsWithDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.StringEqualDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.StringJoinDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.StringLengthDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.StringLikeDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.StringLowerCaseDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.StringMatchesDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.StringMatchesWithFlagDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.StringReplaceDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.StringReplaceWithFlagsDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.StringStartsWithDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.StringToCodePointDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.StringUpperCaseDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.Substring2Descriptor;
+import org.apache.asterix.runtime.evaluators.functions.SubstringAfterDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.SubstringBeforeDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.SubstringDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.SwitchCaseDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.UnorderedListConstructorDescriptor;
+import org.apache.asterix.runtime.evaluators.functions.WordTokensDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.binary.BinaryConcatDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.binary.BinaryLengthDescriptor;
 import org.apache.asterix.runtime.evaluators.functions.binary.FindBinaryDescriptor;
@@ -281,17 +363,11 @@ import org.apache.hyracks.dataflow.common.data.parsers.UTF8StringParserFactory;
 
 public class NonTaggedDataFormat implements IDataFormat {
 
-    private static boolean registered = false;
-
     public static final NonTaggedDataFormat INSTANCE = new NonTaggedDataFormat();
-
-    private static LogicalVariable METADATA_DUMMY_VAR = new LogicalVariable(-1);
-
-    private static final HashMap<ATypeTag, IValueParserFactory> typeToValueParserFactMap = new HashMap<>();
-
     public static final String NON_TAGGED_DATA_FORMAT = "org.apache.asterix.runtime.formats.NonTaggedDataFormat";
-
-    private Map<FunctionIdentifier, FunctionTypeInferer> functionTypeInferers = new HashMap<>();
+    private static final HashMap<ATypeTag, IValueParserFactory> typeToValueParserFactMap = new HashMap<>();
+    private static boolean registered = false;
+    private static LogicalVariable METADATA_DUMMY_VAR = new LogicalVariable(-1);
 
     static {
         typeToValueParserFactMap.put(ATypeTag.INT32, IntegerParserFactory.INSTANCE);
@@ -300,6 +376,8 @@ public class NonTaggedDataFormat implements IDataFormat {
         typeToValueParserFactMap.put(ATypeTag.INT64, LongParserFactory.INSTANCE);
         typeToValueParserFactMap.put(ATypeTag.STRING, UTF8StringParserFactory.INSTANCE);
     }
+
+    private Map<FunctionIdentifier, FunctionTypeInferer> functionTypeInferers = new HashMap<>();
 
     public NonTaggedDataFormat() {
     }
@@ -666,13 +744,13 @@ public class NonTaggedDataFormat implements IDataFormat {
                     fieldFound = true;
                     try {
                         AInt32 ai = new AInt32(i);
-                        AqlSerializerDeserializerProvider.INSTANCE.getSerializerDeserializer(ai.getType()).serialize(ai,
-                                dos);
+                        AqlSerializerDeserializerProvider.INSTANCE.getSerializerDeserializer(ai.getType()).serialize(
+                                ai, dos);
                     } catch (HyracksDataException e) {
                         throw new AlgebricksException(e);
                     }
-                    ICopyEvaluatorFactory fldIndexEvalFactory = new ConstantEvalFactory(
-                            Arrays.copyOf(abvs.getByteArray(), abvs.getLength()));
+                    ICopyEvaluatorFactory fldIndexEvalFactory = new ConstantEvalFactory(Arrays.copyOf(
+                            abvs.getByteArray(), abvs.getLength()));
 
                     evalFactory = new FieldAccessByIndexEvalFactory(recordEvalFactory, fldIndexEvalFactory, recType);
                     return evalFactory;
@@ -702,8 +780,8 @@ public class NonTaggedDataFormat implements IDataFormat {
             if (fldName.size() > 1) {
                 evalFactory = new FieldAccessNestedEvalFactory(recordEvalFactory, recType, fldName);
             } else {
-                evalFactory = FieldAccessByNameDescriptor.FACTORY.createFunctionDescriptor()
-                        .createEvaluatorFactory(factories);
+                evalFactory = FieldAccessByNameDescriptor.FACTORY.createFunctionDescriptor().createEvaluatorFactory(
+                        factories);
             }
             return evalFactory;
         } else
@@ -727,8 +805,8 @@ public class NonTaggedDataFormat implements IDataFormat {
         } catch (HyracksDataException e) {
             throw new AlgebricksException(e);
         }
-        ICopyEvaluatorFactory dimensionEvalFactory = new ConstantEvalFactory(
-                Arrays.copyOf(abvs1.getByteArray(), abvs1.getLength()));
+        ICopyEvaluatorFactory dimensionEvalFactory = new ConstantEvalFactory(Arrays.copyOf(abvs1.getByteArray(),
+                abvs1.getLength()));
 
         for (int i = 0; i < numOfFields; i++) {
             ArrayBackedValueStorage abvs2 = new ArrayBackedValueStorage();
@@ -739,8 +817,8 @@ public class NonTaggedDataFormat implements IDataFormat {
             } catch (HyracksDataException e) {
                 throw new AlgebricksException(e);
             }
-            ICopyEvaluatorFactory coordinateEvalFactory = new ConstantEvalFactory(
-                    Arrays.copyOf(abvs2.getByteArray(), abvs2.getLength()));
+            ICopyEvaluatorFactory coordinateEvalFactory = new ConstantEvalFactory(Arrays.copyOf(abvs2.getByteArray(),
+                    abvs2.getLength()));
 
             evalFactories[i] = new CreateMBREvalFactory(evalFactory, dimensionEvalFactory, coordinateEvalFactory);
         }
@@ -765,13 +843,13 @@ public class NonTaggedDataFormat implements IDataFormat {
                     DataOutput dos = abvs.getDataOutput();
                     try {
                         AInt32 ai = new AInt32(i);
-                        AqlSerializerDeserializerProvider.INSTANCE.getSerializerDeserializer(ai.getType()).serialize(ai,
-                                dos);
+                        AqlSerializerDeserializerProvider.INSTANCE.getSerializerDeserializer(ai.getType()).serialize(
+                                ai, dos);
                     } catch (HyracksDataException e) {
                         throw new AlgebricksException(e);
                     }
-                    ICopyEvaluatorFactory fldIndexEvalFactory = new ConstantEvalFactory(
-                            Arrays.copyOf(abvs.getByteArray(), abvs.getLength()));
+                    ICopyEvaluatorFactory fldIndexEvalFactory = new ConstantEvalFactory(Arrays.copyOf(
+                            abvs.getByteArray(), abvs.getLength()));
                     ICopyEvaluatorFactory evalFactory = new FieldAccessByIndexEvalFactory(recordEvalFactory,
                             fldIndexEvalFactory, recType);
                     IFunctionInfo finfoAccess = AsterixBuiltinFunctions
@@ -779,8 +857,8 @@ public class NonTaggedDataFormat implements IDataFormat {
 
                     ScalarFunctionCallExpression partitionFun = new ScalarFunctionCallExpression(finfoAccess,
                             new MutableObject<ILogicalExpression>(new VariableReferenceExpression(METADATA_DUMMY_VAR)),
-                            new MutableObject<ILogicalExpression>(
-                                    new ConstantExpression(new AsterixConstantValue(new AInt32(i)))));
+                            new MutableObject<ILogicalExpression>(new ConstantExpression(new AsterixConstantValue(
+                                    new AInt32(i)))));
                     return new Triple<ICopyEvaluatorFactory, ScalarFunctionCallExpression, IAType>(evalFactory,
                             partitionFun, recType.getFieldTypes()[i]);
                 }
@@ -829,11 +907,6 @@ public class NonTaggedDataFormat implements IDataFormat {
         return fd;
     }
 
-    interface FunctionTypeInferer {
-        void infer(ILogicalExpression expr, IFunctionDescriptor fd, IVariableTypeEnvironment context)
-                throws AlgebricksException;
-    }
-
     void registerTypeInferers() {
         functionTypeInferers.put(AsterixBuiltinFunctions.LISTIFY, new FunctionTypeInferer() {
             @Override
@@ -868,8 +941,9 @@ public class NonTaggedDataFormat implements IDataFormat {
         });
         functionTypeInferers.put(AsterixBuiltinFunctions.ADM_TO_BYTES, new FunctionTypeInferer() {
 
-            @Override public void infer(ILogicalExpression expr, IFunctionDescriptor fd,
-                    IVariableTypeEnvironment context) throws AlgebricksException {
+            @Override
+            public void infer(ILogicalExpression expr, IFunctionDescriptor fd, IVariableTypeEnvironment context)
+                    throws AlgebricksException {
                 AbstractFunctionCallExpression f = (AbstractFunctionCallExpression) expr;
                 IAType outType = (IAType) context.getType(expr);
                 IAType intype0 = (IAType) context.getType(f.getArguments().get(0).getValue());
@@ -879,8 +953,9 @@ public class NonTaggedDataFormat implements IDataFormat {
 
         functionTypeInferers.put(AsterixBuiltinFunctions.DEEP_EQUAL, new FunctionTypeInferer() {
 
-            @Override public void infer(ILogicalExpression expr, IFunctionDescriptor fd,
-                    IVariableTypeEnvironment context) throws AlgebricksException {
+            @Override
+            public void infer(ILogicalExpression expr, IFunctionDescriptor fd, IVariableTypeEnvironment context)
+                    throws AlgebricksException {
                 AbstractFunctionCallExpression f = (AbstractFunctionCallExpression) expr;
                 IAType type0 = (IAType) context.getType(f.getArguments().get(0).getValue());
                 IAType type1 = (IAType) context.getType(f.getArguments().get(1).getValue());
@@ -890,8 +965,9 @@ public class NonTaggedDataFormat implements IDataFormat {
 
         functionTypeInferers.put(AsterixBuiltinFunctions.ADD_FIELDS, new FunctionTypeInferer() {
 
-            @Override public void infer(ILogicalExpression expr, IFunctionDescriptor fd,
-                    IVariableTypeEnvironment context) throws AlgebricksException {
+            @Override
+            public void infer(ILogicalExpression expr, IFunctionDescriptor fd, IVariableTypeEnvironment context)
+                    throws AlgebricksException {
                 AbstractFunctionCallExpression f = (AbstractFunctionCallExpression) expr;
                 IAType outType = (IAType) context.getType(expr);
                 IAType type0 = (IAType) context.getType(f.getArguments().get(0).getValue());
@@ -909,8 +985,9 @@ public class NonTaggedDataFormat implements IDataFormat {
 
         functionTypeInferers.put(AsterixBuiltinFunctions.REMOVE_FIELDS, new FunctionTypeInferer() {
 
-            @Override public void infer(ILogicalExpression expr, IFunctionDescriptor fd,
-                    IVariableTypeEnvironment context) throws AlgebricksException {
+            @Override
+            public void infer(ILogicalExpression expr, IFunctionDescriptor fd, IVariableTypeEnvironment context)
+                    throws AlgebricksException {
                 AbstractFunctionCallExpression f = (AbstractFunctionCallExpression) expr;
                 IAType outType = (IAType) context.getType(expr);
                 IAType type0 = (IAType) context.getType(f.getArguments().get(0).getValue());
@@ -1224,5 +1301,10 @@ public class NonTaggedDataFormat implements IDataFormat {
     @Override
     public IPredicateEvaluatorFactoryProvider getPredicateEvaluatorFactoryProvider() {
         return AqlPredicateEvaluatorFactoryProvider.INSTANCE;
+    }
+
+    interface FunctionTypeInferer {
+        void infer(ILogicalExpression expr, IFunctionDescriptor fd, IVariableTypeEnvironment context)
+                throws AlgebricksException;
     }
 }
